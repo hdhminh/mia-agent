@@ -43,7 +43,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"chat_id\": \"{{ $('Chuẩn bị ChatID').item.json.chatId }}\",\n  \"text\": \"🌟 *Giá vàng SJC (1L, 10L, 1KG)* lúc {{$today.format('HH:mm')}}\\n\\n🪙 Mua vào: *{{($json.buy).toLocaleString('vi-VN')}}* VND\\n💰 Bán ra: *{{($json.sell).toLocaleString('vi-VN')}}* VND\",\n  \"parse_mode\": \"Markdown\"\n}",

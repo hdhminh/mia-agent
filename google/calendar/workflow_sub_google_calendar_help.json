@@ -3,28 +3,33 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-calendar-help",
+      "id": "d1344a4b-24f1-4b4b-ade2-7f3a3259a9a5",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [200, 260]
+      "position": [
+        -336,
+        -144
+      ]
     },
     {
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📅 <b>Google Calendar</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- tạo lịch: tạo lịch họp team lúc 15h mai\\n- lịch hôm nay\\n- lịch ngày mai\\n- tìm lịch họp khách\\n- xoá lịch họp khách\\n- kiểm tra lịch rảnh 9h-10h mai';\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
-      "id": "calendar-help",
+      "id": "acf1e653-553e-4011-95ef-ec7e199aca84",
       "name": "Huong Dan Calendar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 260]
+      "position": [
+        -80,
+        -144
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
-        "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
             {
@@ -47,11 +52,14 @@
         },
         "options": {}
       },
-      "id": "send-calendar-tg",
+      "id": "45c713ed-54bf-4a22-937e-4a905dfb1c2c",
       "name": "Gui Calendar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [720, 260]
+      "position": [
+        192,
+        -144
+      ]
     }
   ],
   "connections": {

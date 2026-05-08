@@ -3,62 +3,76 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-list-today",
+      "id": "1cc3dd00-c179-4403-9831-b08048948040",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [200, 260]
+      "position": [
+        272,
+        384
+      ]
     },
     {
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst now = new Date();\nconst start = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T00:00:00+07:00`;\nconst end = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T23:59:59+07:00`;\nreturn [{ json: { ...source, payload, message, chatId, calendarId, after: start, before: end, heading: 'Lịch hôm nay' } }];"
       },
-      "id": "prepare-list-today",
+      "id": "9cbe773e-b27e-4006-8dff-1cfeb34bed24",
       "name": "Chuan Bi Lich Hom Nay",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 260]
+      "position": [
+        512,
+        384
+      ]
     },
     {
       "parameters": {
-        "resource": "event",
         "operation": "getAll",
         "calendar": {
           "__rl": true,
           "mode": "id",
           "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
         },
-        "returnAll": false,
         "limit": 20,
-        "after": "={{ $json.after }}",
-        "before": "={{ $json.before }}",
         "options": {
-          "orderBy": "startTime"
+          "timeMin": "={{ $json.after }}",
+          "timeMax": "={{ $json.before }}"
         }
       },
-      "id": "google-calendar-list",
+      "id": "769ba034-e6a7-4418-986d-96cb0db4add7",
       "name": "Google Calendar List",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "alwaysOutputData": true,
-      "position": [700, 260]
+      "position": [
+        784,
+        384
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Lich Hom Nay').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && (event.id || event.summary || event.start || event.end));\nlet text = `📅 <b>${source.heading}</b>\\n\\n`;\nif (rows.length === 0) {\n  text += 'Không có lịch nào trong hôm nay.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `<b>${i + 1}. ${title}</b>\\n🕒 ${start}`;\n    if (end) text += ` → ${end}`;\n    text += '\\n\\n';\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);\n}\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);\n}\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} → ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\nconst source = $('Chuan Bi Lich Hom Nay').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && (event.id || event.summary || event.start || event.end));\nlet text = `📅 <b>${source.heading}</b>\\n\\n`;\nif (rows.length === 0) {\n  text += 'Không có lịch nào trong hôm nay.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `<b>${i + 1}. ${title}</b>\\n🕒 ${formatRange(start, end)}\\n\\n`;\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "format-list-result",
+      "id": "61986c24-91ea-442e-b3e8-91bb4902d1a8",
       "name": "Format Danh Sach Lich",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 260]
+      "position": [
+        1040,
+        384
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
-        "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
             {
@@ -81,11 +95,14 @@
         },
         "options": {}
       },
-      "id": "send-calendar-tg",
+      "id": "f6579a6c-3438-4d16-a213-5cf27c8ac086",
       "name": "Gui Calendar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1220, 260]
+      "position": [
+        1296,
+        384
+      ]
     }
   ],
   "connections": {

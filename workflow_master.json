@@ -42,7 +42,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"chat_id\": \"{{ $('Lệnh Telegram').item.json.message.chat.id }}\",\n  \"text\": \"📚 <b>HƯỚNG DẪN XEM TIN TỨC</b>\\n\\nBạn có thể gõ <code>/news</code> kèm theo tên chủ đề để đọc báo ngay lập tức:\\n\\n🔹 <code>/news kinhdoanh</code> (hoặc <code>/news business</code>)\\n🔹 <code>/news thegioi</code> (hoặc <code>/news world</code>)\\n🔹 <code>/news congnghe</code> (hoặc <code>/news tech</code>)\\n🔹 <code>/news thethao</code> (hoặc <code>/news sport</code>)\\n🔹 <code>/news suckhoe</code> (hoặc <code>/news health</code>)\\n🔹 <code>/news giaitri</code> (hoặc <code>/news entertainment</code>)\\n🔹 <code>/news phapluat</code> (hoặc <code>/news law</code>)\\n🔹 <code>/news giaoduc</code> (hoặc <code>/news education</code>)\\n🔹 <code>/news doisong</code> (hoặc <code>/news life</code>)\\n🔹 <code>/news xe</code> (hoặc <code>/news car</code>)\\n🔹 <code>/news dulich</code> (hoặc <code>/news travel</code>)\\n\\n<i>(Ví dụ: /news thegioi congnghe)</i>\",\n  \"parse_mode\": \"HTML\"\n}",

@@ -11,6 +11,7 @@ services:
       - WEBHOOK_URL=https://n8n.huynhminh.com/
       - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
       - N8N_API_KEY=${N8N_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - n8n_data:/home/node/.n8n

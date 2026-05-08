@@ -3,21 +3,27 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-availability",
+      "id": "4deaba90-eb2c-4d17-b916-736bb63c294e",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [200, 300]
+      "position": [
+        -2224,
+        48
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst text = normalize(source.text || raw);\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst tzOffset = '+07:00';\nconst now = new Date();\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction buildIso(date, hour, minute) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}:00${tzOffset}`;\n}\nfunction startOfDay(date) { const d = new Date(date); d.setHours(0,0,0,0); return d; }\nfunction addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nfunction parseTargetDate(text, base) {\n  if (/cuoi tuan sau/.test(text)) return startOfDay(nextWeekday(base, 6, true));\n  if (/cuoi tuan nay/.test(text)) return startOfDay(nextWeekday(base, 6, false));\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    const targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    return startOfDay(nextWeekday(base, targetDow, /tuan sau/.test(text)));\n  }\n  if (/ngay kia|mot ngay nua/.test(text)) return startOfDay(addDays(base, 2));\n  if (/ngay mai|mai/.test(text)) return startOfDay(addDays(base, 1));\n  return startOfDay(base);\n}\nconst date = parseTargetDate(text, now);\nconst rangeMatch = raw.match(/(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(?:-|den|toi)\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nconst startMatch = raw.match(/(?:luc|vao|tu)?\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nlet start = '';\nlet end = '';\nif (rangeMatch) {\n  let sh = Number(rangeMatch[1]);\n  let sm = Number(rangeMatch[2] || 0);\n  let eh = Number(rangeMatch[3]);\n  let em = Number(rangeMatch[4] || 0);\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  if (/\\b(chieu|toi)\\b/.test(text) && eh < 12) eh += 12;\n  start = buildIso(date, sh, sm);\n  end = buildIso(date, eh, em);\n} else if (startMatch || /sang|chieu|toi|trua/.test(text)) {\n  let sh = startMatch ? Number(startMatch[1]) : (/sang/.test(text) ? 9 : /trua/.test(text) ? 12 : /toi/.test(text) ? 19 : 14);\n  let sm = startMatch ? Number(startMatch[2] || 0) : 0;\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  start = buildIso(date, sh, sm);\n  let durationMinutes = 60;\n  const durationMatch = text.match(/(\\d+)\\s*(tieng|gio|h|phut)/);\n  if (durationMatch) durationMinutes = Number(durationMatch[1]) * (/phut/.test(durationMatch[2]) ? 1 : 60);\n  const endDate = new Date(start);\n  endDate.setMinutes(endDate.getMinutes() + durationMinutes);\n  end = buildIso(endDate, endDate.getHours(), endDate.getMinutes());\n}\nconst isReady = Boolean(start && end);\nconst response = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\nBạn hãy nhập như:\\n- tôi rảnh lúc 15h hôm nay không\\n- check lịch rảnh 9h-10h mai\\n- availability chiều mai 2 tiếng\\n- rảnh thứ 2 tuần sau lúc 14h không';\nreturn [{ json: { ...source, payload, message, rawText: raw, text, chatId, calendarId, start, end, isReady, response } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst raw = source.rawText;\nconst text = source.text;\nconst tzOffset = '+07:00';\nconst now = new Date();\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction buildIso(date, hour, minute) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}:00${tzOffset}`;\n}\nfunction startOfDay(date) { const d = new Date(date); d.setHours(0,0,0,0); return d; }\nfunction addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nfunction parseTargetDate(text, base) {\n  if (/cuoi tuan sau/.test(text)) return startOfDay(nextWeekday(base, 6, true));\n  if (/cuoi tuan nay/.test(text)) return startOfDay(nextWeekday(base, 6, false));\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    const targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    return startOfDay(nextWeekday(base, targetDow, /tuan sau/.test(text)));\n  }\n  if (/ngay kia|mot ngay nua/.test(text)) return startOfDay(addDays(base, 2));\n  if (/ngay mai|mai/.test(text)) return startOfDay(addDays(base, 1));\n  return startOfDay(base);\n}\nconst date = parseTargetDate(text, now);\nconst rangeMatch = raw.match(/(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(?:-|den|toi)\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nconst startMatch = raw.match(/(?:luc|vao|tu)?\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nlet start = '';\nlet end = '';\nif (rangeMatch) {\n  let sh = Number(rangeMatch[1]);\n  let sm = Number(rangeMatch[2] || 0);\n  let eh = Number(rangeMatch[3]);\n  let em = Number(rangeMatch[4] || 0);\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  if (/\\b(chieu|toi)\\b/.test(text) && eh < 12) eh += 12;\n  start = buildIso(date, sh, sm);\n  end = buildIso(date, eh, em);\n} else if (startMatch || /sang|chieu|toi|trua/.test(text)) {\n  let sh = startMatch ? Number(startMatch[1]) : (/sang/.test(text) ? 9 : /trua/.test(text) ? 12 : /toi/.test(text) ? 19 : 14);\n  let sm = startMatch ? Number(startMatch[2] || 0) : 0;\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  start = buildIso(date, sh, sm);\n  let durationMinutes = 60;\n  const durationMatch = text.match(/(\\d+)\\s*(tieng|gio|h|phut)/);\n  if (durationMatch) durationMinutes = Number(durationMatch[1]) * (/phut/.test(durationMatch[2]) ? 1 : 60);\n  const endDate = new Date(start);\n  endDate.setMinutes(endDate.getMinutes() + durationMinutes);\n  end = buildIso(endDate, endDate.getHours(), endDate.getMinutes());\n}\nconst isReady = Boolean(start && end);\nconst response = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\nBạn hãy nhập như:\\n- tôi rảnh lúc 15h hôm nay không\\n- check lịch rảnh 9h-10h mai\\n- availability chiều mai 2 tiếng\\n- rảnh thứ 2 tuần sau lúc 14h không';\nreturn [{ json: { ...source, start, end, isReady, response } }];"
       },
-      "id": "prepare-availability",
+      "id": "ba1b1aab-104c-4071-8d97-6d3138ba398e",
       "name": "Chuan Bi Kiem Tra Ranh",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        -1968,
+        48
+      ]
     },
     {
       "parameters": {
@@ -30,51 +36,61 @@
           ]
         }
       },
-      "id": "if-availability-ready",
+      "id": "6314c09f-cf84-4a7e-9d18-8bdca22da0b2",
       "name": "Du Du Lieu Kiem Tra?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [720, 300]
+      "position": [
+        -1696,
+        48
+      ]
     },
     {
       "parameters": {
-        "resource": "event",
         "operation": "getAll",
         "calendar": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+          "value": "={{ $json.calendarId }}"
         },
-        "returnAll": false,
         "limit": 10,
-        "after": "={{ $json.start }}",
-        "before": "={{ $json.end }}",
         "options": {
           "orderBy": "startTime"
         }
       },
-      "id": "google-calendar-availability",
+      "id": "fba15e2a-caa8-467f-8d58-1de47b7d4ce0",
       "name": "Google Calendar Busy Check",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [980, 260]
+      "position": [
+        -1408,
+        -80
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Kiem Tra Ranh').item.json;\nconst rows = $input.all().map(item => item.json || {});\nconst available = rows.length === 0;\nlet text = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\n';\ntext += `🕒 ${source.start} → ${source.end}\\n`;\ntext += available ? '✅ Khung giờ này đang rảnh.' : '❌ Khung giờ này đã có lịch bận.';\nif (!available) {\n  text += '\\n\\nCác lịch đang chồng khung giờ:';\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    text += `\\n- ${title} (${start})`;\n  }\n}\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);\n}\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);\n}\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} → ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\nconst source = $('Chuan Bi Kiem Tra Ranh').item.json;\nconst rows = $input.all().map(item => item.json || {});\nconst available = rows.length === 0;\nlet text = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\n';\ntext += `🕒 ${formatRange(source.start, source.end)}\\n`;\ntext += available ? '✅ Khung giờ này đang rảnh.' : '❌ Khung giờ này đã có lịch bận.';\nif (!available) {\n  text += '\\n\\nCác lịch đang chồng khung giờ:';\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `\\n- ${title} (${formatRange(start, end)})`;\n  }\n}\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
-      "id": "format-availability-result",
+      "id": "d276b0fa-5f23-4635-bed4-edd8c4ec0cbb",
       "name": "Format Kiem Tra Ranh",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1240, 260]
+      "position": [
+        -1184,
+        -64
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
-        "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
             {
@@ -97,11 +113,14 @@
         },
         "options": {}
       },
-      "id": "send-calendar-tg",
+      "id": "b12c3082-693e-4c01-89b2-d63a92b8b71e",
       "name": "Gui Calendar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1500, 300]
+      "position": [
+        -928,
+        80
+      ]
     }
   ],
   "connections": {
