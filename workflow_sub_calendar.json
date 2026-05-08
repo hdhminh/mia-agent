@@ -1,0 +1,784 @@
+{
+  "name": "Sub-workflow: Google Calendar",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-calendar",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nconst calendarId = payload.calendarId || 'primary';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(xoa lich|huy lich|delete event|cancel event)\\b/.test(text)) {\n  action = 'delete_event';\n} else if (/\\b(kiem tra lich ranh|check lich ranh|co ranh|freebusy|availability|ranh luc)\\b/.test(text)) {\n  action = 'check_availability';\n} else if (/\\b(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\b/.test(text)) {\n  action = 'create_event';\n} else if (/\\b(lich ngay mai|ngay mai toi co gi|mai toi co gi|list tomorrow|tomorrow schedule)\\b/.test(text)) {\n  action = 'list_tomorrow';\n} else if (/\\b(lich hom nay|hom nay toi co gi|xem lich hom nay|today schedule|list today)\\b/.test(text)) {\n  action = 'list_today';\n} else if (/\\b(lich|su kien|meeting|hop|calendar|tuan sau|cuoi tuan nay|thu [2-7]|chu nhat)\\b/.test(text)) {\n  action = 'find_event';\n}\n\nreturn [{ json: { chatId, rawText, text, action, calendarId } }];"
+      },
+      "id": "code-prepare-calendar",
+      "name": "Chuẩn Bị Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [430, 420]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.action }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "create_event",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "list_today",
+              "output": 1
+            },
+            {
+              "operation": "equal",
+              "value2": "list_tomorrow",
+              "output": 2
+            },
+            {
+              "operation": "equal",
+              "value2": "find_event",
+              "output": 3
+            }
+          ]
+        },
+        "fallbackOutput": 4
+      },
+      "id": "calendar-action-switch",
+      "name": "Calendar Action Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [670, 420]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.action }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "delete_event",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "check_availability",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      },
+      "id": "calendar-action-switch-2",
+      "name": "Calendar Action Switch 2",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [930, 640]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst raw = source.rawText;\nconst text = source.text;\nconst tzOffset = '+07:00';\nconst now = new Date();\n\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction buildIso(date, hour, minute) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}:00${tzOffset}`;\n}\nfunction startOfDay(date) {\n  const d = new Date(date);\n  d.setHours(0, 0, 0, 0);\n  return d;\n}\nfunction addDays(base, days) {\n  const d = new Date(base);\n  d.setDate(d.getDate() + days);\n  return d;\n}\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  const currentDow = d.getDay();\n  let diff = (targetDow - currentDow + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nfunction parseTargetDate(text, base) {\n  if (/cuoi tuan sau/.test(text)) {\n    return startOfDay(nextWeekday(base, 6, true));\n  }\n  if (/cuoi tuan nay/.test(text)) {\n    return startOfDay(nextWeekday(base, 6, false));\n  }\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    let targetDow = 0;\n    if (weekdayMatch[1]) targetDow = Number(weekdayMatch[1]) - 1;\n    const nextWeek = /tuan sau/.test(text);\n    return startOfDay(nextWeekday(base, targetDow, nextWeek));\n  }\n  if (/ngay kia|mot ngay nua/.test(text)) return startOfDay(addDays(base, 2));\n  if (/ngay mai|mai/.test(text)) return startOfDay(addDays(base, 1));\n  return startOfDay(base);\n}\nfunction parseTimeInfo(raw, text) {\n  let startHour = null;\n  let startMinute = 0;\n  let endHour = null;\n  let endMinute = 0;\n  const rangeMatch = raw.match(/(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(?:-|den|toi)\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\n  const startMatch = raw.match(/(?:luc|vao|tu)?\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(am|pm)?/i);\n  if (rangeMatch) {\n    startHour = Number(rangeMatch[1]);\n    startMinute = Number(rangeMatch[2] || 0);\n    endHour = Number(rangeMatch[3]);\n    endMinute = Number(rangeMatch[4] || 0);\n  } else if (startMatch) {\n    startHour = Number(startMatch[1]);\n    startMinute = Number(startMatch[2] || 0);\n    if (startMatch[3] === 'pm' && startHour < 12) startHour += 12;\n  } else if (/buoi sang|sang/.test(text)) {\n    startHour = 9;\n  } else if (/buoi chieu|chieu/.test(text)) {\n    startHour = 14;\n  } else if (/buoi toi|toi/.test(text)) {\n    startHour = 19;\n  } else if (/trua/.test(text)) {\n    startHour = 12;\n  }\n  if (startHour !== null && /\\b(chieu|toi)\\b/.test(text) && startHour < 12) startHour += 12;\n  if (endHour !== null && /\\b(chieu|toi)\\b/.test(text) && endHour < 12) endHour += 12;\n  let durationMinutes = 60;\n  const durationMatch = text.match(/(\\d+)\\s*(tieng|gio|h|phut)/);\n  if (durationMatch) {\n    durationMinutes = Number(durationMatch[1]) * (/phut/.test(durationMatch[2]) ? 1 : 60);\n  } else if (/nua tieng|30 phut/.test(text)) {\n    durationMinutes = 30;\n  } else if (/2 tieng/.test(text)) {\n    durationMinutes = 120;\n  }\n  return { startHour, startMinute, endHour, endMinute, durationMinutes };\n}\n\nconst targetDate = parseTargetDate(text, now);\nconst timeInfo = parseTimeInfo(raw, text);\nlet { startHour, startMinute, endHour, endMinute, durationMinutes } = timeInfo;\n\nif (startHour !== null && endHour === null) {\n  const startDate = new Date(buildIso(targetDate, startHour, startMinute));\n  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);\n  endHour = endDate.getHours();\n  endMinute = endDate.getMinutes();\n}\n\nlet summary = raw\n  .replace(/^(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\s*/i, '')\n  .replace(/\\b(luc|vao|tu|den|toi|hom nay|ngay mai|mai|ngay kia|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|chieu|toi|sang|trua|thu\\s*[2-7]|chu nhat)\\b.*$/i, '')\n  .replace(/\\d{1,2}(?:[:hg]\\d{1,2})?(?:\\s*(?:-|den|toi)\\s*\\d{1,2}(?:[:hg]\\d{1,2})?)?/g, '')\n  .replace(/\\b(trong|khoang|keo dai)\\s*\\d+\\s*(phut|gio|tieng|h)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nif (!summary) summary = 'Lịch mới';\n\nconst isReady = startHour !== null && endHour !== null;\nconst start = isReady ? buildIso(targetDate, startHour, startMinute) : '';\nconst end = isReady ? buildIso(targetDate, endHour, endMinute) : '';\nconst guidance = '📅 <b>Tạo lịch</b>\\n\\nBạn hãy nhập theo mẫu như:\\n- tạo lịch họp team lúc 15h mai\\n- đặt lịch gặp khách 9:30-10:30 thứ 2 tuần sau\\n- thêm lịch demo sản phẩm chiều mai 2 tiếng\\n- tạo sự kiện cuối tuần này lúc 9h';\n\nreturn [{\n  json: {\n    ...source,\n    summary,\n    start,\n    end,\n    description: raw,\n    location: '',\n    isReady,\n    response: isReady ? '' : guidance\n  }\n}];"
+      },
+      "id": "parse-create-event",
+      "name": "Parse Tạo Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 120]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReady }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-create-ready",
+      "name": "Đủ Dữ Liệu Tạo Lịch?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1170, 120]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "useDefaultReminders": true,
+        "options": {
+          "summary": "={{ $json.summary }}",
+          "description": "={{ $json.description }}",
+          "location": "={{ $json.location }}"
+        }
+      },
+      "id": "google-calendar-create",
+      "name": "Google Calendar Create",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1410, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Tạo Lịch').item.json;\nconst item = $json || {};\nconst start = item.start?.dateTime || source.start;\nconst end = item.end?.dateTime || source.end;\nconst link = item.htmlLink || '';\nlet text = '✅ <b>Đã tạo lịch thành công</b>\\n\\n';\ntext += `📝 <b>${source.summary}</b>\\n`;\ntext += `🕒 ${start} → ${end}`;\nif (link) text += `\\n🔗 ${link}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "format-create-result",
+      "name": "Format Kết Quả Tạo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst now = new Date();\nconst start = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T00:00:00+07:00`;\nconst end = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T23:59:59+07:00`;\nreturn [{ json: { ...source, after: start, before: end, heading: 'Lịch hôm nay' } }];"
+      },
+      "id": "prepare-list-today",
+      "name": "Chuẩn Bị Lịch Hôm Nay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst now = new Date();\nnow.setDate(now.getDate() + 1);\nconst start = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T00:00:00+07:00`;\nconst end = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T23:59:59+07:00`;\nreturn [{ json: { ...source, after: start, before: end, heading: 'Lịch ngày mai' } }];"
+      },
+      "id": "prepare-list-tomorrow",
+      "name": "Chuẩn Bị Lịch Ngày Mai",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 360]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "returnAll": false,
+        "limit": 20,
+        "after": "={{ $json.after }}",
+        "before": "={{ $json.before }}",
+        "options": {
+          "orderBy": "startTime"
+        }
+      },
+      "id": "google-calendar-list",
+      "name": "Google Calendar List",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1180, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Lịch Hôm Nay').item.json.heading ? $('Chuẩn Bị Lịch Hôm Nay').item.json : $('Chuẩn Bị Lịch Ngày Mai').item.json;\nconst rows = $input.all().map(item => item.json || {});\nlet text = `📅 <b>${source.heading}</b>\\n\\n`;\nif (rows.length === 0) {\n  text += 'Không có sự kiện nào.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `<b>${i + 1}. ${title}</b>\\n🕒 ${start}`;\n    if (end) text += ` → ${end}`;\n    text += '\\n\\n';\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "format-list-result",
+      "name": "Format Danh Sách Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1410, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst text = source.text;\nconst raw = source.rawText;\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction iso(d, h = 0, m = 0, end = false) {\n  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(end ? h : h)}:${pad(m)}:${end ? '59' : '00'}+07:00`;\n}\nfunction startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }\nfunction endOfDay(d) { const x = new Date(d); x.setHours(23,59,59,0); return x; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nconst now = new Date();\nlet afterDate = now;\nlet beforeDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\nif (/cuoi tuan nay/.test(text)) {\n  afterDate = nextWeekday(now, 6, false);\n  beforeDate = endOfDay(new Date(afterDate.getTime() + 86400000));\n} else if (/cuoi tuan sau/.test(text)) {\n  afterDate = nextWeekday(now, 6, true);\n  beforeDate = endOfDay(new Date(afterDate.getTime() + 86400000));\n} else if (/tuan sau/.test(text)) {\n  const monday = nextWeekday(now, 1, true);\n  afterDate = monday;\n  beforeDate = endOfDay(new Date(monday.getTime() + 6 * 86400000));\n} else if (/ngay mai|mai/.test(text)) {\n  afterDate = startOfDay(new Date(now.getTime() + 86400000));\n  beforeDate = endOfDay(afterDate);\n} else {\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    let targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    const nextWeek = /tuan sau/.test(text);\n    afterDate = nextWeekday(now, targetDow, nextWeek);\n    beforeDate = endOfDay(afterDate);\n  }\n}\nconst query = raw\n  .replace(/^(tim lich|tim su kien|search event|find event|xem lich voi|lich)\\s*/i, '')\n  .replace(/\\b(hom nay|ngay mai|mai|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|thu\\s*[2-7]|chu nhat)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nreturn [{ json: { ...source, query, after: iso(afterDate), before: iso(beforeDate, 23, 59, true) } }];"
+      },
+      "id": "prepare-find-event",
+      "name": "Chuẩn Bị Tìm Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 520]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "returnAll": false,
+        "limit": 10,
+        "after": "={{ $json.after }}",
+        "before": "={{ $json.before }}",
+        "options": {
+          "orderBy": "startTime",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "id": "google-calendar-find",
+      "name": "Google Calendar Find",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1180, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Tìm Lịch').item.json;\nconst rows = $input.all().map(item => item.json || {});\nlet text = `🔎 <b>Kết quả tìm lịch</b>\\n<i>${source.query || source.rawText}</i>\\n\\n`;\nif (rows.length === 0) {\n  text += 'Không tìm thấy sự kiện phù hợp.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    text += `<b>${i + 1}. ${title}</b>\\n🕒 ${start}`;\n    if (event.htmlLink) text += `\\n🔗 ${event.htmlLink}`;\n    text += '\\n\\n';\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "format-find-result",
+      "name": "Format Tìm Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1410, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst query = source.rawText\n  .replace(/^(xoa lich|huy lich|delete event|cancel event)\\s*/i, '')\n  .trim();\nconst now = new Date();\nconst future = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\nfunction iso(d) {\n  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00+07:00`;\n}\nreturn [{ json: { ...source, query, after: iso(now), before: iso(future) } }];"
+      },
+      "id": "prepare-delete-event",
+      "name": "Chuẩn Bị Xóa Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 560]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "returnAll": false,
+        "limit": 5,
+        "after": "={{ $json.after }}",
+        "before": "={{ $json.before }}",
+        "options": {
+          "orderBy": "startTime",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "id": "google-calendar-find-delete",
+      "name": "Google Calendar Find Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1410, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Xóa Lịch').item.json;\nconst rows = $input.all().map(item => item.json || {});\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || ''\n  }\n}];"
+      },
+      "id": "pick-delete-target",
+      "name": "Chọn Lịch Cần Xóa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 560]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.canDelete }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-delete-found",
+      "name": "Tìm Thấy Lịch Để Xóa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1870, 560]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "eventId": "={{ $json.eventId }}"
+      },
+      "id": "google-calendar-delete",
+      "name": "Google Calendar Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [2100, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chọn Lịch Cần Xóa').item.json;\nconst text = `🗑 <b>Đã xoá lịch</b>\\n\\n<b>${source.summary}</b>\\n🕒 ${source.start}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "format-delete-result",
+      "name": "Format Kết Quả Xóa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2330, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst raw = source.rawText;\nconst text = source.text;\nconst tzOffset = '+07:00';\nconst now = new Date();\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction buildIso(date, hour, minute) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}:00${tzOffset}`;\n}\nfunction startOfDay(date) { const d = new Date(date); d.setHours(0,0,0,0); return d; }\nfunction addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nfunction parseTargetDate(text, base) {\n  if (/cuoi tuan sau/.test(text)) return startOfDay(nextWeekday(base, 6, true));\n  if (/cuoi tuan nay/.test(text)) return startOfDay(nextWeekday(base, 6, false));\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    const targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    return startOfDay(nextWeekday(base, targetDow, /tuan sau/.test(text)));\n  }\n  if (/ngay kia|mot ngay nua/.test(text)) return startOfDay(addDays(base, 2));\n  if (/ngay mai|mai/.test(text)) return startOfDay(addDays(base, 1));\n  return startOfDay(base);\n}\nconst date = parseTargetDate(text, now);\nconst rangeMatch = raw.match(/(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(?:-|den|toi)\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nconst startMatch = raw.match(/(?:luc|vao|tu)?\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\nlet start = '';\nlet end = '';\nif (rangeMatch) {\n  let sh = Number(rangeMatch[1]);\n  let sm = Number(rangeMatch[2] || 0);\n  let eh = Number(rangeMatch[3]);\n  let em = Number(rangeMatch[4] || 0);\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  if (/\\b(chieu|toi)\\b/.test(text) && eh < 12) eh += 12;\n  start = buildIso(date, sh, sm);\n  end = buildIso(date, eh, em);\n} else if (startMatch || /sang|chieu|toi|trua/.test(text)) {\n  let sh = startMatch ? Number(startMatch[1]) : (/sang/.test(text) ? 9 : /trua/.test(text) ? 12 : /toi/.test(text) ? 19 : 14);\n  let sm = startMatch ? Number(startMatch[2] || 0) : 0;\n  if (/\\b(chieu|toi)\\b/.test(text) && sh < 12) sh += 12;\n  start = buildIso(date, sh, sm);\n  let durationMinutes = 60;\n  const durationMatch = text.match(/(\\d+)\\s*(tieng|gio|h|phut)/);\n  if (durationMatch) durationMinutes = Number(durationMatch[1]) * (/phut/.test(durationMatch[2]) ? 1 : 60);\n  const endDate = new Date(start);\n  endDate.setMinutes(endDate.getMinutes() + durationMinutes);\n  end = buildIso(endDate, endDate.getHours(), endDate.getMinutes());\n}\nconst isReady = Boolean(start && end);\nconst response = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\nBạn hãy nhập như:\\n- tôi rảnh lúc 15h hôm nay không\\n- check lịch rảnh 9h-10h mai\\n- availability chiều mai 2 tiếng\\n- rảnh thứ 2 tuần sau lúc 14h không';\nreturn [{ json: { ...source, start, end, isReady, response } }];"
+      },
+      "id": "prepare-availability",
+      "name": "Chuẩn Bị Kiểm Tra Rảnh",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 720]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReady }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-availability-ready",
+      "name": "Đủ Dữ Liệu Kiểm Tra?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1410, 720]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "operation": "availability",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId }}"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "options": {
+          "outputFormat": "availability"
+        }
+      },
+      "id": "google-calendar-availability",
+      "name": "Google Calendar Availability",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1640, 680]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Kiểm Tra Rảnh').item.json;\nconst available = $json.available ?? $json.availability ?? false;\nlet text = '🗓 <b>Kiểm tra lịch rảnh</b>\\n\\n';\ntext += `🕒 ${source.start} → ${source.end}\\n`;\ntext += available ? '✅ Khung giờ này đang rảnh.' : '❌ Khung giờ này đã có lịch bận.';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "format-availability-result",
+      "name": "Format Kiểm Tra Rảnh",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1870, 680]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Calendar').item.json;\nconst text = '📅 <b>Google Calendar</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- tạo lịch: tạo lịch họp team lúc 15h mai\\n- lịch hôm nay\\n- lịch ngày mai\\n- tìm lịch họp khách\\n- xoá lịch họp khách\\n- kiểm tra lịch rảnh 9h-10h mai';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "calendar-help",
+      "name": "Hướng Dẫn Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 880]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-tg",
+      "name": "Gửi Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2330, 520]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Calendar": {
+      "main": [
+        [
+          {
+            "node": "Calendar Action Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Action Switch": {
+      "main": [
+        [
+          {
+            "node": "Parse Tạo Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chuẩn Bị Lịch Hôm Nay",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chuẩn Bị Lịch Ngày Mai",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chuẩn Bị Tìm Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Calendar Action Switch 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Action Switch 2": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Xóa Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chuẩn Bị Kiểm Tra Rảnh",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hướng Dẫn Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tạo Lịch": {
+      "main": [
+        [
+          {
+            "node": "Đủ Dữ Liệu Tạo Lịch?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đủ Dữ Liệu Tạo Lịch?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Create": {
+      "main": [
+        [
+          {
+            "node": "Format Kết Quả Tạo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kết Quả Tạo": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Lịch Hôm Nay": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Lịch Ngày Mai": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar List": {
+      "main": [
+        [
+          {
+            "node": "Format Danh Sách Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Danh Sách Lịch": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Tìm Lịch": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Find",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find": {
+      "main": [
+        [
+          {
+            "node": "Format Tìm Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Tìm Lịch": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Xóa Lịch": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Find Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find Delete": {
+      "main": [
+        [
+          {
+            "node": "Chọn Lịch Cần Xóa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chọn Lịch Cần Xóa": {
+      "main": [
+        [
+          {
+            "node": "Tìm Thấy Lịch Để Xóa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tìm Thấy Lịch Để Xóa?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Delete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Delete": {
+      "main": [
+        [
+          {
+            "node": "Format Kết Quả Xóa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kết Quả Xóa": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Kiểm Tra Rảnh": {
+      "main": [
+        [
+          {
+            "node": "Đủ Dữ Liệu Kiểm Tra?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đủ Dữ Liệu Kiểm Tra?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Availability": {
+      "main": [
+        [
+          {
+            "node": "Format Kiểm Tra Rảnh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kiểm Tra Rảnh": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hướng Dẫn Calendar": {
+      "main": [
+        [
+          {
+            "node": "Gửi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

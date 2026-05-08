@@ -1,0 +1,57 @@
+const http = require('http');
+const execSync = require('child_process').execSync;
+
+const intents = {
+    "xin chào": "chat",
+    "chào bạn": "chat",
+    "hello": "chat",
+    "hi": "chat",
+    "ngủ ngon": "chat",
+    "khỏe không": "chat",
+    "tâm sự đi": "chat",
+    "kể chuyện": "chat",
+    "vui quá": "chat",
+    "buồn quá": "chat",
+    "chào buổi sáng": "chat",
+    "giá vàng": "tool",
+    "thời tiết": "tool",
+    "đọc báo": "tool",
+    "tin tức": "tool",
+    "tìm kiếm": "tool",
+    "tra cứu": "tool",
+    "tính toán": "tool",
+    "tóm tắt": "tool",
+    "dịch thuật": "tool"
+};
+
+async function getEmbedding(text) {
+    return new Promise((resolve, reject) => {
+        const req = http.request('http://ollama:11434/api/embeddings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(JSON.parse(data).embedding));
+        });
+        req.write(JSON.stringify({ model: 'nomic-embed-text', prompt: text }));
+        req.end();
+    });
+}
+
+async function run() {
+    execSync(`psql -h postgres -U n8n -d vectordb -c "CREATE EXTENSION IF NOT EXISTS vector;"`, { env: { PGPASSWORD: 'n8n_password' }});
+    execSync(`psql -h postgres -U n8n -d vectordb -c "CREATE TABLE IF NOT EXISTS intents (id serial PRIMARY KEY, content text, metadata jsonb, embedding vector(768));"`, { env: { PGPASSWORD: 'n8n_password' }});
+    execSync(`psql -h postgres -U n8n -d vectordb -c "TRUNCATE TABLE intents;"`, { env: { PGPASSWORD: 'n8n_password' }});
+
+    console.log("Ingesting...");
+    for (const [text, intent] of Object.entries(intents)) {
+        const emb = await getEmbedding(text);
+        const embStr = `[${emb.join(',')}]`;
+        const sql = `INSERT INTO intents (content, metadata, embedding) VALUES ('${text}', '{"intent":"${intent}"}', '${embStr}');`;
+        execSync(`psql -h postgres -U n8n -d vectordb -c '${sql}'`, { env: { PGPASSWORD: 'n8n_password' }});
+    }
+    console.log("Done!");
+}
+
+run().catch(console.error);

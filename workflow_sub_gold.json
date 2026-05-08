@@ -1,0 +1,73 @@
+{
+  "name": "Sub-workflow: Giá Vàng",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [ 200, 400 ]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "cronExpression", "expression": "0 6,18 * * *" } ] }
+      },
+      "id": "trigger-schedule",
+      "name": "Lịch Vàng (6,18)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [ 200, 200 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let chatId = 'ĐIỀN_CHAT_ID_CỦA_BẠN_VÀO_ĐÂY';\nlet isAuto = true;\n\ntry {\n  const msg = $('Execute Workflow Trigger').item.json.message;\n  if (msg && msg.chat && msg.chat.id) {\n    chatId = msg.chat.id;\n    isAuto = false;\n  }\n} catch(e) {}\n\nreturn [{ json: { chatId: chatId, isAuto: isAuto } }];"
+      },
+      "id": "code-prepare",
+      "name": "Chuẩn bị ChatID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 450, 300 ]
+    },
+    {
+      "parameters": {
+        "url": "https://giavang.now/api/prices?type=SJL1L10",
+        "options": {}
+      },
+      "id": "fetch-gold",
+      "name": "Lấy Giá Vàng SJC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [ 650, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Chuẩn bị ChatID').item.json.chatId }}\",\n  \"text\": \"🌟 *Giá vàng SJC (1L, 10L, 1KG)* lúc {{$today.format('HH:mm')}}\\n\\n🪙 Mua vào: *{{($json.buy).toLocaleString('vi-VN')}}* VND\\n💰 Bán ra: *{{($json.sell).toLocaleString('vi-VN')}}* VND\",\n  \"parse_mode\": \"Markdown\"\n}",
+        "options": {}
+      },
+      "id": "send-gold",
+      "name": "Gửi Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [ 850, 300 ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [ [ { "node": "Chuẩn bị ChatID", "type": "main", "index": 0 } ] ]
+    },
+    "Lịch Vàng (6,18)": {
+      "main": [ [ { "node": "Chuẩn bị ChatID", "type": "main", "index": 0 } ] ]
+    },
+    "Chuẩn bị ChatID": {
+      "main": [ [ { "node": "Lấy Giá Vàng SJC", "type": "main", "index": 0 } ] ]
+    },
+    "Lấy Giá Vàng SJC": {
+      "main": [ [ { "node": "Gửi Telegram", "type": "main", "index": 0 } ] ]
+    }
+  }
+}

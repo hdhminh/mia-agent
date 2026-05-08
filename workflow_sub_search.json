@@ -1,0 +1,141 @@
+{
+  "name": "Sub-workflow: Tìm Kiếm Web",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-search",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "let chatId = '';\nlet rawText = '';\nlet query = '';\n\ntry {\n  const payload = $('Execute Workflow Trigger').item.json;\n  const msg = payload.message || payload.body?.message || payload;\n  chatId = msg?.chat?.id || payload.chatId || '';\n  rawText = String(msg?.text || payload.text || payload.query || '').trim();\n} catch (error) {}\n\nquery = rawText\n  .replace(/^(tim|tìm|tim kiem|tìm kiếm|timkiem|search|tra cuu|tra cứu|google|duckduckgo)\\s*/i, '')\n  .replace(/^(ve|về|thong tin ve|thông tin về|cho toi biet ve|cho tôi biết về|noi ve|nói về)\\s*/i, '')\n  .trim();\n\nif (!query) query = 'n8n automation';\n\nreturn [{\n  json: {\n    chatId,\n    query,\n    rawText\n  }\n}];"
+      },
+      "id": "code-prepare-search",
+      "name": "Chuẩn Bị Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://html.duckduckgo.com/html/?q={{ encodeURIComponent($json.query) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "responsePropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "duckduckgo-html",
+      "name": "DuckDuckGo HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Query').item.json;\nconst html = String($json.data || '');\nconst query = source.query;\nconst chatId = source.chatId;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst decodeHtml = (value = '') => String(value)\n  .replace(/&amp;/g, '&')\n  .replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\")\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst cleanText = (value = '') => decodeHtml(String(value).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim());\n\nconst extractUrl = (href = '') => {\n  const normalized = decodeHtml(href);\n  const match = normalized.match(/[?&]uddg=([^&]+)/);\n  if (match) {\n    try {\n      return decodeURIComponent(match[1]);\n    } catch (error) {}\n  }\n  if (normalized.startsWith('//')) return `https:${normalized}`;\n  return normalized;\n};\n\nconst results = [];\nconst resultRegex = /<a[^>]*class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet match;\nwhile ((match = resultRegex.exec(html)) !== null && results.length < 5) {\n  const url = extractUrl(match[1]);\n  const title = cleanText(match[2]);\n  if (!url || !title) continue;\n  results.push({ url, title });\n}\n\nlet message = '🔎 <b>Kết quả tra cứu</b>\\n';\nmessage += `<i>${escapeHtml(query)}</i>\\n\\n`;\n\nif (results.length > 0) {\n  for (let i = 0; i < results.length; i++) {\n    const item = results[i];\n    message += `<b>${i + 1}.</b> <a href=\"${escapeHtml(item.url)}\">${escapeHtml(item.title)}</a>\\n`;\n  }\n  message += '\\n<i>Nguồn: DuckDuckGo</i>';\n} else {\n  message += '⚠️ Chưa tìm thấy kết quả rõ ràng. Bạn thử đổi từ khóa cụ thể hơn nhé.';\n}\n\nmessage = message.trim();\nreturn [{\n  json: {\n    chatId,\n    text: message\n  }\n}];"
+      },
+      "id": "code-format-search",
+      "name": "Tổng Hợp Kết Quả",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-search-tg",
+      "name": "Gửi Kết Quả",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1180, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Query": {
+      "main": [
+        [
+          {
+            "node": "DuckDuckGo HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DuckDuckGo HTML": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Kết Quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Kết Quả": {
+      "main": [
+        [
+          {
+            "node": "Gửi Kết Quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

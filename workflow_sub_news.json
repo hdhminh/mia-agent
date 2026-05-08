@@ -1,0 +1,99 @@
+{
+  "name": "Sub-workflow: Tin Tức",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-news",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [ 200, 400 ]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "cronExpression", "expression": "0 6,12,18 * * *" } ] }
+      },
+      "id": "trigger-schedule-news",
+      "name": "Lịch Tin (6,12,18)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [ 200, 200 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let chatId = 'ĐIỀN_CHAT_ID_CỦA_BẠN_VÀO_ĐÂY';\nlet isAuto = true;\nlet text = '';\ntry {\n  const msg = $('Execute Workflow Trigger').item.json.message;\n  if (msg && msg.chat && msg.chat.id) {\n    chatId = msg.chat.id;\n    text = msg.text.toLowerCase();\n    isAuto = false;\n  }\n} catch(e) {}\n\nlet topics = [];\nif (isAuto) {\n  topics = ['kinh-doanh', 'the-gioi', 'so-hoa'];\n} else {\n  if (text.includes('kinhdoanh') || text.includes('business')) topics.push('kinh-doanh');\n  if (text.includes('thegioi') || text.includes('world')) topics.push('the-gioi');\n  if (text.includes('congnghe') || text.includes('tech') || text.includes('sohoa')) topics.push('so-hoa');\n  if (text.includes('thoisu') || text.includes('news')) topics.push('thoi-su');\n  if (text.includes('suckhoe') || text.includes('health')) topics.push('suc-khoe');\n  if (text.includes('thethao') || text.includes('sport')) topics.push('the-thao');\n  if (text.includes('giaitri') || text.includes('entertainment')) topics.push('giai-tri');\n  if (text.includes('phapluat') || text.includes('law')) topics.push('phap-luat');\n  if (text.includes('giaoduc') || text.includes('education')) topics.push('giao-duc');\n  if (text.includes('doisong') || text.includes('life')) topics.push('doi-song');\n  if (text.includes('xe') || text.includes('car')) topics.push('xe');\n  if (text.includes('dulich') || text.includes('travel')) topics.push('du-lich');\n  if (text.includes('khoahoc') || text.includes('science')) topics.push('khoa-hoc');\n\n  if (topics.length === 0) topics = ['kinh-doanh', 'the-gioi', 'so-hoa'];\n}\n\nconst topicNames = {\n  'kinh-doanh': 'Kinh doanh', 'the-gioi': 'Thế giới', 'so-hoa': 'Công nghệ',\n  'thoi-su': 'Thời sự', 'suc-khoe': 'Sức khỏe', 'the-thao': 'Thể thao',\n  'giai-tri': 'Giải trí', 'phap-luat': 'Pháp luật', 'giao-duc': 'Giáo dục',\n  'doi-song': 'Đời sống', 'xe': 'Xe', 'du-lich': 'Du lịch', 'khoa-hoc': 'Khoa học'\n};\n\nreturn topics.map(t => ({\n  json: {\n    url: `https://vnexpress.net/rss/${t}.rss`,\n    topic: topicNames[t] || 'Tin tức',\n    chatId: chatId,\n    isAuto: isAuto\n  }\n}));"
+      },
+      "id": "code-prepare-news",
+      "name": "Chuẩn bị URL News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 450, 300 ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": { "response": { "responseFormat": "text", "responsePropertyName": "data" } }
+        }
+      },
+      "id": "fetch-news-rss",
+      "name": "Tải XML RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [ 650, 300 ]
+    },
+    {
+      "parameters": { "options": {} },
+      "id": "xml-to-json-news",
+      "name": "XML to JSON",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [ 850, 300 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.sentUrls = staticData.sentUrls || [];\nlet allItems = [];\nlet chatId = '';\nlet isAuto = false;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nfor (const [index, item] of $input.all().entries()) {\n  chatId = $('Chuẩn bị URL News').all()[index].json.chatId;\n  isAuto = $('Chuẩn bị URL News').all()[index].json.isAuto;\n  const topic = $('Chuẩn bị URL News').all()[index].json.topic || 'Tin tức';\n  let articles = item.json.rss?.channel?.item || [];\n  if (!Array.isArray(articles)) articles = [articles];\n\n  for (const article of articles) {\n    if (!article.title || !article.link) continue;\n    let pubDate = 0;\n    try { pubDate = new Date(article.pubDate).getTime(); } catch (e) {}\n    allItems.push({\n      title: article.title,\n      link: article.link,\n      pubDate,\n      topic\n    });\n  }\n}\n\nallItems.sort((a, b) => b.pubDate - a.pubDate);\nlet finalItems = [];\nfor (const article of allItems) {\n  if (isAuto && staticData.sentUrls.includes(article.link)) continue;\n  finalItems.push(article);\n  if (finalItems.length >= 8) break;\n}\n\nif (isAuto) {\n  for (const article of finalItems) staticData.sentUrls.push(article.link);\n  if (staticData.sentUrls.length > 200) staticData.sentUrls = staticData.sentUrls.slice(-200);\n}\n\nif (finalItems.length === 0) {\n  return [{ json: { text: '📰 <b>Tin tức mới</b>\\n\\nHiện chưa có bài mới để gửi.', chatId } }];\n}\n\nconst uniqueTopics = [...new Set(finalItems.map(item => item.topic))];\nconst topicLine = uniqueTopics.slice(0, 3).join(' • ');\nlet message = '📰 <b>Tin tức nổi bật</b>\\n';\nmessage += `<i>${escapeHtml(topicLine)}</i>\\n\\n`;\n\nfor (let i = 0; i < finalItems.length; i++) {\n  const item = finalItems[i];\n  message += `<b>${i + 1}. ${escapeHtml(item.topic)}</b>\\n`;\n  message += `• <a href=\"${escapeHtml(item.link)}\">${escapeHtml(item.title)}</a>\\n\\n`;\n}\n\nmessage = message.trim();\nreturn [{ json: { text: message, chatId } }];"
+      },
+      "id": "code-format-news-2",
+      "name": "Format Tin Tức",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1050, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.chatId }}\",\n  \"text\": \"{{ $json.text }}\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {}
+      },
+      "id": "send-news-tg",
+      "name": "Gửi Tin Tức",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [ 1250, 300 ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [ [ { "node": "Chuẩn bị URL News", "type": "main", "index": 0 } ] ]
+    },
+    "Lịch Tin (6,12,18)": {
+      "main": [ [ { "node": "Chuẩn bị URL News", "type": "main", "index": 0 } ] ]
+    },
+    "Chuẩn bị URL News": {
+      "main": [ [ { "node": "Tải XML RSS", "type": "main", "index": 0 } ] ]
+    },
+    "Tải XML RSS": {
+      "main": [ [ { "node": "XML to JSON", "type": "main", "index": 0 } ] ]
+    },
+    "XML to JSON": {
+      "main": [ [ { "node": "Format Tin Tức", "type": "main", "index": 0 } ] ]
+    },
+    "Format Tin Tức": {
+      "main": [ [ { "node": "Gửi Tin Tức", "type": "main", "index": 0 } ] ]
+    }
+  }
+}

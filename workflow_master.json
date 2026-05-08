@@ -1,0 +1,91 @@
+{
+  "name": "Master Router (Bot Tổng)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [ "message" ]
+      },
+      "id": "master-trigger",
+      "name": "Lệnh Telegram",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [ 200, 400 ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.message.text }}",
+        "rules": {
+          "rules": [
+            { "operation": "startsWith", "value2": "/gold", "output": 0 },
+            { "operation": "startsWith", "value2": "/news help", "output": 1 },
+            { "operation": "startsWith", "value2": "/news", "output": 2 }
+          ]
+        }
+      },
+      "id": "master-switch",
+      "name": "Phân Loại Lệnh",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [ 450, 400 ]
+    },
+    {
+      "parameters": {
+        "workflowId": ""
+      },
+      "id": "call-gold",
+      "name": "Gọi Luồng Vàng",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [ 700, 200 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Lệnh Telegram').item.json.message.chat.id }}\",\n  \"text\": \"📚 <b>HƯỚNG DẪN XEM TIN TỨC</b>\\n\\nBạn có thể gõ <code>/news</code> kèm theo tên chủ đề để đọc báo ngay lập tức:\\n\\n🔹 <code>/news kinhdoanh</code> (hoặc <code>/news business</code>)\\n🔹 <code>/news thegioi</code> (hoặc <code>/news world</code>)\\n🔹 <code>/news congnghe</code> (hoặc <code>/news tech</code>)\\n🔹 <code>/news thethao</code> (hoặc <code>/news sport</code>)\\n🔹 <code>/news suckhoe</code> (hoặc <code>/news health</code>)\\n🔹 <code>/news giaitri</code> (hoặc <code>/news entertainment</code>)\\n🔹 <code>/news phapluat</code> (hoặc <code>/news law</code>)\\n🔹 <code>/news giaoduc</code> (hoặc <code>/news education</code>)\\n🔹 <code>/news doisong</code> (hoặc <code>/news life</code>)\\n🔹 <code>/news xe</code> (hoặc <code>/news car</code>)\\n🔹 <code>/news dulich</code> (hoặc <code>/news travel</code>)\\n\\n<i>(Ví dụ: /news thegioi congnghe)</i>\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {}
+      },
+      "id": "master-news-help",
+      "name": "Gửi HD News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [ 700, 400 ]
+    },
+    {
+      "parameters": {
+        "workflowId": ""
+      },
+      "id": "call-news",
+      "name": "Gọi Luồng Tin Tức",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [ 700, 600 ]
+    },
+    {
+      "parameters": {
+        "workflowId": ""
+      },
+      "id": "call-ai",
+      "name": "Gọi Luồng AI Chatbot",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [ 700, 800 ]
+    }
+  ],
+  "connections": {
+    "Lệnh Telegram": {
+      "main": [ [ { "node": "Phân Loại Lệnh", "type": "main", "index": 0 } ] ]
+    },
+    "Phân Loại Lệnh": {
+      "main": [
+        [ { "node": "Gọi Luồng Vàng", "type": "main", "index": 0 } ],
+        [ { "node": "Gửi HD News", "type": "main", "index": 0 } ],
+        [ { "node": "Gọi Luồng Tin Tức", "type": "main", "index": 0 } ],
+        [ { "node": "Gọi Luồng AI Chatbot", "type": "main", "index": 0 } ]
+      ]
+    }
+  }
+}

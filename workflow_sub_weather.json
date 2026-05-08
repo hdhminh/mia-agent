@@ -1,0 +1,134 @@
+{
+  "name": "Sub-workflow: Thời Tiết",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-weather",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "let chatId = '';\nlet rawText = '';\nlet location = '';\n\ntry {\n  const payload = $('Execute Workflow Trigger').item.json;\n  const msg = payload.message || payload.body?.message || payload;\n  chatId = msg?.chat?.id || payload.chatId || '';\n  rawText = String(msg?.text || payload.text || payload.query || '').trim();\n} catch (error) {}\n\nlocation = rawText\n  .replace(/^(thoi tiet|thời tiết|weather|nhiet do|nhiệt độ|troi|trời|du bao thoi tiet|dự báo thời tiết)\\s*/i, '')\n  .replace(/^(tai|tại|o|ở|cho|cho toi|cho tôi|hom nay|hôm nay)\\s*/i, '')\n  .trim();\n\nif (!location) location = 'Ho Chi Minh City';\n\nreturn [{\n  json: {\n    chatId,\n    rawText,\n    location\n  }\n}];"
+      },
+      "id": "code-prepare-weather",
+      "name": "Chuẩn Bị Địa Điểm",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [430, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://wttr.in/{{ encodeURIComponent($json.location) }}?format=j1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-weather",
+      "name": "Lấy Dữ Liệu Thời Tiết",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Địa Điểm').item.json;\nconst raw = $json?.data ?? $json;\nconst data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});\nconst chatId = source.chatId;\nconst fallbackLocation = source.location;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst current = Array.isArray(data.current_condition) ? data.current_condition[0] || {} : {};\nconst today = Array.isArray(data.weather) ? data.weather[0] || {} : {};\nconst nearest = Array.isArray(data.nearest_area) ? data.nearest_area[0] || {} : {};\nconst request = Array.isArray(data.request) ? data.request[0] || {} : {};\nconst requestQuery = request.query || '';\nconst areaName = nearest.areaName?.[0]?.value || fallbackLocation;\nconst country = nearest.country?.[0]?.value || '';\nconst region = nearest.region?.[0]?.value || '';\nconst desc = current.weatherDesc?.[0]?.value || '';\nconst feelsLike = current.FeelsLikeC || '';\nconst tempC = current.temp_C || '';\nconst humidity = current.humidity || '';\nconst windKmph = current.windspeedKmph || '';\nconst rainMm = current.precipMM || '0';\nconst maxTemp = today.maxtempC || '';\nconst minTemp = today.mintempC || '';\nconst sunrise = today.astronomy?.[0]?.sunrise || '';\nconst sunset = today.astronomy?.[0]?.sunset || '';\n\nlet locationLine = requestQuery || areaName || fallbackLocation;\nif (region && !locationLine.includes(region)) locationLine += `, ${region}`;\nif (country && !locationLine.includes(country)) locationLine += `, ${country}`;\n\nlet message = '🌦 <b>Thời tiết hiện tại</b>\\n';\nmessage += `<i>${escapeHtml(locationLine)}</i>\\n\\n`;\n\nif (tempC !== '') {\n  message += `🌡 <b>Nhiệt độ:</b> ${escapeHtml(tempC)}°C`;\n  if (feelsLike !== '') message += ` • Cảm giác như ${escapeHtml(feelsLike)}°C`;\n  message += '\\n';\n}\n\nif (desc) message += `☁️ <b>Tình trạng:</b> ${escapeHtml(desc)}\\n`;\nif (humidity !== '') message += `💧 <b>Độ ẩm:</b> ${escapeHtml(humidity)}%\\n`;\nif (windKmph !== '') message += `💨 <b>Gió:</b> ${escapeHtml(windKmph)} km/h\\n`;\nif (rainMm !== '') message += `🌧 <b>Lượng mưa:</b> ${escapeHtml(rainMm)} mm\\n`;\nif (maxTemp !== '' || minTemp !== '') message += `📈 <b>Hôm nay:</b> ${escapeHtml(minTemp)}°C - ${escapeHtml(maxTemp)}°C\\n`;\nif (sunrise || sunset) message += `🌅 <b>Mặt trời:</b> ${escapeHtml(sunrise)} / ${escapeHtml(sunset)}\\n`;\n\nif (tempC === '' && !desc) {\n  message = `⚠️ Không lấy được dữ liệu thời tiết cho <b>${escapeHtml(fallbackLocation)}</b>. Bạn thử ghi rõ địa điểm hơn nhé.`;\n}\n\nmessage = message.trim();\nreturn [{ json: { chatId, text: message } }];"
+      },
+      "id": "code-format-weather",
+      "name": "Tổng Hợp Thời Tiết",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [930, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-weather-tg",
+      "name": "Gửi Thời Tiết",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1170, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Địa Điểm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Địa Điểm": {
+      "main": [
+        [
+          {
+            "node": "Lấy Dữ Liệu Thời Tiết",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy Dữ Liệu Thời Tiết": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Thời Tiết",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Thời Tiết": {
+      "main": [
+        [
+          {
+            "node": "Gửi Thời Tiết",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
