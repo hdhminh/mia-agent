@@ -1,7 +1,11 @@
 .env
+.env.*
+!.env.example
+
 sync.log
+sync.log.*
+
 __pycache__/
 *.pyc
+
 .DS_Store
-docker-compose.yml
-auto_sync.py
