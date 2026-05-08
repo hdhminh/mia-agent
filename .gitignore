@@ -3,4 +3,5 @@ sync.log
 __pycache__/
 *.pyc
 .DS_Store
-auto_sync.sh
+docker-compose.yml
+auto_sync.py
