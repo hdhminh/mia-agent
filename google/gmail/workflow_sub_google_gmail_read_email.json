@@ -1,0 +1,112 @@
+{
+  "name": "Sub-workflow: Google Gmail - Read Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-read-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\n// Lay tu khoa tim kiem tu cau lenh\nconst query = raw\n  .replace(/^(doc mail|đọc mail|noi dung mail|nội dung mail|read mail|read email|open mail|open email)\\s*/i, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst hasQuery = Boolean(query);\nconst guidance = '📧 <b>Đọc email</b>\\n\\nBạn hãy nhập theo mẫu:\\n- đọc mail từ Google\\n- nội dung mail về đơn hàng\\n- read mail from boss';\n\nreturn [{ json: { ...source, payload, message, chatId, query, hasQuery, response: hasQuery ? '' : guidance } }];"
+      },
+      "id": "gmail-read-prepare",
+      "name": "Chuan Bi Doc Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasQuery }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "gmail-read-check",
+      "name": "Du Du Lieu Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "options": {
+          "searchString": "={{ $('Chuan Bi Doc Email').item.json.query }}"
+        }
+      },
+      "id": "gmail-read-search",
+      "name": "Gmail Search Read",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, -80],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Doc Email').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter(e => e && Object.keys(e).length > 0 && (e.id || e.subject));\n\nif (rows.length === 0) {\n  return [{ json: { chatId: source.chatId, text: '⚠️ Không tìm thấy email phù hợp với: ' + source.query } }];\n}\n\nconst email = rows[0];\nconst from = email.from?.value?.[0]?.name || email.from?.value?.[0]?.address || email.from || 'Không rõ';\nconst to = email.to?.value?.[0]?.address || email.to || '';\nconst subject = email.subject || 'Không có tiêu đề';\nconst date = email.date ? new Date(email.date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';\n\n// Lay noi dung text, gioi han 1500 ky tu\nlet body = email.textPlain || email.text || email.snippet || '';\nif (body.length > 1500) body = body.substring(0, 1500) + '\\n\\n<i>... (nội dung đã được cắt bớt)</i>';\n\nlet text = '📧 <b>Chi tiết email</b>\\n\\n';\ntext += `📝 <b>${subject}</b>\\n`;\ntext += `👤 Từ: ${from}\\n`;\nif (to) text += `📨 Đến: ${to}\\n`;\ntext += `🕒 ${date}\\n\\n`;\ntext += `${body}`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "gmail-read-format",
+      "name": "Format Noi Dung Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-read-send",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Chuan Bi Doc Email", "type": "main", "index": 0 }]]
+    },
+    "Chuan Bi Doc Email": {
+      "main": [[{ "node": "Du Du Lieu Doc?", "type": "main", "index": 0 }]]
+    },
+    "Du Du Lieu Doc?": {
+      "main": [
+        [{ "node": "Gmail Search Read", "type": "main", "index": 0 }],
+        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail Search Read": {
+      "main": [[{ "node": "Format Noi Dung Email", "type": "main", "index": 0 }]]
+    },
+    "Format Noi Dung Email": {
+      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+    }
+  }
+}

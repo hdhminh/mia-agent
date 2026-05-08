@@ -1,0 +1,89 @@
+{
+  "name": "Sub-workflow: Google Gmail - List Inbox",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-list-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nreturn [{ json: { ...source, payload, message, chatId } }];"
+      },
+      "id": "gmail-list-prepare",
+      "name": "Chuan Bi List Inbox",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "options": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "gmail-list-node",
+      "name": "Gmail Get Messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [480, 0],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi List Inbox').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter(e => e && Object.keys(e).length > 0 && (e.id || e.subject || e.from));\nlet text = '📧 <b>Hộp thư đến</b>\\n\\n';\nif (rows.length === 0) {\n  text += 'Không có email mới.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const email = rows[i];\n    const from = email.from?.value?.[0]?.name || email.from?.value?.[0]?.address || email.from || 'Không rõ';\n    const subject = email.subject || 'Không có tiêu đề';\n    const date = email.date ? new Date(email.date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';\n    const labels = email.labelIds || [];\n    const isUnread = labels.includes('UNREAD') ? '🔵 ' : '';\n    text += `${isUnread}<b>${i + 1}. ${subject}</b>\\n👤 ${from}\\n🕒 ${date}\\n\\n`;\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "gmail-list-format",
+      "name": "Format Danh Sach Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-list-send",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Chuan Bi List Inbox", "type": "main", "index": 0 }]]
+    },
+    "Chuan Bi List Inbox": {
+      "main": [[{ "node": "Gmail Get Messages", "type": "main", "index": 0 }]]
+    },
+    "Gmail Get Messages": {
+      "main": [[{ "node": "Format Danh Sach Email", "type": "main", "index": 0 }]]
+    },
+    "Format Danh Sach Email": {
+      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+    }
+  }
+}

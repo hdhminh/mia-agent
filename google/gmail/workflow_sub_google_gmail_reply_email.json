@@ -1,0 +1,122 @@
+{
+  "name": "Sub-workflow: Google Gmail - Reply Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-reply-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || {};\nconst chatId = source.chatId || message.chat?.id || '';\nconst raw = String(source.rawText || message.text || '').trim();\nlet cleaned = raw.replace(/^(tra loi mail|reply mail|reply email)\\s*/i, '').trim();\nconst parts = cleaned.split('\\n').map(l => l.trim()).filter(Boolean);\nlet searchQuery = '';\nlet replyBody = '';\nlet isReady = false;\nif (parts.length >= 2) {\n  searchQuery = parts[0];\n  replyBody = parts.slice(1).join('\\n');\n  isReady = true;\n} else if (parts.length === 1) {\n  const spaceParts = parts[0].split(/\\s{2,}|\\t/);\n  if (spaceParts.length >= 2) {\n    searchQuery = spaceParts[0];\n    replyBody = spaceParts.slice(1).join(' ');\n    isReady = true;\n  }\n}\nconst guidance = '↩️ <b>Trả lời email</b>\\n\\nBạn hãy nhập:\\n<code>trả lời mail [từ khóa tìm email]\\n[nội dung trả lời]</code>\\n\\nVí dụ:\\n<code>trả lời mail từ Google\\nCảm ơn bạn đã liên hệ</code>';\nreturn [{ json: { ...source, chatId, searchQuery, replyBody, isReady, response: isReady ? '' : guidance } }];"
+      },
+      "id": "gmail-reply-prepare",
+      "name": "Parse Tra Loi Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": { "boolean": [{ "value1": "={{ $json.isReady }}", "value2": true }] }
+      },
+      "id": "gmail-reply-check",
+      "name": "Du Du Lieu Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "options": { "searchString": "={{ $('Parse Tra Loi Email').item.json.searchQuery }}" }
+      },
+      "id": "gmail-reply-search",
+      "name": "Gmail Find For Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, -80],
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail account" } },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\nconst rows = $input.all().map(i => i.json || {}).filter(e => e.id);\nif (!rows.length) {\n  return [{ json: { ...source, canReply: false, response: '⚠️ Không tìm thấy email để trả lời.' } }];\n}\nconst email = rows[0];\nreturn [{ json: { ...source, canReply: true, messageId: email.id, threadId: email.threadId, subject: email.subject || '' } }];"
+      },
+      "id": "gmail-reply-extract",
+      "name": "Chon Email Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "conditions": { "boolean": [{ "value1": "={{ $json.canReply }}", "value2": true }] }
+      },
+      "id": "gmail-reply-can",
+      "name": "Tim Thay Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1200, -80]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $json.messageId }}",
+        "message": "={{ $json.replyBody }}",
+        "options": {}
+      },
+      "id": "gmail-reply-node",
+      "name": "Gmail Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, -160],
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\nlet text = '✅ <b>Đã trả lời email</b>\\n\\n';\ntext += `📝 Re: ${$('Chon Email Reply').item.json.subject}\\n`;\ntext += `📄 ${source.replyBody.substring(0, 200)}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "gmail-reply-format",
+      "name": "Format Ket Qua Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, -160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-reply-send",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 80]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Parse Tra Loi Email", "type": "main", "index": 0 }]] },
+    "Parse Tra Loi Email": { "main": [[{ "node": "Du Du Lieu Reply?", "type": "main", "index": 0 }]] },
+    "Du Du Lieu Reply?": { "main": [[{ "node": "Gmail Find For Reply", "type": "main", "index": 0 }], [{ "node": "Gui Gmail", "type": "main", "index": 0 }]] },
+    "Gmail Find For Reply": { "main": [[{ "node": "Chon Email Reply", "type": "main", "index": 0 }]] },
+    "Chon Email Reply": { "main": [[{ "node": "Tim Thay Email?", "type": "main", "index": 0 }]] },
+    "Tim Thay Email?": { "main": [[{ "node": "Gmail Reply", "type": "main", "index": 0 }], [{ "node": "Gui Gmail", "type": "main", "index": 0 }]] },
+    "Gmail Reply": { "main": [[{ "node": "Format Ket Qua Reply", "type": "main", "index": 0 }]] },
+    "Format Ket Qua Reply": { "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]] }
+  }
+}

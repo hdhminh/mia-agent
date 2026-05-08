@@ -1,0 +1,110 @@
+{
+  "name": "Sub-workflow: Google Gmail - Send Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-send-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\n// Parse: gui mail [email] [tieu de] [noi dung]\n// Hoac: soan mail [email] [tieu de] [noi dung]\nlet cleaned = raw\n  .replace(/^(gui mail|gửi mail|soan mail|soạn mail|send mail|send email|compose mail|compose email)\\s*/i, '')\n  .trim();\n\n// Tim email address\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  // Phan con lai sau email\n  const remaining = cleaned.replace(toEmail, '').trim();\n  // Dong dau tien la tieu de, phan con lai la noi dung\n  const lines = remaining.split('\\n').map(l => l.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    // Chi co 1 dong - tach bang dau cham, dau phay, hoac dung lam tieu de\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nconst guidance = '📧 <b>Gửi email</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi mail test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>';\n\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, response: isReady ? '' : guidance } }];"
+      },
+      "id": "gmail-send-prepare",
+      "name": "Parse Gui Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReady }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "gmail-send-check",
+      "name": "Du Du Lieu Gui?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.toEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "gmail-send-node",
+      "name": "Gmail Send",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, -80],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Gui Email').item.json;\nlet text = '✅ <b>Đã gửi email thành công</b>\\n\\n';\ntext += `📨 Đến: ${source.toEmail}\\n`;\ntext += `📝 Tiêu đề: ${source.subject}\\n`;\ntext += `📄 Nội dung: ${source.body.substring(0, 200)}`;\nif (source.body.length > 200) text += '...';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "gmail-send-format",
+      "name": "Format Ket Qua Gui",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-send-telegram",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Parse Gui Email", "type": "main", "index": 0 }]]
+    },
+    "Parse Gui Email": {
+      "main": [[{ "node": "Du Du Lieu Gui?", "type": "main", "index": 0 }]]
+    },
+    "Du Du Lieu Gui?": {
+      "main": [
+        [{ "node": "Gmail Send", "type": "main", "index": 0 }],
+        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail Send": {
+      "main": [[{ "node": "Format Ket Qua Gui", "type": "main", "index": 0 }]]
+    },
+    "Format Ket Qua Gui": {
+      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "Sub-workflow: Google Gmail - Search Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-search-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || {};\nconst chatId = source.chatId || message.chat?.id || '';\nconst raw = String(source.rawText || message.text || '').trim();\nconst query = raw.replace(/^(tim mail|search mail|search email|tim kiem mail|tim email)\\s*/i, '').trim();\nconst hasQuery = Boolean(query);\nconst guidance = '🔎 <b>Tìm kiếm email</b>\\n\\nVí dụ: tìm mail từ Google';\nreturn [{ json: { ...source, chatId, query, hasQuery, response: hasQuery ? '' : guidance } }];"
+      },
+      "id": "gmail-search-prepare",
+      "name": "Chuan Bi Tim Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": { "boolean": [{ "value1": "={{ $json.hasQuery }}", "value2": true }] }
+      },
+      "id": "gmail-search-check",
+      "name": "Du Du Lieu Tim?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "options": { "searchString": "={{ $('Chuan Bi Tim Email').item.json.query }}" }
+      },
+      "id": "gmail-search-node",
+      "name": "Gmail Search",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, -80],
+      "credentials": { "gmailOAuth2": { "id": "", "name": "Gmail account" } },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Tim Email').item.json;\nconst rows = $input.all().map(i => i.json || {}).filter(e => e.id || e.subject);\nlet text = '🔎 <b>Kết quả tìm email</b>\\n\\n';\nif (!rows.length) { text += 'Không tìm thấy.'; }\nelse { rows.forEach((e, i) => { text += `<b>${i+1}. ${e.subject||'N/A'}</b>\\n👤 ${e.from?.value?.[0]?.name||e.from||'?'}\\n🕒 ${e.date?new Date(e.date).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):''}\\n\\n`; }); }\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "gmail-search-format",
+      "name": "Format Tim Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-search-send",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Chuan Bi Tim Email", "type": "main", "index": 0 }]] },
+    "Chuan Bi Tim Email": { "main": [[{ "node": "Du Du Lieu Tim?", "type": "main", "index": 0 }]] },
+    "Du Du Lieu Tim?": { "main": [[{ "node": "Gmail Search", "type": "main", "index": 0 }], [{ "node": "Gui Gmail", "type": "main", "index": 0 }]] },
+    "Gmail Search": { "main": [[{ "node": "Format Tim Email", "type": "main", "index": 0 }]] },
+    "Format Tim Email": { "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]] }
+  }
+}

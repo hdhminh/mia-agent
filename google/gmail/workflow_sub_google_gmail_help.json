@@ -1,0 +1,52 @@
+{
+  "name": "Sub-workflow: Google Gmail - Help",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-help-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [-336, -144]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📧 <b>Google Gmail</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- xem mail / inbox: xem 5 email mới nhất\\n- đọc mail [từ khóa]: đọc chi tiết email\\n- gửi mail [email] [tiêu đề] [nội dung]\\n- tìm mail [từ khóa]: tìm kiếm email\\n- trả lời mail [từ khóa] [nội dung]\\n\\n<i>Ví dụ: xem mail, đọc mail từ Google, gửi mail test@gmail.com Chào bạn Nội dung thư</i>';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "gmail-help-content",
+      "name": "Huong Dan Gmail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-80, -144]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $json.chatId }}" },
+            { "name": "text", "value": "={{ $json.text }}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-help-send",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [192, -144]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Huong Dan Gmail", "type": "main", "index": 0 }]]
+    },
+    "Huong Dan Gmail": {
+      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+    }
+  }
+}
