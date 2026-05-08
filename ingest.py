@@ -23,6 +23,12 @@ intents = [
     ("tra từ điển", "tool"), ("tìm bài hát", "tool"), ("xem phim", "tool"),
     ("kiểm tra thông tin", "tool"), ("tìm địa chỉ", "tool"), ("bản đồ", "tool"),
     ("đặt hàng", "tool"), ("order đồ ăn", "tool"), ("tìm nhà hàng", "tool"),
+    ("calendar", "tool"), ("google calendar", "tool"), ("lịch hôm nay", "tool"),
+    ("lịch ngày mai", "tool"), ("lịch tuần này", "tool"), ("lịch tuần sau", "tool"),
+    ("tạo lịch", "tool"), ("đặt lịch", "tool"), ("tạo sự kiện", "tool"),
+    ("đặt sự kiện", "tool"), ("xóa lịch", "tool"), ("hủy lịch", "tool"),
+    ("kiểm tra lịch rảnh", "tool"), ("kiểm tra lịch bận", "tool"),
+    ("meeting hôm nay", "tool"), ("lịch họp", "tool"), ("có rảnh không", "tool"),
 ]
 
 def pg_exec(sql):

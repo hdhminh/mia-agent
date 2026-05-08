@@ -21,7 +21,25 @@ const intents = {
     "tra cứu": "tool",
     "tính toán": "tool",
     "tóm tắt": "tool",
-    "dịch thuật": "tool"
+    "dịch thuật": "tool",
+    "xem lịch": "tool",
+    "calendar": "tool",
+    "google calendar": "tool",
+    "lịch hôm nay": "tool",
+    "lịch ngày mai": "tool",
+    "lịch tuần này": "tool",
+    "lịch tuần sau": "tool",
+    "tạo lịch": "tool",
+    "đặt lịch": "tool",
+    "tạo sự kiện": "tool",
+    "đặt sự kiện": "tool",
+    "xóa lịch": "tool",
+    "hủy lịch": "tool",
+    "kiểm tra lịch rảnh": "tool",
+    "kiểm tra lịch bận": "tool",
+    "lịch họp": "tool",
+    "meeting hôm nay": "tool",
+    "có rảnh không": "tool"
 };
 
 async function getEmbedding(text) {

@@ -1,0 +1,172 @@
+{
+  "name": "Sub-workflow: Google Calendar - Create Event",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-create-event",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\n\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst text = normalize(source.text || raw);\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst tzOffset = '+07:00';\nconst now = new Date();\n\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction buildIso(date, hour, minute) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}:00${tzOffset}`;\n}\nfunction startOfDay(date) {\n  const d = new Date(date);\n  d.setHours(0, 0, 0, 0);\n  return d;\n}\nfunction addDays(base, days) {\n  const d = new Date(base);\n  d.setDate(d.getDate() + days);\n  return d;\n}\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  const currentDow = d.getDay();\n  let diff = (targetDow - currentDow + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nfunction parseTargetDate(text, base) {\n  if (/cuoi tuan sau/.test(text)) {\n    return startOfDay(nextWeekday(base, 6, true));\n  }\n  if (/cuoi tuan nay/.test(text)) {\n    return startOfDay(nextWeekday(base, 6, false));\n  }\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    let targetDow = 0;\n    if (weekdayMatch[1]) targetDow = Number(weekdayMatch[1]) - 1;\n    const nextWeek = /tuan sau/.test(text);\n    return startOfDay(nextWeekday(base, targetDow, nextWeek));\n  }\n  if (/ngay kia|mot ngay nua/.test(text)) return startOfDay(addDays(base, 2));\n  if (/ngay mai|mai/.test(text)) return startOfDay(addDays(base, 1));\n  return startOfDay(base);\n}\nfunction parseTimeInfo(raw, text) {\n  let startHour = null;\n  let startMinute = 0;\n  let endHour = null;\n  let endMinute = 0;\n  const rangeMatch = raw.match(/(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(?:-|den|toi)\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?/i);\n  const startMatch = raw.match(/(?:luc|vao|tu)?\\s*(\\d{1,2})(?:[:hg](\\d{1,2}))?\\s*(am|pm)?/i);\n  if (rangeMatch) {\n    startHour = Number(rangeMatch[1]);\n    startMinute = Number(rangeMatch[2] || 0);\n    endHour = Number(rangeMatch[3]);\n    endMinute = Number(rangeMatch[4] || 0);\n  } else if (startMatch) {\n    startHour = Number(startMatch[1]);\n    startMinute = Number(startMatch[2] || 0);\n    if (startMatch[3] === 'pm' && startHour < 12) startHour += 12;\n  } else if (/buoi sang|sang/.test(text)) {\n    startHour = 9;\n  } else if (/buoi chieu|chieu/.test(text)) {\n    startHour = 14;\n  } else if (/buoi toi|toi/.test(text)) {\n    startHour = 19;\n  } else if (/trua/.test(text)) {\n    startHour = 12;\n  }\n  if (startHour !== null && /\\b(chieu|toi)\\b/.test(text) && startHour < 12) startHour += 12;\n  if (endHour !== null && /\\b(chieu|toi)\\b/.test(text) && endHour < 12) endHour += 12;\n  let durationMinutes = 60;\n  const durationMatch = text.match(/(\\d+)\\s*(tieng|gio|h|phut)/);\n  if (durationMatch) {\n    durationMinutes = Number(durationMatch[1]) * (/phut/.test(durationMatch[2]) ? 1 : 60);\n  } else if (/nua tieng|30 phut/.test(text)) {\n    durationMinutes = 30;\n  } else if (/2 tieng/.test(text)) {\n    durationMinutes = 120;\n  }\n  return { startHour, startMinute, endHour, endMinute, durationMinutes };\n}\n\nconst targetDate = parseTargetDate(text, now);\nconst timeInfo = parseTimeInfo(raw, text);\nlet { startHour, startMinute, endHour, endMinute, durationMinutes } = timeInfo;\n\nif (startHour !== null && endHour === null) {\n  const startDate = new Date(buildIso(targetDate, startHour, startMinute));\n  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);\n  endHour = endDate.getHours();\n  endMinute = endDate.getMinutes();\n}\n\nlet summary = raw\n  .replace(/^(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\s*/i, '')\n  .replace(/\\b(luc|vao|tu|den|toi|hom nay|ngay mai|mai|ngay kia|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|chieu|toi|sang|trua|thu\\s*[2-7]|chu nhat)\\b.*$/i, '')\n  .replace(/\\d{1,2}(?:[:hg]\\d{1,2})?(?:\\s*(?:-|den|toi)\\s*\\d{1,2}(?:[:hg]\\d{1,2})?)?/g, '')\n  .replace(/\\b(trong|khoang|keo dai)\\s*\\d+\\s*(phut|gio|tieng|h)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nif (!summary) summary = 'Lich moi';\n\nconst isReady = startHour !== null && endHour !== null;\nconst start = isReady ? buildIso(targetDate, startHour, startMinute) : '';\nconst end = isReady ? buildIso(targetDate, endHour, endMinute) : '';\nconst guidance = '📅 <b>Tạo lịch</b>\\n\\nBạn hãy nhập theo mẫu như:\\n- tạo lịch họp team lúc 15h mai\\n- đặt lịch gặp khách 9:30-10:30 thứ 2 tuần sau\\n- thêm lịch demo sản phẩm chiều mai 2 tiếng\\n- tạo sự kiện cuối tuần này lúc 9h';\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    rawText: raw,\n    text,\n    chatId,\n    calendarId,\n    summary,\n    start,\n    end,\n    description: raw,\n    location: '',\n    isReady,\n    response: isReady ? '' : guidance\n  }\n}];"
+      },
+      "id": "parse-create-event",
+      "name": "Parse Tao Lich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 260]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReady }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-create-ready",
+      "name": "Du Du Lieu Tao Lich?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 260]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "useDefaultReminders": true,
+        "options": {
+          "summary": "={{ $json.summary }}",
+          "description": "={{ $json.description }}",
+          "location": "={{ $json.location }}"
+        }
+      },
+      "id": "google-calendar-create",
+      "name": "Google Calendar Create",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [940, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Tao Lich').item.json;\nconst item = $json || {};\nconst start = item.start?.dateTime || source.start;\nconst end = item.end?.dateTime || source.end;\nconst link = item.htmlLink || '';\nlet text = '✅ <b>Đã tạo lịch thành công</b>\\n\\n';\ntext += `📝 <b>${source.summary}</b>\\n`;\ntext += `🕒 ${start} → ${end}`;\nif (link) text += `\\n🔗 ${link}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "format-create-result",
+      "name": "Format Ket Qua Tao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-tg",
+      "name": "Gui Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1420, 260]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Tao Lich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tao Lich": {
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Tao Lich?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du Du Lieu Tao Lich?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Create": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Tao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Tao": {
+      "main": [
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "name": "Sub-workflow: Google Calendar Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-calendar-master",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [220, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nconst calendarId = payload.calendarId || 'primary';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(xoa lich|huy lich|delete event|cancel event)\\b/.test(text)) {\n  action = 'delete_event';\n} else if (/\\b(kiem tra lich ranh|check lich ranh|co ranh|freebusy|availability|ranh luc)\\b/.test(text)) {\n  action = 'check_availability';\n} else if (/\\b(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\b/.test(text)) {\n  action = 'create_event';\n} else if (/\\b(lich ngay mai|ngay mai toi co gi|mai toi co gi|list tomorrow|tomorrow schedule)\\b/.test(text)) {\n  action = 'list_tomorrow';\n} else if (/\\b(lich hom nay|hom nay toi co gi|xem lich hom nay|today schedule|list today)\\b/.test(text)) {\n  action = 'list_today';\n} else if (/\\b(lich|su kien|meeting|hop|calendar|tuan sau|cuoi tuan nay|thu [2-7]|chu nhat)\\b/.test(text)) {\n  action = 'find_event';\n}\n\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action, calendarId } }];"
+      },
+      "id": "code-prepare-calendar",
+      "name": "Chuan Bi Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowMap = {\n  create_event: 'Sub-workflow: Google Calendar - Create Event',\n  list_today: 'Sub-workflow: Google Calendar - List Today',\n  list_tomorrow: 'Sub-workflow: Google Calendar - List Tomorrow',\n  find_event: 'Sub-workflow: Google Calendar - Find Event',\n  delete_event: 'Sub-workflow: Google Calendar - Delete Event',\n  check_availability: 'Sub-workflow: Google Calendar - Check Availability',\n  help: 'Sub-workflow: Google Calendar - Help'\n};\n\nconst workflowName = workflowMap[$json.action] || workflowMap.help;\nreturn [{ json: { ...$json, workflowName } }];"
+      },
+      "id": "calendar-workflow-target",
+      "name": "Chon Workflow Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 360]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?limit=250&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-calendar-workflow",
+      "name": "Lookup Calendar Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1010, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Calendar').item.json;\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\n\nif (!found) {\n  return [{\n    json: {\n      ...source,\n      hasWorkflow: false,\n      response: `Khong tim thay workflow con: ${source.workflowName}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...source,\n    hasWorkflow: true,\n    workflowId: found.id\n  }\n}];"
+      },
+      "id": "extract-calendar-workflow-id",
+      "name": "Extract Calendar Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasWorkflow }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-calendar-workflow-found",
+      "name": "Tim Thay Workflow Calendar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1490, 360]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "chatId": "={{ $json.chatId }}",
+            "calendarId": "={{ $json.calendarId }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "call-calendar-sub-workflow",
+      "name": "Goi Calendar Sub Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1740, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-lookup-error",
+      "name": "Gui Loi Lookup Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1740, 460]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Calendar": {
+      "main": [
+        [
+          {
+            "node": "Chon Workflow Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Workflow Calendar": {
+      "main": [
+        [
+          {
+            "node": "Lookup Calendar Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Calendar Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Calendar Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Calendar Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Workflow Calendar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Workflow Calendar?": {
+      "main": [
+        [
+          {
+            "node": "Goi Calendar Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Loi Lookup Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

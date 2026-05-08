@@ -1,0 +1,81 @@
+{
+  "name": "Sub-workflow: Google Calendar - Help",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-calendar-help",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📅 <b>Google Calendar</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- tạo lịch: tạo lịch họp team lúc 15h mai\\n- lịch hôm nay\\n- lịch ngày mai\\n- tìm lịch họp khách\\n- xoá lịch họp khách\\n- kiểm tra lịch rảnh 9h-10h mai';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "calendar-help",
+      "name": "Huong Dan Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-tg",
+      "name": "Gui Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [720, 260]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Huong Dan Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Huong Dan Calendar": {
+      "main": [
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "name": "Sub-workflow: Google Calendar - Delete Event",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-delete-event",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst query = raw.replace(/^(xoa lich|huy lich|delete event|cancel event)\\s*/i, '').trim();\nconst now = new Date();\nconst future = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\nfunction iso(d) {\n  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00+07:00`;\n}\nreturn [{ json: { ...source, payload, message, rawText: raw, chatId, calendarId, query, after: iso(now), before: iso(future) } }];"
+      },
+      "id": "prepare-delete-event",
+      "name": "Chuan Bi Xoa Lich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        },
+        "returnAll": false,
+        "limit": 5,
+        "after": "={{ $json.after }}",
+        "before": "={{ $json.before }}",
+        "options": {
+          "orderBy": "startTime",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "id": "google-calendar-find-delete",
+      "name": "Google Calendar Find Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [740, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nconst rows = $input.all().map(item => item.json || {});\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || ''\n  }\n}];"
+      },
+      "id": "pick-delete-target",
+      "name": "Chon Lich Can Xoa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.canDelete }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-delete-found",
+      "name": "Tim Thay Lich De Xoa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1260, 320]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        },
+        "eventId": "={{ $json.eventId }}"
+      },
+      "id": "google-calendar-delete",
+      "name": "Google Calendar Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1500, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chon Lich Can Xoa').item.json;\nconst text = `🗑 <b>Đã xoá lịch</b>\\n\\n<b>${source.summary}</b>\\n🕒 ${source.start}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "format-delete-result",
+      "name": "Format Ket Qua Xoa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-tg",
+      "name": "Gui Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1980, 320]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Xoa Lich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Xoa Lich": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Find Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find Delete": {
+      "main": [
+        [
+          {
+            "node": "Chon Lich Can Xoa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Lich Can Xoa": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Lich De Xoa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Lich De Xoa?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Delete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Delete": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Xoa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Xoa": {
+      "main": [
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

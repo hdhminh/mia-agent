@@ -1,0 +1,137 @@
+{
+  "name": "Sub-workflow: Google Calendar - Find Event",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-find-event",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst text = normalize(source.text || raw);\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction iso(d, h = 0, m = 0, end = false) {\n  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(h)}:${pad(m)}:${end ? '59' : '00'}+07:00`;\n}\nfunction startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }\nfunction endOfDay(d) { const x = new Date(d); x.setHours(23,59,59,0); return x; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\nconst now = new Date();\nlet afterDate = now;\nlet beforeDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\nif (/cuoi tuan nay/.test(text)) {\n  afterDate = nextWeekday(now, 6, false);\n  beforeDate = endOfDay(new Date(afterDate.getTime() + 86400000));\n} else if (/cuoi tuan sau/.test(text)) {\n  afterDate = nextWeekday(now, 6, true);\n  beforeDate = endOfDay(new Date(afterDate.getTime() + 86400000));\n} else if (/tuan sau/.test(text)) {\n  const monday = nextWeekday(now, 1, true);\n  afterDate = monday;\n  beforeDate = endOfDay(new Date(monday.getTime() + 6 * 86400000));\n} else if (/ngay mai|mai/.test(text)) {\n  afterDate = startOfDay(new Date(now.getTime() + 86400000));\n  beforeDate = endOfDay(afterDate);\n} else {\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    let targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    const nextWeek = /tuan sau/.test(text);\n    afterDate = nextWeekday(now, targetDow, nextWeek);\n    beforeDate = endOfDay(afterDate);\n  }\n}\nconst query = raw\n  .replace(/^(tim lich|tim su kien|search event|find event|xem lich voi|lich)\\s*/i, '')\n  .replace(/\\b(hom nay|ngay mai|mai|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|thu\\s*[2-7]|chu nhat)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nreturn [{ json: { ...source, payload, message, rawText: raw, text, chatId, calendarId, query, after: iso(afterDate), before: iso(beforeDate, 23, 59, true) } }];"
+      },
+      "id": "prepare-find-event",
+      "name": "Chuan Bi Tim Lich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 260]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        },
+        "returnAll": false,
+        "limit": 10,
+        "after": "={{ $json.after }}",
+        "before": "={{ $json.before }}",
+        "options": {
+          "orderBy": "startTime",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "id": "google-calendar-find",
+      "name": "Google Calendar Find",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [700, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Tim Lich').item.json;\nconst rows = $input.all().map(item => item.json || {});\nlet text = `🔎 <b>Kết quả tìm lịch</b>\\n<i>${source.query || source.rawText}</i>\\n\\n`;\nif (rows.length === 0) {\n  text += 'Không tìm thấy sự kiện phù hợp.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    text += `<b>${i + 1}. ${title}</b>\\n🕒 ${start}`;\n    if (event.htmlLink) text += `\\n🔗 ${event.htmlLink}`;\n    text += '\\n\\n';\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "format-find-result",
+      "name": "Format Tim Lich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botyour_telegram_bot_token/sendMessage",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-calendar-tg",
+      "name": "Gui Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1220, 260]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Tim Lich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Tim Lich": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Find",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find": {
+      "main": [
+        [
+          {
+            "node": "Format Tim Lich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Tim Lich": {
+      "main": [
+        [
+          {
+            "node": "Gui Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
