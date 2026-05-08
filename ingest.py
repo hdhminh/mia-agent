@@ -29,6 +29,10 @@ intents = [
     ("đặt sự kiện", "tool"), ("xóa lịch", "tool"), ("hủy lịch", "tool"),
     ("kiểm tra lịch rảnh", "tool"), ("kiểm tra lịch bận", "tool"),
     ("meeting hôm nay", "tool"), ("lịch họp", "tool"), ("có rảnh không", "tool"),
+    ("tạo lịch họp từ 9h đến 10h", "tool"), ("đặt lịch gặp khách 14h-15h30", "tool"),
+    ("tạo sự kiện demo kết thúc lúc 5h chiều", "tool"), ("lịch hôm nay có gì", "tool"),
+    ("ngày mai tôi có lịch gì", "tool"), ("xóa lịch họp team chiều mai", "tool"),
+    ("hủy sự kiện gặp khách thứ 2", "tool"),
 ]
 
 def pg_exec(sql):

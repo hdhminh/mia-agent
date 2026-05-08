@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst query = raw.replace(/^(xoa lich|huy lich|delete event|cancel event)\\s*/i, '').trim();\nconst now = new Date();\nconst future = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\nfunction iso(d) {\n  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00+07:00`;\n}\nreturn [{ json: { ...source, payload, message, rawText: raw, chatId, calendarId, query, after: iso(now), before: iso(future) } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction iso(d, hour = d.getHours(), minute = d.getMinutes(), second = 0) {\n  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(hour)}:${pad(minute)}:${pad(second)}+07:00`;\n}\nfunction startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }\nfunction endOfDay(d) { const x = new Date(d); x.setHours(23, 59, 59, 0); return x; }\nfunction addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\n\nconst text = normalize(source.text || raw);\nconst now = new Date();\nlet afterDate = now;\nlet beforeDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\n\nif (/hom nay/.test(text)) {\n  afterDate = startOfDay(now);\n  beforeDate = endOfDay(now);\n} else if (/ngay mai|mai/.test(text)) {\n  afterDate = startOfDay(addDays(now, 1));\n  beforeDate = endOfDay(afterDate);\n} else {\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    const targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    const targetDate = nextWeekday(now, targetDow, /tuan sau/.test(text));\n    afterDate = startOfDay(targetDate);\n    beforeDate = endOfDay(targetDate);\n  }\n}\n\nconst query = raw\n  .replace(/^(xoa lich|xóa lịch|huy lich|huỷ lịch|hủy lịch|xoa su kien|xóa sự kiện|huy su kien|hủy sự kiện|delete event|cancel event)\\s*/i, '')\n  .replace(/\\b(hom nay|ngay mai|mai|ngay kia|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|thu\\s*[2-7]|chu nhat)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nconst hasDeleteQuery = Boolean(query);\nconst guidance = '🗑 <b>Xoá lịch</b>\\n\\nBạn hãy nói rõ tên lịch cần xoá, ví dụ:\\n- xoá lịch họp team chiều mai\\n- huỷ lịch gặp khách thứ 2\\n- delete event demo sản phẩm';\n\nreturn [{ json: { ...source, payload, message, rawText: raw, text, chatId, calendarId, query: hasDeleteQuery ? query : '__missing_delete_target__', hasDeleteQuery, after: iso(afterDate, afterDate.getHours(), afterDate.getMinutes(), 0), before: iso(beforeDate, beforeDate.getHours(), beforeDate.getMinutes(), 59), response: hasDeleteQuery ? '' : guidance } }];"
       },
       "id": "prepare-delete-event",
       "name": "Chuan Bi Xoa Lich",
@@ -41,11 +41,12 @@
       "name": "Google Calendar Find Delete",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [740, 320]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nconst rows = $input.all().map(item => item.json || {});\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || ''\n  }\n}];"
+        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nif (!source.hasDeleteQuery) {\n  return [{ json: { ...source, canDelete: false } }];\n}\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && event.id);\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || ''\n  }\n}];"
       },
       "id": "pick-delete-target",
       "name": "Chon Lich Can Xoa",
@@ -85,6 +86,7 @@
       "name": "Google Calendar Delete",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [1500, 280]
     },
     {
