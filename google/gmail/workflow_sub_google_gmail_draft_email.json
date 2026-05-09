@@ -1,0 +1,175 @@
+{
+  "name": "Sub-workflow: Google Gmail - Draft Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "gmail-draft-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\nlet cleaned = raw\n  .replace(/^(soan mail|soạn mail|soan email|soạn email|viet nhap mail|viết nháp mail|viet nhap email|viết nháp email|tao nhap mail|tạo nháp mail|tao nhap email|tạo nháp email|draft mail|draft email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((line) => line.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nconst guidance = '📝 <b>Tạo email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>soạn mail test@gmail.com Chào bạn\\nXin chào, đây là email nháp.</code>';\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, response: isReady ? '' : guidance } }];"
+      },
+      "id": "gmail-draft-prepare",
+      "name": "Parse Draft Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReady }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "gmail-draft-check",
+      "name": "Du Du Lieu Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "sendTo": "={{ $json.toEmail }}"
+        }
+      },
+      "id": "gmail-draft-node",
+      "name": "Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, -80],
+      "webhookId": "6bc94748-a1df-48ab-a41b-d4874ac3b6c5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mPN70prUijPHyjnw",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Draft Email').item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nlet text = '📝 <b>Đã tạo email nháp</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "gmail-draft-format",
+      "name": "Format Ket Qua Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-draft-telegram",
+      "name": "Gui Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Draft Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Draft Email": {
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du Du Lieu Draft?": {
+      "main": [
+        [
+          {
+            "node": "Gmail Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Draft": {
+      "main": [
+        [
+          {
+            "node": "Gui Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

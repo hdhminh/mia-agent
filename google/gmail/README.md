@@ -8,6 +8,7 @@ Tach workflow Gmail thanh nhieu file nho de de import va quan ly trong n8n:
 - `workflow_sub_google_gmail_list_inbox.json`: xem email moi nhat
 - `workflow_sub_google_gmail_read_email.json`: doc chi tiet email
 - `workflow_sub_google_gmail_send_email.json`: gui email moi
+- `workflow_sub_google_gmail_draft_email.json`: tao email nhap
 - `workflow_sub_google_gmail_search_email.json`: tim kiem email
 - `workflow_sub_google_gmail_reply_email.json`: tra loi email
 - `workflow_sub_google_gmail_help.json`: huong dan su dung
@@ -23,7 +24,8 @@ Tach workflow Gmail thanh nhieu file nho de de import va quan ly trong n8n:
 
 - `xem mail` / `hộp thư` / `inbox` - Xem email mới nhất
 - `đọc mail ...` / `nội dung mail ...` - Đọc chi tiết email
-- `gửi mail ...` / `soạn mail ...` - Gửi email mới
+- `gửi mail ...` / `send email ...` - Gửi email mới
+- `soạn mail ...` / `draft email ...` - Tạo email nháp
 - `tìm mail ...` / `search mail ...` - Tìm kiếm email
 - `trả lời mail ...` / `reply mail ...` - Trả lời email
 - `gmail help` - Hướng dẫn sử dụng
