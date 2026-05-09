@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📧 <b>Google Gmail</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- xem mail / inbox: xem 5 email mới nhất\\n- đọc mail [từ khóa]: đọc chi tiết email\\n- gửi mail [email] [tiêu đề] [nội dung]: gửi email ngay\\n- soạn mail [email] [tiêu đề] [nội dung]: tạo email nháp\\n- tìm mail [từ khóa]: tìm kiếm email\\n- trả lời mail [từ khóa] [nội dung]\\n\\n<i>Ví dụ: xem mail, đọc mail từ Google, gửi mail test@gmail.com Chào bạn Nội dung thư, soạn mail test@gmail.com Chào bạn Nội dung thư</i>';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📧 <b>Google Gmail</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- xem mail / inbox: xem 5 email mới nhất\\n- đọc mail [từ khóa]: đọc chi tiết email\\n- gửi mail [email] [tiêu đề] [nội dung]: gửi email ngay\\n- gửi nháp [email] [tiêu đề] [nội dung]: gửi email theo chế độ draft\\n- soạn mail [email] [tiêu đề] [nội dung]: tạo email nháp\\n- tìm mail [từ khóa]: tìm kiếm email\\n- trả lời mail [từ khóa] [nội dung]\\n\\n<i>Ví dụ: xem mail, đọc mail từ Google, gửi mail test@gmail.com Chào bạn Nội dung thư, gửi nháp test@gmail.com Chào bạn Nội dung thư, soạn mail test@gmail.com Chào bạn Nội dung thư</i>';\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
       "id": "gmail-help-content",
       "name": "Huong Dan Gmail",

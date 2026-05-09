@@ -38,12 +38,16 @@ intents = [
     ("check mail", "tool"), ("kiểm tra mail", "tool"), ("kiểm tra email", "tool"),
     ("đọc mail", "tool"), ("đọc email", "tool"), ("nội dung mail", "tool"), ("nội dung email", "tool"),
     ("read mail", "tool"), ("read email", "tool"), ("gửi mail", "tool"), ("gửi email", "tool"),
-    ("soạn mail", "tool"), ("soạn email", "tool"), ("send mail", "tool"), ("send email", "tool"),
+    ("soạn mail", "tool"), ("soạn email", "tool"), ("viết nháp email", "tool"), ("draft email", "tool"),
+    ("draft mail", "tool"), ("send mail", "tool"), ("send email", "tool"),
     ("tìm mail", "tool"), ("tìm email", "tool"), ("tìm kiếm mail", "tool"), ("tìm kiếm email", "tool"),
     ("search mail", "tool"), ("search email", "tool"), ("trả lời mail", "tool"), ("trả lời email", "tool"),
     ("reply mail", "tool"), ("reply email", "tool"), ("gửi mail cho sếp nội dung báo cáo", "tool"),
     ("đọc mail từ Google", "tool"), ("tìm mail hóa đơn", "tool"), ("xem mail hôm nay có gì", "tool"),
     ("có mail mới không", "tool"), ("trả lời mail từ khách hàng", "tool"),
+    ("gửi nháp", "tool"), ("gửi email nháp", "tool"), ("gửi mail nháp", "tool"),
+    ("send draft", "tool"), ("gửi nháp mail test@gmail.com Chào bạn", "tool"),
+    ("soạn mail test@gmail.com Chào bạn", "tool"), ("draft email test@gmail.com Chào bạn", "tool")
 ]
 
 def pg_exec(sql):

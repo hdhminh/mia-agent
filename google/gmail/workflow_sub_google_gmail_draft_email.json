@@ -62,7 +62,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Parse Draft Email').item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nlet text = '📝 <b>Đã tạo email nháp</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Parse Draft Email').item.json;\nconst draftResult = $input.item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst draftId = draftResult?.id || draftResult?.message?.id || '';\nconst link = draftId ? `https://mail.google.com/mail/u/0/#drafts/${draftId}` : '';\n\nlet text = '📝 <b>Đã tạo email nháp</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nif (link) text += `\\n🔗 <a href=\"${escapeHtml(link)}\">Xem bản nháp</a>`;\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
       "id": "gmail-draft-format",
       "name": "Format Ket Qua Draft",

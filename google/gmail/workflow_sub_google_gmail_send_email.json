@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\nlet cleaned = raw\n  .replace(/^(gui mail|gửi mail|gui email|gửi email|send mail|send email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((l) => l.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nconst guidance = '📧 <b>Gửi email</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi mail test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>\\n\\nNếu chỉ muốn lưu nháp, dùng:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>';\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, response: isReady ? '' : guidance } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\n// Kiểm tra nếu lệnh là gửi email nháp\nconst isDraftSend = /^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft)\\s*/i.test(raw);\n\nlet cleaned = raw\n  .replace(/^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft|gui mail|gửi mail|gui email|gửi email|send mail|send email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((l) => l.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nlet guidance;\nif (isDraftSend) {\n  guidance = '📤 <b>Gửi email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi nháp test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>';\n} else {\n  guidance = '📧 <b>Gửi email</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi mail test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>\\n\\nNếu chỉ muốn lưu nháp, dùng:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nNếu muốn gửi email nháp đã soạn, dùng:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>';\n}\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, isDraftSend, response: isReady ? '' : guidance } }];"
       },
       "id": "gmail-send-prepare",
       "name": "Parse Gui Email",
@@ -38,6 +38,57 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isDraftSend }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "gmail-send-type-check",
+      "name": "La Gui Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [720, -80]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "sendTo": "={{ $json.toEmail }}"
+        }
+      },
+      "id": "gmail-send-as-draft-node",
+      "name": "Gmail Create And Send Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [960, -200],
+      "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d87",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mPN70prUijPHyjnw",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Gui Email').item.json;\nconst draftResult = $input.item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst draftId = draftResult?.id || draftResult?.message?.id || '';\nconst link = draftId ? `https://mail.google.com/mail/u/0/#drafts/${draftId}` : '';\n\nlet text = '📤 <b>Đã gửi email nháp thành công</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nif (link) text += `\\n🔗 <a href=\"${escapeHtml(link)}\">Xem email</a>`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "gmail-send-draft-format",
+      "name": "Format Ket Qua Gui Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, -200]
+    },
+    {
+      "parameters": {
         "sendTo": "={{ $json.toEmail }}",
         "subject": "={{ $json.subject }}",
         "message": "={{ $json.body }}",
@@ -47,7 +98,7 @@
       "name": "Gmail Send",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, -80],
+      "position": [960, 40],
       "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d86",
       "credentials": {
         "gmailOAuth2": {
@@ -58,13 +109,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Parse Gui Email').item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nlet text = '✅ <b>Đã gửi email thành công</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Parse Gui Email').item.json;\nconst sendResult = $input.item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst threadId = sendResult?.threadId || sendResult?.id || '';\nconst link = threadId ? `https://mail.google.com/mail/u/0/#sent/${threadId}` : '';\n\nlet text = '✅ <b>Đã gửi email thành công</b>\\n\\n';\ntext += `📨 Đến: ${escapeHtml(source.toEmail)}\\n`;\ntext += `📝 Tiêu đề: ${escapeHtml(source.subject)}\\n`;\ntext += `📄 Nội dung: ${escapeHtml(source.body.substring(0, 200))}`;\nif (source.body.length > 200) text += '...';\nif (link) text += `\\n🔗 <a href=\"${escapeHtml(link)}\">Xem email</a>`;\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
       "id": "gmail-send-format",
       "name": "Format Ket Qua Gui",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
+      "position": [1200, 40]
     },
     {
       "parameters": {
@@ -85,7 +136,7 @@
       "name": "Gui Gmail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1200, 0]
+      "position": [1440, 0]
     }
   ],
   "connections": {
@@ -97,9 +148,21 @@
     },
     "Du Du Lieu Gui?": {
       "main": [
-        [{ "node": "Gmail Send", "type": "main", "index": 0 }],
+        [{ "node": "La Gui Draft?", "type": "main", "index": 0 }],
         [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
       ]
+    },
+    "La Gui Draft?": {
+      "main": [
+        [{ "node": "Gmail Create And Send Draft", "type": "main", "index": 0 }],
+        [{ "node": "Gmail Send", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail Create And Send Draft": {
+      "main": [[{ "node": "Format Ket Qua Gui Draft", "type": "main", "index": 0 }]]
+    },
+    "Format Ket Qua Gui Draft": {
+      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
     },
     "Gmail Send": {
       "main": [[{ "node": "Format Ket Qua Gui", "type": "main", "index": 0 }]]

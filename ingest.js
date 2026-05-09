@@ -68,6 +68,9 @@ const intents = {
     "gửi email": "tool",
     "soạn mail": "tool",
     "soạn email": "tool",
+    "viết nháp email": "tool",
+    "draft email": "tool",
+    "draft mail": "tool",
     "send mail": "tool",
     "send email": "tool",
     "tìm mail": "tool",
@@ -85,7 +88,14 @@ const intents = {
     "tìm mail hóa đơn": "tool",
     "xem mail hôm nay có gì": "tool",
     "có mail mới không": "tool",
-    "trả lời mail từ khách hàng": "tool"
+    "trả lời mail từ khách hàng": "tool",
+    "gửi nháp": "tool",
+    "gửi email nháp": "tool",
+    "gửi mail nháp": "tool",
+    "send draft": "tool",
+    "gửi nháp mail test@gmail.com Chào bạn": "tool",
+    "soạn mail test@gmail.com Chào bạn": "tool",
+    "draft email test@gmail.com Chào bạn": "tool"
 };
 
 async function getEmbedding(text) {

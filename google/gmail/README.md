@@ -22,15 +22,18 @@ Tach workflow Gmail thanh nhieu file nho de de import va quan ly trong n8n:
 
 ## Cac lenh ho tro
 
-- `xem mail` / `hộp thư` / `inbox` - Xem email mới nhất
+- `xem mail` / `hộp thư` / `inbox` - Xem email mới nhất (kèm link)
 - `đọc mail ...` / `nội dung mail ...` - Đọc chi tiết email
-- `gửi mail ...` / `send email ...` - Gửi email mới
-- `soạn mail ...` / `draft email ...` - Tạo email nháp
+- `gửi mail ...` / `send email ...` - Gửi email mới (kèm link email đã gửi)
+- `gửi nháp ...` / `send draft ...` - Gửi email từ bản nháp (kèm link)
+- `soạn mail ...` / `draft email ...` - Tạo email nháp (kèm link bản nháp)
 - `tìm mail ...` / `search mail ...` - Tìm kiếm email
-- `trả lời mail ...` / `reply mail ...` - Trả lời email
+- `trả lời mail ...` / `reply mail ...` - Trả lời email (kèm link cuộc trò chuyện)
 - `gmail help` - Hướng dẫn sử dụng
 
 ## Ghi chu
 
 - Master moi khong can gan tay `workflowId` cho tung node con nua.
 - Moi workflow con tu gui tin nhan Telegram sau khi xu ly xong.
+- Send email, Draft email, Reply email deu hien thi link Gmail o dong cuoi.
+- Send email ho tro ca 2 che do: gui email moi va gui email nhap (draft).

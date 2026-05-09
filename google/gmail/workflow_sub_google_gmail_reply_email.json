@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n  }\n  return '';\n};\n\nconst rows = $input.all().map((i) => i.json || {}).filter((e) => e.id);\nif (!rows.length) {\n  return [{ json: { ...source, canReply: false, response: '⚠️ Không tìm thấy email để trả lời.' } }];\n}\nconst email = rows[0];\nconst subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value);\nreturn [{ json: { ...source, canReply: true, messageId: email.id, threadId: email.threadId, subject } }];"
+        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n  }\n  return '';\n};\n\nconst rows = $input.all().map((i) => i.json || {}).filter((e) => e.id);\nif (!rows.length) {\n  return [{ json: { ...source, canReply: false, response: '⚠️ Không tìm thấy email để trả lời.' } }];\n}\nconst email = rows[0];\nconst subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value);\nconst threadId = email.threadId || email.id || '';\nreturn [{ json: { ...source, canReply: true, messageId: email.id, threadId, subject } }];"
       },
       "id": "gmail-reply-extract",
       "name": "Chon Email Reply",
@@ -107,7 +107,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\nconst reply = $('Chon Email Reply').item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nlet text = '✅ <b>Đã trả lời email</b>\\n\\n';\nif (reply.subject) text += `📝 Re: ${escapeHtml(reply.subject)}\\n`;\ntext += `📄 ${escapeHtml(source.replyBody.substring(0, 200))}`;\nif (source.replyBody.length > 200) text += '...';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Parse Tra Loi Email').item.json;\nconst reply = $('Chon Email Reply').item.json;\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst threadId = reply.threadId || '';\nconst link = threadId ? `https://mail.google.com/mail/u/0/#inbox/${threadId}` : '';\n\nlet text = '✅ <b>Đã trả lời email</b>\\n\\n';\nif (reply.subject) text += `📝 Re: ${escapeHtml(reply.subject)}\\n`;\ntext += `📄 ${escapeHtml(source.replyBody.substring(0, 200))}`;\nif (source.replyBody.length > 200) text += '...';\nif (link) text += `\\n🔗 <a href=\"${escapeHtml(link)}\">Xem cuộc trò chuyện</a>`;\nreturn [{ json: { chatId: source.chatId, text } }];"
       },
       "id": "gmail-reply-format",
       "name": "Format Ket Qua Reply",
