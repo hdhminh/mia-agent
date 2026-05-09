@@ -1,0 +1,194 @@
+{
+  "name": "Sub-workflow: Google Drive - Upload File",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-567ff615",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst binaryPropertyName = source.binaryPropertyName || payload.binaryPropertyName || 'data';\nconst binary = source.binary || payload.binary || {};\nconst binaryInfo = binary[binaryPropertyName] || {};\nconst fileName = source.fileName || payload.fileName || binaryInfo.fileName || 'upload.bin';\nconst folderId = source.folderId || payload.folderId || 'root';\nconst hasBinary = Boolean(binary[binaryPropertyName]);\nreturn [{ json: { ...source, payload, message, chatId, raw, binaryPropertyName, fileName, folderId, hasTarget: hasBinary, response: hasBinary ? '' : 'Ban hay gui kem file roi nhap: upload file nay vao drive' }, binary }];"
+      },
+      "id": "code-639dfb48",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-db056b7c",
+      "name": "Co Binary De Upload?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "={{ $json.binaryPropertyName }}",
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.folderId || 'root' }}"
+        },
+        "options": {
+          "simplifyOutput": true
+        }
+      },
+      "id": "gdf-a4819498",
+      "name": "Drive Upload File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        736,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst item = $input.item.json || {};\nlet text = '✅ <b>Da upload file len Google Drive</b>\n\n';\ntext += '<b>' + escapeHtml(item.name || source.fileName) + '</b>\n';\ntext += 'ID: ' + escapeHtml(item.id || '') + '\n';\nif (item.webViewLink) text += '🔗 <a href=\"' + escapeHtml(item.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "code-fe725413",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-557e42a7",
+      "name": "Gui Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Binary De Upload?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Binary De Upload?": {
+      "main": [
+        [
+          {
+            "node": "Drive Upload File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Upload File": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

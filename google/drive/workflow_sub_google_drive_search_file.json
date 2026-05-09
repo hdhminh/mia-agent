@@ -1,0 +1,203 @@
+{
+  "name": "Sub-workflow: Google Drive - Search File",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-4c509e4a",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst query = String(source.fileName || payload.fileName || raw.replace(/^(tim file|search file|kiem file|tim trong drive|find file)\\s*/i, '')).trim();\nconst mimeType = source.mimeType || payload.mimeType || '';\nconst limit = Number(source.limit || payload.limit || 10) || 10;\nreturn [{ json: { ...source, payload, message, chatId, raw, query, mimeType, limit, hasTarget: Boolean(query), response: query ? '' : '📁 <b>Tim file trong Drive</b>\\n\\nVi du: tim file hop dong' } }];"
+      },
+      "id": "code-761d02ed",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-c370efc5",
+      "name": "Du Du Lieu Tim File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.query || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" + ($json.mimeType ? \" and mimeType = '\" + String($json.mimeType).replace(/'/g, \"\\\\'\") + \"'\" : '') }}",
+        "returnAll": false,
+        "limit": "={{ $json.limit }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.folderId || 'root' }}"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "gds-54c5f53d",
+      "name": "Drive Search File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        736,
+        -80
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nlet text = '🔎 <b>Ket qua tim file</b>\n\n';\nif (!rows.length) {\n  text += 'Khong tim thay file phu hop voi: <i>' + escapeHtml(source.query) + '</i>';\n} else {\n  rows.forEach((file, index) => {\n    const link = pickFirst(file.webViewLink);\n    text += String(index + 1) + '. ';\n    text += link ? '<a href=\"' + escapeHtml(link) + '\">' + escapeHtml(file.name || 'Khong ro ten') + '</a>' : '<b>' + escapeHtml(file.name || 'Khong ro ten') + '</b>';\n    text += '\nID: ' + escapeHtml(file.id || '') + '\n';\n    text += 'Loai: ' + escapeHtml(file.mimeType || 'Khong ro') + '\n';\n    const modified = formatDate(file.modifiedTime);\n    if (modified) text += 'Sua luc: ' + escapeHtml(modified) + '\n';\n    text += '\n';\n  });\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "code-f6ec7ad3",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-7e803656",
+      "name": "Gui Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Tim File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du Du Lieu Tim File?": {
+      "main": [
+        [
+          {
+            "node": "Drive Search File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Search File": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

@@ -1,0 +1,304 @@
+{
+  "name": "Sub-workflow: Google Drive - Move File",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-2e6d80e2",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nconst targetFolderId = source.targetFolderId || payload.targetFolderId || '';\nconst fileName = String(source.fileName || payload.fileName || raw.replace(/^(di chuyen file|move file|chuyen file|dua file)\\s*/i, '')).trim();\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, targetFolderId, hasTarget: Boolean((fileId || fileName) && targetFolderId), response: ((fileId || fileName) && targetFolderId) ? '' : '📁 <b>Di chuyen file</b>\\n\\nVi du: di chuyen file A vao folder B (MVP nen truyen targetFolderId)' } }];"
+      },
+      "id": "code-e090b687",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-fc477eee",
+      "name": "Du Du Lieu Move?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.fileId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-89ecb733",
+      "name": "Co File ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
+        "returnAll": false,
+        "limit": "={{ 1 }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.folderId || 'root' }}"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "gds-e7f0616b",
+      "name": "Drive Tim File Move",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        920,
+        -120
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
+      },
+      "id": "code-1b2c6c93",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.fileId }}"
+        },
+        "driveId": {
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.targetFolderId }}"
+        }
+      },
+      "id": "gdf-22ec8c79",
+      "name": "Drive Move File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1140,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nlet text = '✅ <b>Da di chuyen file</b>\n\n';\ntext += '<b>' + escapeHtml(source.fileName || 'Khong ro ten') + '</b>\n';\ntext += 'Folder dich: ' + escapeHtml(source.targetFolderId || '') + '\n';\nif (source.webViewLink) text += '🔗 <a href=\"' + escapeHtml(source.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "code-5f3b73ad",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-aeb008c3",
+      "name": "Gui Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1600,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Move?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du Du Lieu Move?": {
+      "main": [
+        [
+          {
+            "node": "Co File ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co File ID?": {
+      "main": [
+        [
+          {
+            "node": "Drive Move File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Tim File Move",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Tim File Move": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Drive Move File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Move File": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

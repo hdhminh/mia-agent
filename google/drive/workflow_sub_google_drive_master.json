@@ -1,0 +1,222 @@
+{
+  "name": "Sub-workflow: Google Drive Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-f56f3b49",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4352,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nfunction normalize(str) {\n  return String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');\n}\nconst text = normalize(rawText);\nlet action = 'help';\nif (/\b(xuat file|export file|chuyen file .* sang pdf|chuyen doc sang pdf|export sheet sang xlsx)\b/.test(text)) action = 'export_file';\nelse if (/\b(share file|chia se file|cap quyen file|give access)\b/.test(text)) action = 'share_file';\nelse if (/\b(xoa file|xoa thu muc|delete file|bo file vao thung rac|move file to trash)\b/.test(text)) action = 'delete_file';\nelse if (/\b(di chuyen file|move file|chuyen file .* vao folder|dua file .* vao thu muc)\b/.test(text)) action = 'move_file';\nelse if (/\b(doi ten file|rename file|doi ten thu muc|doi ten .* thanh .*)\b/.test(text)) action = 'rename_file';\nelse if (/\b(copy file|nhan ban file|tao ban sao file|duplicate file|copy template)\b/.test(text)) action = 'copy_file';\nelse if (/\b(download file|tai file|gui toi file|lay file|tai xuong file|send me file)\b/.test(text)) action = 'download_file';\nelse if (/\b(upload file|luu file nay vao drive|luu tep nay vao drive|tai file nay len drive|up file)\b/.test(text)) action = 'upload_file';\nelse if (/\b(tao folder|tao thu muc|create folder)\b/.test(text)) action = 'create_folder';\nelse if (/\b(thong tin file|chi tiet file|file info|metadata file)\b/.test(text)) action = 'get_file_info';\nelse if (/\b(tim file|search file|kiem file|tim trong drive|find file)\b/.test(text)) action = 'search_file';\nelse if (/\b(xem drive|xem file drive|file gan day|liet ke file|danh sach file|list drive files|recent files)\b/.test(text)) action = 'list_files';\nelse if (/\b(drive help|huong dan drive|dung drive nhu the nao|google drive help)\b/.test(text)) action = 'help';\nelse if (/\b(drive|google drive)\b/.test(text)) action = 'list_files';\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action } }];"
+      },
+      "id": "code-678d819d",
+      "name": "Chuan Bi Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowMap = {\n  list_files: 'Sub-workflow: Google Drive - List Files',\n  search_file: 'Sub-workflow: Google Drive - Search File',\n  get_file_info: 'Sub-workflow: Google Drive - Get File Info',\n  create_folder: 'Sub-workflow: Google Drive - Create Folder',\n  upload_file: 'Sub-workflow: Google Drive - Upload File',\n  download_file: 'Sub-workflow: Google Drive - Download File',\n  copy_file: 'Sub-workflow: Google Drive - Copy File',\n  rename_file: 'Sub-workflow: Google Drive - Rename File',\n  move_file: 'Sub-workflow: Google Drive - Move File',\n  delete_file: 'Sub-workflow: Google Drive - Delete File',\n  share_file: 'Sub-workflow: Google Drive - Share File',\n  export_file: 'Sub-workflow: Google Drive - Export File',\n  help: 'Sub-workflow: Google Drive - Help'\n};\nreturn [{ json: { ...$json, workflowName: workflowMap[$json.action] || workflowMap.help } }];"
+      },
+      "id": "code-a276b167",
+      "name": "Chon Workflow Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3856,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?limit=250&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-5d261056",
+      "name": "Lookup Drive Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -3568,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Drive').item.json;\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\nif (!found) return [{ json: { ...source, hasWorkflow: false, response: 'Khong tim thay workflow con: ' + source.workflowName } }];\nreturn [{ json: { ...source, hasWorkflow: true, workflowId: found.id } }];"
+      },
+      "id": "code-0f22e868",
+      "name": "Extract Drive Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3328,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasWorkflow }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-9416dc80",
+      "name": "Tim Thay Workflow Drive?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "exec-cdfd1f69",
+      "name": "Goi Drive Sub Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -2832,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "err-0f551ada",
+      "name": "Gui Loi Lookup Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -2832,
+        752
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Drive": {
+      "main": [
+        [
+          {
+            "node": "Chon Workflow Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Workflow Drive": {
+      "main": [
+        [
+          {
+            "node": "Lookup Drive Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Drive Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Drive Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Drive Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Workflow Drive?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Workflow Drive?": {
+      "main": [
+        [
+          {
+            "node": "Goi Drive Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Loi Lookup Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

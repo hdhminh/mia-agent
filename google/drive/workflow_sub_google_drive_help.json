@@ -1,0 +1,92 @@
+{
+  "name": "Sub-workflow: Google Drive - Help",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-f416fc55",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📁 <b>Google Drive</b>\n\n- xem file drive\n- tim file hop dong\n- thong tin file bao cao\n- tao folder Khach hang\n- upload file nay vao drive\n- tai file bao cao\n- copy file mau hop dong thanh hop dong khach A\n- doi ten file A thanh B\n- di chuyen file A vao folder B\n- share file A cho email@example.com\n- xuat file A sang pdf\n- xoa file A';\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "code-64a3c4c8",
+      "name": "Huong Dan Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-ab694af4",
+      "name": "Gui Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        192,
+        -144
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Huong Dan Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Huong Dan Drive": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "name": "Sub-workflow: Google Drive - List Files",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-16adc591",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst limit = Number(source.limit || payload.limit || 10) || 10;\nconst folderId = source.folderId || payload.folderId || '';\nreturn [{ json: { ...source, payload, message, chatId, raw, limit, folderId } }];"
+      },
+      "id": "code-be90b674",
+      "name": "Chuan Bi List Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "=trashed = false",
+        "returnAll": false,
+        "limit": "={{ $json.limit }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.folderId || 'root' }}"
+          },
+          "whatToSearch": "files",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "gds-bb90ed15",
+      "name": "Drive Search Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        520,
+        0
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Chuan Bi List Files').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nlet text = '📁 <b>File gan day trong Google Drive</b>\n\n';\nif (!rows.length) {\n  text += 'Khong tim thay file nao.';\n} else {\n  rows.forEach((file, index) => {\n    const link = pickFirst(file.webViewLink);\n    text += String(index + 1) + '. ';\n    text += link ? '<a href=\"' + escapeHtml(link) + '\">' + escapeHtml(file.name || 'Khong ro ten') + '</a>' : '<b>' + escapeHtml(file.name || 'Khong ro ten') + '</b>';\n    text += '\nID: ' + escapeHtml(file.id || '') + '\n';\n    text += 'Loai: ' + escapeHtml(file.mimeType || 'Khong ro') + '\n';\n    const modified = formatDate(file.modifiedTime);\n    if (modified) text += 'Sua luc: ' + escapeHtml(modified) + '\n';\n    text += '\n';\n  });\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "code-e93c09db",
+      "name": "Format Danh Sach File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-29fa10e0",
+      "name": "Gui Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1040,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi List Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi List Files": {
+      "main": [
+        [
+          {
+            "node": "Drive Search Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Search Files": {
+      "main": [
+        [
+          {
+            "node": "Format Danh Sach File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Danh Sach File": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
