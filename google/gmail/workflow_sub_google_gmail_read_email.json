@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\n// Lay tu khoa tim kiem tu cau lenh\nconst query = raw\n  .replace(/^(doc mail|đọc mail|noi dung mail|nội dung mail|read mail|read email|open mail|open email)\\s*/i, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst hasQuery = Boolean(query);\nconst guidance = '📧 <b>Đọc email</b>\\n\\nBạn hãy nhập theo mẫu:\\n- đọc mail từ Google\\n- nội dung mail về đơn hàng\\n- read mail from boss';\n\nreturn [{ json: { ...source, payload, message, chatId, query, hasQuery, response: hasQuery ? '' : guidance } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst query = raw\n  .replace(/^(doc mail|đọc mail|doc email|đọc email|noi dung mail|nội dung mail|noi dung email|nội dung email|read mail|read email|open mail|open email)\\s*/i, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nconst hasQuery = Boolean(query);\nconst guidance = '📧 <b>Đọc email</b>\\n\\nBạn hãy nhập theo mẫu:\\n- đọc mail từ Google\\n- nội dung mail về đơn hàng\\n- read mail from boss';\nreturn [{ json: { ...source, payload, message, chatId, query, hasQuery, response: hasQuery ? '' : guidance } }];"
       },
       "id": "gmail-read-prepare",
       "name": "Chuan Bi Doc Email",
@@ -40,26 +40,27 @@
       "parameters": {
         "operation": "getAll",
         "limit": 1,
-        "options": {
-          "searchString": "={{ $('Chuan Bi Doc Email').item.json.query }}"
+        "filters": {
+          "search": "={{ $json.query }}"
         }
       },
-      "id": "gmail-read-search",
+      "id": "5dfbcd80-9696-482a-9f0f-429ec9a91806",
       "name": "Gmail Search Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, -80],
+      "position": [720, -96],
+      "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d86",
+      "alwaysOutputData": true,
       "credentials": {
         "gmailOAuth2": {
-          "id": "",
-          "name": "Gmail account"
+          "id": "5bVi6VSAG8L6X4DP",
+          "name": "Gmail account 2"
         }
-      },
-      "alwaysOutputData": true
+      }
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Doc Email').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter(e => e && Object.keys(e).length > 0 && (e.id || e.subject));\n\nif (rows.length === 0) {\n  return [{ json: { chatId: source.chatId, text: '⚠️ Không tìm thấy email phù hợp với: ' + source.query } }];\n}\n\nconst email = rows[0];\nconst from = email.from?.value?.[0]?.name || email.from?.value?.[0]?.address || email.from || 'Không rõ';\nconst to = email.to?.value?.[0]?.address || email.to || '';\nconst subject = email.subject || 'Không có tiêu đề';\nconst date = email.date ? new Date(email.date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';\n\n// Lay noi dung text, gioi han 1500 ky tu\nlet body = email.textPlain || email.text || email.snippet || '';\nif (body.length > 1500) body = body.substring(0, 1500) + '\\n\\n<i>... (nội dung đã được cắt bớt)</i>';\n\nlet text = '📧 <b>Chi tiết email</b>\\n\\n';\ntext += `📝 <b>${subject}</b>\\n`;\ntext += `👤 Từ: ${from}\\n`;\nif (to) text += `📨 Đến: ${to}\\n`;\ntext += `🕒 ${date}\\n\\n`;\ntext += `${body}`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Chuan Bi Doc Email').item.json;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst rows = $input.all().map((item) => item.json || {}).filter((e) => e && Object.keys(e).length > 0 && (e.id || e.subject || e.Subject || e.from || e.From || e.snippet));\nif (rows.length === 0) {\n  return [{ json: { chatId: source.chatId, text: '⚠️ Không tìm thấy email phù hợp với: ' + source.query } }];\n}\n\nconst email = rows[0];\nconst from = pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value) || 'Không rõ';\nconst to = pickFirst(email.to?.value?.[0]?.address, email.To, email.to, email.payload?.headers?.find((h) => h.name === 'To')?.value);\nconst subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value) || 'Không có tiêu đề';\nconst date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\n\nlet body = pickFirst(email.textPlain, email.text, email.snippet) || '(Không có nội dung văn bản để hiển thị)';\nif (body.length > 1500) body = body.substring(0, 1500) + '\\n\\n... (nội dung đã được cắt bớt)';\n\nlet text = '📧 <b>Chi tiết email</b>\\n\\n';\ntext += `📝 <b>${escapeHtml(subject)}</b>\\n`;\ntext += `👤 Từ: ${escapeHtml(from)}\\n`;\nif (to) text += `📨 Đến: ${escapeHtml(to)}\\n`;\nif (date) text += `🕒 ${escapeHtml(date)}\\n`;\ntext += `\\n${escapeHtml(body)}`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
       "id": "gmail-read-format",
       "name": "Format Noi Dung Email",
@@ -108,5 +109,9 @@
     "Format Noi Dung Email": {
       "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
     }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   }
 }

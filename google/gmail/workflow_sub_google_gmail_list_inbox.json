@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-05-09T09:08:47.801Z",
+  "createdAt": "2026-05-08T12:48:54.545Z",
+  "id": "bUttIwvNK8gokFRY",
   "name": "Sub-workflow: Google Gmail - List Inbox",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {},
@@ -7,7 +13,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,38 +26,46 @@
       "name": "Chuan Bi List Inbox",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
         "operation": "getAll",
         "limit": 5,
-        "options": {
-          "readStatus": "unread"
-        }
+        "filters": {}
       },
       "id": "gmail-list-node",
       "name": "Gmail Get Messages",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [480, 0],
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true,
+      "webhookId": "fb2b0947-4e04-47ed-9b01-5bf323d17294",
       "credentials": {
         "gmailOAuth2": {
-          "id": "",
-          "name": "Gmail account"
+          "id": "5bVi6VSAG8L6X4DP",
+          "name": "Gmail account 2"
         }
-      },
-      "alwaysOutputData": true
+      }
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi List Inbox').item.json;\nconst rows = $input.all().map(item => item.json || {}).filter(e => e && Object.keys(e).length > 0 && (e.id || e.subject || e.from));\nlet text = '📧 <b>Hộp thư đến</b>\\n\\n';\nif (rows.length === 0) {\n  text += 'Không có email mới.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const email = rows[i];\n    const from = email.from?.value?.[0]?.name || email.from?.value?.[0]?.address || email.from || 'Không rõ';\n    const subject = email.subject || 'Không có tiêu đề';\n    const date = email.date ? new Date(email.date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';\n    const labels = email.labelIds || [];\n    const isUnread = labels.includes('UNREAD') ? '🔵 ' : '';\n    text += `${isUnread}<b>${i + 1}. ${subject}</b>\\n👤 ${from}\\n🕒 ${date}\\n\\n`;\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Chuan Bi List Inbox').item.json;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst hasUnreadLabel = (email) => {\n  const labels = Array.isArray(email.labelIds) ? email.labelIds : [];\n  const richLabels = Array.isArray(email.labels) ? email.labels : [];\n  return labels.includes('UNREAD') || richLabels.some((label) => label?.id === 'UNREAD' || label?.name === 'UNREAD');\n};\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((email) => email && Object.keys(email).length > 0 && (email.id || email.subject || email.Subject || email.from || email.From || email.snippet));\n\nlet text = '📧 <b>Hộp thư đến</b>\\n\\n';\n\nif (rows.length === 0) {\n  text += 'Không có email mới.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const email = rows[i];\n    const subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value) || 'Không có tiêu đề';\n    const from = pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value) || 'Không rõ';\n    const date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\n    const isUnread = hasUnreadLabel(email) ? '🔵 ' : '';\n\n    text += `${isUnread}<b>${i + 1}. ${escapeHtml(subject)}</b>\\n`;\n    text += `👤 ${escapeHtml(from)}\\n`;\n    if (date) text += `🕒 ${escapeHtml(date)}\\n`;\n    text += '\\n';\n  }\n}\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
       "id": "gmail-list-format",
       "name": "Format Danh Sach Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 0]
+      "position": [
+        720,
+        0
+      ]
     },
     {
       "parameters": {
@@ -57,10 +74,22 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "chat_id", "value": "={{ $json.chatId }}" },
-            { "name": "text", "value": "={{ $json.text }}" },
-            { "name": "parse_mode", "value": "HTML" },
-            { "name": "disable_web_page_preview", "value": "true" }
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
           ]
         },
         "options": {}
@@ -69,21 +98,251 @@
       "name": "Gui Gmail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [960, 0]
+      "position": [
+        960,
+        0
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Chuan Bi List Inbox", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Chuan Bi List Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chuan Bi List Inbox": {
-      "main": [[{ "node": "Gmail Get Messages", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gmail Get Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gmail Get Messages": {
-      "main": [[{ "node": "Format Danh Sach Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Danh Sach Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Danh Sach Email": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gui Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "6551e276-6b27-4b69-b1e7-39bb1ae93897",
+  "activeVersionId": "6551e276-6b27-4b69-b1e7-39bb1ae93897",
+  "versionCounter": 14,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-05-08T12:48:54.551Z",
+      "createdAt": "2026-05-08T12:48:54.551Z",
+      "role": "workflow:owner",
+      "workflowId": "bUttIwvNK8gokFRY",
+      "projectId": "7N7ZQCQ1zvCSMaN8",
+      "project": {
+        "updatedAt": "2026-05-07T06:34:42.615Z",
+        "createdAt": "2026-05-07T06:14:19.271Z",
+        "id": "7N7ZQCQ1zvCSMaN8",
+        "name": "Minh Huỳnh Đoàn Hoàng <kuminhuynhdoan@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "a406febc-d1a2-470d-8e69-83f98e3359b8"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-09T09:10:29.000Z",
+    "createdAt": "2026-05-09T09:08:47.803Z",
+    "versionId": "6551e276-6b27-4b69-b1e7-39bb1ae93897",
+    "workflowId": "bUttIwvNK8gokFRY",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "gmail-list-trigger",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nreturn [{ json: { ...source, payload, message, chatId } }];"
+        },
+        "id": "gmail-list-prepare",
+        "name": "Chuan Bi List Inbox",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          240,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "limit": 5,
+          "filters": {}
+        },
+        "id": "gmail-list-node",
+        "name": "Gmail Get Messages",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          480,
+          0
+        ],
+        "alwaysOutputData": true,
+        "webhookId": "fb2b0947-4e04-47ed-9b01-5bf323d17294",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "5bVi6VSAG8L6X4DP",
+            "name": "Gmail account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const source = $('Chuan Bi List Inbox').item.json;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst hasUnreadLabel = (email) => {\n  const labels = Array.isArray(email.labelIds) ? email.labelIds : [];\n  const richLabels = Array.isArray(email.labels) ? email.labels : [];\n  return labels.includes('UNREAD') || richLabels.some((label) => label?.id === 'UNREAD' || label?.name === 'UNREAD');\n};\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((email) => email && Object.keys(email).length > 0 && (email.id || email.subject || email.Subject || email.from || email.From || email.snippet));\n\nlet text = '📧 <b>Hộp thư đến</b>\\n\\n';\n\nif (rows.length === 0) {\n  text += 'Không có email mới.';\n} else {\n  for (let i = 0; i < rows.length; i++) {\n    const email = rows[i];\n    const subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value) || 'Không có tiêu đề';\n    const from = pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value) || 'Không rõ';\n    const date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\n    const isUnread = hasUnreadLabel(email) ? '🔵 ' : '';\n\n    text += `${isUnread}<b>${i + 1}. ${escapeHtml(subject)}</b>\\n`;\n    text += `👤 ${escapeHtml(from)}\\n`;\n    if (date) text += `🕒 ${escapeHtml(date)}\\n`;\n    text += '\\n';\n  }\n}\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        },
+        "id": "gmail-list-format",
+        "name": "Format Danh Sach Email",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          720,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $json.chatId }}"
+              },
+              {
+                "name": "text",
+                "value": "={{ $json.text }}"
+              },
+              {
+                "name": "parse_mode",
+                "value": "HTML"
+              },
+              {
+                "name": "disable_web_page_preview",
+                "value": "true"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "gmail-list-send",
+        "name": "Gui Gmail",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          960,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Chuan Bi List Inbox",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chuan Bi List Inbox": {
+        "main": [
+          [
+            {
+              "node": "Gmail Get Messages",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail Get Messages": {
+        "main": [
+          [
+            {
+              "node": "Format Danh Sach Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Danh Sach Email": {
+        "main": [
+          [
+            {
+              "node": "Gui Gmail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Minh Huỳnh Đoàn Hoàng",
+    "name": "Version 6551e276",
+    "description": "",
+    "autosaved": true,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-09T09:10:29.278Z",
+        "id": 228,
+        "workflowId": "bUttIwvNK8gokFRY",
+        "versionId": "6551e276-6b27-4b69-b1e7-39bb1ae93897",
+        "event": "activated",
+        "userId": "a406febc-d1a2-470d-8e69-83f98e3359b8"
+      }
+    ]
   }
 }
