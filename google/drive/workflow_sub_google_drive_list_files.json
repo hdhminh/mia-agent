@@ -1,9 +1,8 @@
 {
-  "name": "Sub-workflow: Google Drive - List Files",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-16adc591",
+      "id": "6663ffd8-bdc5-441a-9da7-135a00561f93",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
@@ -16,7 +15,7 @@
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst limit = Number(source.limit || payload.limit || 10) || 10;\nconst folderId = source.folderId || payload.folderId || '';\nreturn [{ json: { ...source, payload, message, chatId, raw, limit, folderId } }];"
       },
-      "id": "code-be90b674",
+      "id": "9d022acf-dd37-4f05-965d-aad00985cf55",
       "name": "Chuan Bi List Files",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -28,10 +27,8 @@
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "=trashed = false",
-        "returnAll": false,
         "limit": "={{ $json.limit }}",
         "filter": {
           "driveId": {
@@ -52,21 +49,27 @@
           ]
         }
       },
-      "id": "gds-bb90ed15",
+      "id": "7a9753d8-5a87-4e81-8735-e416672150eb",
       "name": "Drive Search Files",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        520,
+        528,
         0
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Chuan Bi List Files').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nlet text = '📁 <b>File gan day trong Google Drive</b>\n\n';\nif (!rows.length) {\n  text += 'Khong tim thay file nao.';\n} else {\n  rows.forEach((file, index) => {\n    const link = pickFirst(file.webViewLink);\n    text += String(index + 1) + '. ';\n    text += link ? '<a href=\"' + escapeHtml(link) + '\">' + escapeHtml(file.name || 'Khong ro ten') + '</a>' : '<b>' + escapeHtml(file.name || 'Khong ro ten') + '</b>';\n    text += '\nID: ' + escapeHtml(file.id || '') + '\n';\n    text += 'Loai: ' + escapeHtml(file.mimeType || 'Khong ro') + '\n';\n    const modified = formatDate(file.modifiedTime);\n    if (modified) text += 'Sua luc: ' + escapeHtml(modified) + '\n';\n    text += '\n';\n  });\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime())\n    ? ''\n    : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Chuan Bi List Files').item.json;\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nlet text = '📁 <b>File gan day trong Google Drive</b>\\n\\n';\n\nif (!rows.length) {\n  text += 'Khong tim thay file nao.';\n} else {\n  rows.forEach((file, index) => {\n    const name = file.name || 'Khong ro ten';\n    const link = pickFirst(file.webViewLink);\n    const modified = formatDate(file.modifiedTime);\n\n    text += `${index + 1}. `;\n\n    if (link) {\n      text += `<a href=\"${escapeHtml(link)}\">${escapeHtml(name)}</a>`;\n    } else {\n      text += `<b>${escapeHtml(name)}</b>`;\n    }\n\n    text += `\\nID: ${escapeHtml(file.id || '')}\\n`;\n    text += `Loai: ${escapeHtml(file.mimeType || 'Khong ro')}\\n`;\n\n    if (modified) {\n      text += `Sua luc: ${escapeHtml(modified)}\\n`;\n    }\n\n    text += '\\n';\n  });\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId,\n    text: text.trim(),\n  },\n}];"
       },
-      "id": "code-e93c09db",
+      "id": "296577fe-f1eb-4ac8-887a-0ca4e8d6b763",
       "name": "Format Danh Sach File",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -102,7 +105,7 @@
         },
         "options": {}
       },
-      "id": "tg-29fa10e0",
+      "id": "43e7929f-c8b1-4f40-bf25-805c0e7718bd",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
@@ -158,8 +161,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }
