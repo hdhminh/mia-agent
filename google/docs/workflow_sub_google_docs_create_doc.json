@@ -1,0 +1,276 @@
+{
+  "name": "Sub-workflow: Google Docs - Create Doc",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "docs-create-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['tao doc', 'tao tai lieu', 'create doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet title = cleanName(source.title || source.docTitle || source.fileName || source.documentTitle || '');\nlet content = source.content || source.docContent || '';\n\nif (!title && body) {\n  const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n  if (markerMatch) {\n    const idx = markerMatch.index || 0;\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + markerMatch[0].length)).trim();\n  } else if (body.includes(':')) {\n    const idx = body.indexOf(':');\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + 1)).trim();\n  } else {\n    title = cleanName(body);\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    title,\n    content: String(content || ''),\n    hasTarget: Boolean(title),\n    response: title ? '' : '📝 <b>Tao Google Doc</b>\\n\\nVi du: <code>tao doc Project Plan noi dung Muc tieu du an</code>'\n  }\n}];"
+      },
+      "id": "docs-create-prepare",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-create-has-title",
+      "name": "Co Ten Tai Lieu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,mimeType,webViewLink"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { name: $json.title, mimeType: 'application/vnd.google-apps.document' } }}",
+        "options": {}
+      },
+      "id": "docs-create-file",
+      "name": "Docs Create File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -448,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($('Prepare Action').item.json.content) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-create-has-content",
+      "name": "Co Noi Dung Ban Dau?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent($('Docs Create File').item.json.id) + ':batchUpdate' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { requests: [ { insertText: { location: { index: 1 }, text: $('Prepare Action').item.json.content } } ] } }}",
+        "options": {}
+      },
+      "id": "docs-create-append",
+      "name": "Docs Append Initial Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        32,
+        -80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst created = $('Docs Create File').item.json || {};\nconst title = created.name || source.title || 'Khong ro ten';\nconst docId = created.id || '';\nconst link = created.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst contentLength = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs create response.');\n}\n\nlet text = '✅ <b>Da tao Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (contentLength) text += `Noi dung ban dau: ${contentLength} ky tu\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "docs-create-format",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-create-send",
+      "name": "Gui Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        528,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Ten Tai Lieu?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Ten Tai Lieu?": {
+      "main": [
+        [
+          {
+            "node": "Docs Create File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs Create File": {
+      "main": [
+        [
+          {
+            "node": "Co Noi Dung Ban Dau?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Noi Dung Ban Dau?": {
+      "main": [
+        [
+          {
+            "node": "Docs Append Initial Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs Append Initial Content": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

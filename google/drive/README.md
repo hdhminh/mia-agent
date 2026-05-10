@@ -53,5 +53,8 @@ Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8
 - Create file mac dinh tao file text, ho tro them noi dung truc tiep trong cau lenh.
 - Delete chi dua file vao thung rac, khong xoa vinh vien.
 - Delete folder chi dua folder vao thung rac, khong xoa vinh vien.
-- Export dung cho Google Docs/Sheets/Slides.
+- Drive phu trach quan ly file/folder, upload/download/export/share/move/rename/delete.
+- Google Docs service phu trach noi dung tai lieu Google Docs nhu tao/doc/them noi dung/tim/xoa.
+- Google Sheets service phu trach noi dung bang tinh Google Sheets nhu tao/doc/them dong/cap nhat o/tim/xoa.
+- Export dung cho Google Docs/Sheets/Slides va van di qua Drive service.
 - Download dung cho file thuong nhu PDF, anh, DOCX, ZIP.

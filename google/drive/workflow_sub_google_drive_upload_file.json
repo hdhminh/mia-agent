@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Upload File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-567ff615",
+      "id": "609b8205-49ae-4e2d-a6df-1149af4adf1b",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -720,
+        128
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst binaryPropertyName = source.binaryPropertyName || payload.binaryPropertyName || 'data';\nconst binary = source.binary || payload.binary || {};\nconst binaryInfo = binary[binaryPropertyName] || {};\nconst fileName = source.fileName || payload.fileName || binaryInfo.fileName || 'upload.bin';\nconst folderId = source.folderId || payload.folderId || 'root';\nconst hasBinary = Boolean(binary[binaryPropertyName]);\nreturn [{ json: { ...source, payload, message, chatId, raw, binaryPropertyName, fileName, folderId, hasTarget: hasBinary, response: hasBinary ? '' : 'Ban hay gui kem file roi nhap: upload file nay vao drive' }, binary }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || payload.payload?.message || {};\n\nconst chatId = source.chatId || message.chat?.id || payload.chatId || payload.payload?.chatId || '';\nconst raw = String(source.rawText || source.text || message.text || message.caption || payload.text || payload.rawText || '').trim();\n\nconst document = source.document || message.document || payload.document || payload.payload?.document || payload.payload?.message?.document || null;\nconst video = source.video || message.video || payload.video || payload.payload?.video || payload.payload?.message?.video || null;\nconst audio = source.audio || message.audio || message.voice || payload.audio || payload.payload?.audio || payload.payload?.message?.audio || payload.payload?.message?.voice || null;\nconst photo = source.photo || message.photo || payload.photo || payload.payload?.photo || payload.payload?.message?.photo || null;\n\nconst photoItem = Array.isArray(photo) && photo.length ? photo[photo.length - 1] : photo;\n\nconst telegramFileId = source.fileId || document?.file_id || video?.file_id || audio?.file_id || photoItem?.file_id || '';\nconst fileName = source.fileName || document?.file_name || video?.file_name || audio?.file_name || (photoItem?.file_id ? `telegram-photo-${photoItem.file_id}.jpg` : 'upload.bin');\nconst mimeType = source.mimeType || document?.mime_type || video?.mime_type || audio?.mime_type || (photoItem?.file_id ? 'image/jpeg' : 'application/octet-stream');\nconst folderId = source.folderId || payload.folderId || 'root';\nconst binaryPropertyName = 'data';\n\nconst hasTarget = Boolean(telegramFileId);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    telegramFileId,\n    fileId: telegramFileId,\n    fileName,\n    mimeType,\n    folderId,\n    binaryPropertyName,\n    hasTarget,\n    response: hasTarget ? '' : 'Bạn hãy gửi kèm file/ảnh rồi nhập caption: upload file này vào drive'\n  }\n}];"
       },
-      "id": "code-639dfb48",
+      "id": "8b72d316-33f7-438a-b937-7db68ceb6ae9",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -480,
+        128
       ]
     },
     {
@@ -36,10 +35,66 @@
           ]
         }
       },
-      "id": "if-db056b7c",
-      "name": "Co Binary De Upload?",
+      "id": "4ddc0ca9-b522-41fc-8b4a-98a7a7502891",
+      "name": "Co File Telegram?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
+      "position": [
+        -240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/getFile' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.telegramFileId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "738683b7-72f1-489c-bee1-86982ba9d110",
+      "name": "Telegram Get File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $input.item.json?.result || {};\nconst filePath = result.file_path || '';\nif (!filePath) {\n  return [{ json: { ...source, response: 'Không lấy được file_path từ Telegram getFile.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    telegramFilePath: filePath,\n    telegramDownloadUrl: `https://api.telegram.org/file/bot${$env.TELEGRAM_BOT_TOKEN}/${filePath}`\n  }\n}];"
+      },
+      "id": "cb7a40ca-a11b-4488-8cd1-82c69e45df4c",
+      "name": "Build Telegram Download URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.telegramDownloadUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "d6b78742-e8c7-4cce-84a1-3ecea46330aa",
+      "name": "Download Telegram Binary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         480,
         0
@@ -47,43 +102,47 @@
     },
     {
       "parameters": {
-        "resource": "file",
-        "operation": "upload",
-        "inputDataFieldName": "={{ $json.binaryPropertyName }}",
-        "name": "={{ $json.fileName }}",
+        "name": "={{ $(\"Prepare Action\").item.json.fileName }}",
         "driveId": {
+          "__rl": true,
           "mode": "list",
           "value": "My Drive"
         },
         "folderId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.folderId || 'root' }}"
+          "value": "={{ $(\"Prepare Action\").item.json.folderId || \"root\" }}"
         },
         "options": {
           "simplifyOutput": true
         }
       },
-      "id": "gdf-a4819498",
+      "id": "217e495c-b099-4375-a518-02d7049e8f12",
       "name": "Drive Upload File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        736,
-        -80
-      ]
+        720,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst item = $input.item.json || {};\nlet text = '✅ <b>Da upload file len Google Drive</b>\n\n';\ntext += '<b>' + escapeHtml(item.name || source.fileName) + '</b>\n';\ntext += 'ID: ' + escapeHtml(item.id || '') + '\n';\nif (item.webViewLink) text += '🔗 <a href=\"' + escapeHtml(item.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst fileName = item.name || source.fileName || 'Không rõ tên';\nconst fileId = item.id || '';\nconst link = item.webViewLink || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\nconst mimeType = item.mimeType || source.mimeType || '';\n\nlet text = '✅ <b>Đã upload file lên Google Drive</b>\\n\\n';\ntext += `📄 <b>${escapeHtml(fileName)}</b>\\n`;\nif (mimeType) text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\nif (fileId) text += `ID: <code>${escapeHtml(fileId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>`;\n\nreturn [{ json: { chatId: source.chatId || item.chatId, text: text.trim() } }];"
       },
-      "id": "code-fe725413",
+      "id": "0dc2e1b2-67e1-4d53-bda9-d3e04bac164c",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
-        -80
+        0
       ]
     },
     {
@@ -113,13 +172,13 @@
         },
         "options": {}
       },
-      "id": "tg-557e42a7",
+      "id": "acbdfb95-6783-4954-887e-2c22734e4f20",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
         1200,
-        0
+        128
       ]
     }
   ],
@@ -139,18 +198,18 @@
       "main": [
         [
           {
-            "node": "Co Binary De Upload?",
+            "node": "Co File Telegram?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Co Binary De Upload?": {
+    "Co File Telegram?": {
       "main": [
         [
           {
-            "node": "Drive Upload File",
+            "node": "Telegram Get File",
             "type": "main",
             "index": 0
           }
@@ -158,6 +217,39 @@
         [
           {
             "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Get File": {
+      "main": [
+        [
+          {
+            "node": "Build Telegram Download URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Telegram Download URL": {
+      "main": [
+        [
+          {
+            "node": "Download Telegram Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Telegram Binary": {
+      "main": [
+        [
+          {
+            "node": "Drive Upload File",
             "type": "main",
             "index": 0
           }
@@ -187,8 +279,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

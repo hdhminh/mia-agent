@@ -1,0 +1,202 @@
+{
+  "name": "Sub-workflow: Google Docs - Search Doc",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "docs-search-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText || source.text || message.text || message.caption || payload.text || ''\n  ).trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanQuery(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['tim doc', 'search doc', 'tim tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst query = cleanQuery(source.query || source.docName || source.fileName || body);\nconst limit = Number(source.limit || source.payload?.limit || 10) || 10;\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    query,\n    limit,\n    hasTarget: Boolean(query),\n    response: query ? '' : '📝 <b>Tim Google Doc</b>\\n\\nVi du: <code>tim doc Project Plan</code>'\n  }\n}];"
+      },
+      "id": "docs-search-prepare",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-search-has-target",
+      "name": "Co Tu Khoa Tim?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.query || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.document' and trashed = false\" }}",
+        "limit": "={{ $json.limit }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "docs-search-drive",
+      "name": "Drive Search Docs",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        0,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nconst query = source.query || '';\n\nlet text = '🔎 <b>Ket qua tim Google Docs</b>\\n\\n';\nif (query) text += `Tu khoa: <i>${escapeHtml(query)}</i>\\n\\n`;\n\nif (!rows.length) {\n  text += query ? `Khong tim thay tai lieu phu hop voi: <i>${escapeHtml(query)}</i>` : 'Khong tim thay tai lieu phu hop.';\n} else {\n  rows.forEach((doc, index) => {\n    const name = doc.name || 'Khong ro ten';\n    const link = doc.webViewLink || (doc.id ? `https://docs.google.com/document/d/${doc.id}/edit` : '');\n    const modified = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : '';\n    text += `${index + 1}. 📝 `;\n    text += link ? `<a href=\"${escapeHtml(link)}\">${escapeHtml(name)}</a>\\n` : `<b>${escapeHtml(name)}</b>\\n`;\n    if (modified) text += `   Sua luc: ${escapeHtml(modified)}\\n`;\n    if (doc.id) text += `   ID: <code>${escapeHtml(doc.id)}</code>\\n`;\n    text += '\\n';\n  });\n}\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "docs-search-format",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-search-send",
+      "name": "Gui Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        464,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Tu Khoa Tim?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Tu Khoa Tim?": {
+      "main": [
+        [
+          {
+            "node": "Drive Search Docs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Search Docs": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

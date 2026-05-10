@@ -1,0 +1,335 @@
+{
+  "name": "Sub-workflow: Google Sheets - Read Sheet",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "sheets-read-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc sheet', 'xem sheet', 'read sheet'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet range = source.range || source.payload?.range || '';\nconst rangeMatch = body.match(/([A-Za-z]+\\d+(?::[A-Za-z]+\\d+)?)/);\nif (!range && rangeMatch) range = rangeMatch[1].toUpperCase();\n\nlet sheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nlet sheetName = cleanName(source.sheetName || source.fileName || body.replace(rangeMatch ? rangeMatch[0] : '', '').trim());\nif (!range) range = 'A1:Z30';\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    spreadsheetId: sheetId,\n    sheetName,\n    range,\n    hasTarget: Boolean(sheetId || sheetName),\n    response: (sheetId || sheetName) ? '' : '📖 <b>Doc Google Sheet</b>\\n\\nVi du: <code>doc sheet Chi tieu</code>'\n  }\n}];"
+      },
+      "id": "sheets-read-prepare",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-read-has-target",
+      "name": "Co Sheet Can Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.spreadsheetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-read-has-id",
+      "name": "Co Spreadsheet ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.sheetName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false\" }}",
+        "limit": "={{ 1 }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "sheets-read-search",
+      "name": "Drive Tim Google Sheet",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        -64
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, spreadsheetId: '', response: 'Khong tim thay Google Sheet phu hop.' } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetName: sheet.name || source.sheetName || '', webViewLink: sheet.webViewLink || '' } }];"
+      },
+      "id": "sheets-read-resolve",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.spreadsheetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-read-found",
+      "name": "Tim Thay Sheet?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent($json.spreadsheetId) + '/values/' + encodeURIComponent('Sheet1!' + $json.range) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "id": "sheets-read-call",
+      "name": "Sheets Get Values",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        352,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst result = $input.item.json || {};\nconst rows = Array.isArray(result.values) ? result.values : [];\nconst limited = rows.slice(0, 30);\nlet preview = limited.map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`).join('\\n');\nlet truncated = false;\nif (rows.length > 30) truncated = true;\nif (preview.length > 3000) {\n  preview = preview.slice(0, 3000);\n  truncated = true;\n}\nconst sheetId = source.spreadsheetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets read response.');\n}\n\nlet text = '📖 <b>Noi dung Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(source.sheetName || 'Khong ro ten')}</b>\\n`;\nif (sheetId) text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\ntext += `Range: <code>Sheet1!${escapeHtml(source.range || 'A1:Z30')}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo bang tinh</a>\\n`;\ntext += '\\n<b>Du lieu xem truoc:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Khong co du lieu)')}</pre>`;\nif (truncated) text += '\\n<i>Noi dung da duoc rut gon.</i>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "sheets-read-format",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-read-send",
+      "name": "Gui Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        848,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Sheet Can Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Sheet Can Doc?": {
+      "main": [
+        [
+          {
+            "node": "Co Spreadsheet ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Spreadsheet ID?": {
+      "main": [
+        [
+          {
+            "node": "Sheets Get Values",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Tim Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Tim Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Sheet?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Sheet?": {
+      "main": [
+        [
+          {
+            "node": "Sheets Get Values",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets Get Values": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

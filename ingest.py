@@ -58,7 +58,14 @@ intents = [
     ("xuat file bao cao sang pdf", "tool"), ("export file sang pdf", "tool"), ("doi ten file A thanh B", "tool"),
     ("di chuyen file A vao folder B", "tool"), ("copy file mau hop dong thanh hop dong khach A", "tool"),
     ("xoa file test", "tool"), ("xoa folder Du an cu", "tool"), ("xoa thu muc Archive 2024", "tool"),
-    ("delete folder old reports", "tool")
+    ("delete folder old reports", "tool"),
+    ("google docs", "tool"), ("docs help", "tool"), ("tao doc Project Plan noi dung Muc tieu du an", "tool"),
+    ("doc doc Project Plan", "tool"), ("them vao doc Project Plan: hom nay da sua Drive Upload", "tool"),
+    ("tim doc Project Plan", "tool"), ("xoa doc Project Plan", "tool"),
+    ("google sheets", "tool"), ("sheets help", "tool"), ("tao sheet Chi tieu", "tool"),
+    ("doc sheet Chi tieu", "tool"), ("them dong vao sheet Chi tieu: cafe,30000,an uong", "tool"),
+    ("cap nhat sheet Chi tieu o B2 thanh 35000", "tool"), ("tim sheet Chi tieu", "tool"),
+    ("xoa sheet Chi tieu", "tool")
 ]
 
 def pg_exec(sql):

@@ -1,0 +1,352 @@
+{
+  "name": "Sub-workflow: Google Docs - Delete Doc",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "docs-delete-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['xoa doc', 'delete doc', 'xoa tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.fileId || source.targetId || '';\nconst docName = cleanName(source.docName || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '🗑️ <b>Xoa Google Doc</b>\\n\\nVi du: <code>xoa doc Project Plan</code>'\n  }\n}];"
+      },
+      "id": "docs-delete-prepare",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-delete-has-target",
+      "name": "Co Doc De Xoa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.docId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-delete-has-id",
+      "name": "Co Doc ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.docName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.document' and trashed = false\" }}",
+        "limit": "={{ 1 }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "docs-delete-search",
+      "name": "Drive Tim Google Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        -64
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '' } }];"
+      },
+      "id": "docs-delete-resolve",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.docId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-delete-found",
+      "name": "Tim Thay Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.docId) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,mimeType,trashed,webViewLink"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { trashed: true } }}",
+        "options": {}
+      },
+      "id": "docs-delete-trash",
+      "name": "Drive Trash Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst docId = item.id || source.docId || '';\nconst docName = item.name || source.docName || 'Khong ro ten';\nconst link = item.webViewLink || source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs delete response.');\n}\n\nlet text = '🗑️ <b>Da dua Google Doc vao thung rac</b>\\n\\n';\ntext += `<b>${escapeHtml(docName)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "docs-delete-format",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-delete-send",
+      "name": "Gui Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        960,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Doc De Xoa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Doc De Xoa?": {
+      "main": [
+        [
+          {
+            "node": "Co Doc ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Doc ID?": {
+      "main": [
+        [
+          {
+            "node": "Drive Trash Doc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Tim Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Tim Google Doc": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Doc?": {
+      "main": [
+        [
+          {
+            "node": "Drive Trash Doc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Trash Doc": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

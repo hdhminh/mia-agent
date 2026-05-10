@@ -1,0 +1,93 @@
+{
+  "name": "Sub-workflow: Google Sheets - Help",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "sheets-help-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\n\nif (!chatId) {\n  throw new Error('Missing chatId. Cannot send Google Sheets help message to Telegram.');\n}\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst code = (value = '') => `<code>${escapeHtml(value)}</code>`;\n\nconst text = [\n  '📊 <b>Google Sheets</b>',\n  '',\n  'Mình hỗ trợ các tác vụ sau:',\n  '',\n  '1. <b>Tạo bảng tính</b>',\n  `- ${code('tạo sheet Chi tiêu')}`,\n  `- ${code('tạo bảng tính KPI Team')}`,\n  '',\n  '2. <b>Đọc dữ liệu</b>',\n  `- ${code('đọc sheet Chi tiêu')}`,\n  `- ${code('read sheet KPI Team A1:C10')}`,\n  '',\n  '3. <b>Thêm dòng</b>',\n  `- ${code('thêm dòng vào sheet Chi tiêu: cafe,30000,ăn uống')}`,\n  `- ${code('append row sheet KPI Team: Minh,95,done')}`,\n  '',\n  '4. <b>Cập nhật ô</b>',\n  `- ${code('cập nhật sheet Chi tiêu ô B2 thành 35000')}`,\n  `- ${code('update cell sheet KPI Team C3 done')}`,\n  '',\n  '5. <b>Tìm bảng tính</b>',\n  `- ${code('tìm sheet Chi tiêu')}`,\n  `- ${code('search sheet KPI')}`,\n  '',\n  '6. <b>Xóa bảng tính</b>',\n  `- ${code('xóa sheet Chi tiêu')}`,\n  `- ${code('delete sheet KPI Team')}`,\n  '',\n  'Lưu ý:',\n  '- Google Sheets service dùng cho nội dung bảng tính Google Sheets.',\n  '- Export XLSX/CSV/PDF dùng flow Google Drive Export.',\n  '- Kết quả xem trước sẽ được rút gọn nếu quá dài.',\n  '',\n  'Lệnh nhanh:',\n  code('sheets help'),\n  code('tạo sheet Chi tiêu'),\n  code('đọc sheet Chi tiêu'),\n  code('thêm dòng vào sheet Chi tiêu: cafe,30000,ăn uống'),\n  code('cập nhật sheet Chi tiêu ô B2 thành 35000'),\n  code('tìm sheet Chi tiêu'),\n  code('xóa sheet Chi tiêu')\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
+      },
+      "id": "sheets-help-format",
+      "name": "Huong Dan Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-help-send",
+      "name": "Gui Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        528,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Huong Dan Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Huong Dan Sheets": {
+      "main": [
+        [
+          {
+            "node": "Gui Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

@@ -1,0 +1,335 @@
+{
+  "name": "Sub-workflow: Google Docs - Read Doc",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "docs-read-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc doc', 'xem doc', 'noi dung doc', 'read doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.fileId || source.targetId || source.payload?.docId || '';\nconst docName = cleanName(source.docName || source.fileName || source.title || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '📖 <b>Doc Google Doc</b>\\n\\nVi du: <code>doc doc Project Plan</code>'\n  }\n}];"
+      },
+      "id": "docs-read-prepare",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasTarget }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-read-has-target",
+      "name": "Co Tai Lieu Can Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.docId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-read-has-id",
+      "name": "Co Doc ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.docName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.document' and trashed = false\" }}",
+        "limit": "={{ 1 }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "docs-read-search",
+      "name": "Drive Tim Google Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -304,
+        -64
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '', mimeType: doc.mimeType || '' } }];"
+      },
+      "id": "docs-read-resolve",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.docId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-read-found",
+      "name": "Tim Thay Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent($json.docId) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "id": "docs-read-get",
+      "name": "Docs Get Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        384,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nfunction collectText(node, out = []) {\n  if (Array.isArray(node)) {\n    node.forEach((item) => collectText(item, out));\n    return out;\n  }\n  if (!node || typeof node !== 'object') return out;\n  if (node.textRun && typeof node.textRun.content === 'string') out.push(node.textRun.content);\n  Object.values(node).forEach((value) => collectText(value, out));\n  return out;\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst docId = doc.documentId || source.docId || '';\nconst title = doc.title || source.docName || 'Khong ro ten';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();\nconst preview = content.slice(0, 3000);\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs read response.');\n}\n\nlet text = '📖 <b>Noi dung Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>\\n`;\ntext += '\\n<b>Noi dung xem truoc:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Tai lieu rong)')}</pre>`;\nif (content.length > 3000) text += '\\n<i>Noi dung da duoc rut gon.</i>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+      },
+      "id": "docs-read-format",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text ?? $json.response }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-read-send",
+      "name": "Gui Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        864,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Co Tai Lieu Can Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Tai Lieu Can Doc?": {
+      "main": [
+        [
+          {
+            "node": "Co Doc ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Doc ID?": {
+      "main": [
+        [
+          {
+            "node": "Docs Get Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Tim Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Tim Google Doc": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Doc?": {
+      "main": [
+        [
+          {
+            "node": "Docs Get Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs Get Document": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        [
+          {
+            "node": "Gui Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

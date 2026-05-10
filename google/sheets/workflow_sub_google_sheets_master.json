@@ -1,0 +1,223 @@
+{
+  "name": "Sub-workflow: Google Sheets Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "sheets-master-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText || source.text || message.text || message.caption || payload.text || payload.rawText || ''\n  ).trim();\n  return { payload, message, chatId, rawText };\n}\n\nconst source = $input.item.json || {};\nconst ctx = getTelegramContext(source);\nconst text = normalize(ctx.rawText);\nconst hasAny = (keywords) => keywords.some((k) => text.includes(k));\n\nlet action = 'help';\n\nif (hasAny(['sheets help', 'google sheets help', 'huong dan sheets', 'sheet help'])) {\n  action = 'help';\n} else if (hasAny(['tao sheet', 'tao bang tinh', 'create sheet'])) {\n  action = 'create_sheet';\n} else if (hasAny(['them dong vao sheet', 'append row'])) {\n  action = 'append_row';\n} else if (hasAny(['cap nhat sheet', 'cap nhat o', 'update cell'])) {\n  action = 'update_cell';\n} else if (hasAny(['doc sheet', 'xem sheet', 'read sheet'])) {\n  action = 'read_sheet';\n} else if (hasAny(['tim sheet', 'search sheet', 'tim bang tinh'])) {\n  action = 'search_sheet';\n} else if (hasAny(['xoa sheet', 'delete sheet', 'xoa bang tinh'])) {\n  action = 'delete_sheet';\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: ctx.rawText,\n    text,\n    action\n  }\n}];"
+      },
+      "id": "sheets-master-prepare",
+      "name": "Chuan Bi Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowMap = {\n  create_sheet: 'Sub-workflow: Google Sheets - Create Sheet',\n  read_sheet: 'Sub-workflow: Google Sheets - Read Sheet',\n  append_row: 'Sub-workflow: Google Sheets - Append Row',\n  update_cell: 'Sub-workflow: Google Sheets - Update Cell',\n  search_sheet: 'Sub-workflow: Google Sheets - Search Sheet',\n  delete_sheet: 'Sub-workflow: Google Sheets - Delete Sheet',\n  help: 'Sub-workflow: Google Sheets - Help'\n};\n\nreturn [{ json: { ...$json, workflowName: workflowMap[$json.action] || workflowMap.help } }];"
+      },
+      "id": "sheets-master-pick",
+      "name": "Chon Workflow Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?active=true&limit=250&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-master-lookup",
+      "name": "Lookup Sheets Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -736,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Sheets').item.json || {};\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\nif (!found) {\n  return [{ json: { ...source, hasWorkflow: false, response: 'Khong tim thay workflow con: ' + source.workflowName } }];\n}\nreturn [{ json: { ...source, hasWorkflow: true, workflowId: found.id } }];"
+      },
+      "id": "sheets-master-extract",
+      "name": "Extract Sheets Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasWorkflow }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-master-found",
+      "name": "Tim Thay Workflow Sheets?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "sheets-master-call",
+      "name": "Goi Sheets Sub Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-master-send-error",
+      "name": "Gui Loi Lookup Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Sheets": {
+      "main": [
+        [
+          {
+            "node": "Chon Workflow Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Workflow Sheets": {
+      "main": [
+        [
+          {
+            "node": "Lookup Sheets Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Sheets Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Sheets Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Sheets Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Workflow Sheets?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Workflow Sheets?": {
+      "main": [
+        [
+          {
+            "node": "Goi Sheets Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Loi Lookup Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

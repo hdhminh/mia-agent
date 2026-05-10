@@ -2,7 +2,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "52c239fd-6375-4629-a0a7-dc9287d7a027",
+      "id": "fe3ab4a3-2dc6-4604-8c7c-40b8749ad350",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
@@ -13,9 +13,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $input.item.json || {};\nconst msg = payload.message || payload.body?.message || payload.payload?.message || {};\n\nconst rawText =\n  payload.rawText ||\n  payload.text ||\n  msg.text ||\n  payload.payload?.text ||\n  '';\n\nconst chatId =\n  payload.chatId ||\n  msg.chat?.id ||\n  payload.payload?.chatId ||\n  payload.payload?.message?.chat?.id;\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\n\nfunction hasAny(keywords) {\n  return keywords.some((k) => text.includes(k));\n}\n\nlet action = 'help';\n\nif (hasAny([\n  'drive help',\n  'huong dan drive',\n  'dung drive nhu the nao',\n  'google drive help'\n])) {\n  action = 'help';\n} else if (hasAny([\n  'xem drive',\n  'xem file drive',\n  'file gan day',\n  'liet ke file',\n  'danh sach file',\n  'list drive files',\n  'recent files'\n])) {\n  action = 'list_files';\n} else if (hasAny([\n  'tim file',\n  'search file',\n  'kiem file',\n  'tim trong drive',\n  'find file'\n])) {\n  action = 'search_file';\n} else if (hasAny([\n  'thong tin file',\n  'chi tiet file',\n  'file info',\n  'metadata file'\n])) {\n  action = 'get_file_info';\n} else if (hasAny([\n  'tao folder',\n  'tao thu muc',\n  'create folder'\n])) {\n  action = 'create_folder';\n} else if (hasAny([\n  'tao file',\n  'tao tep',\n  'create file'\n])) {\n  action = 'create_file';\n} else if (hasAny([\n  'upload file',\n  'luu file nay vao drive',\n  'luu tep nay vao drive',\n  'tai file nay len drive',\n  'up file'\n])) {\n  action = 'upload_file';\n} else if (hasAny([\n  'download file',\n  'tai file',\n  'gui toi file',\n  'lay file',\n  'tai xuong file',\n  'send me file'\n])) {\n  action = 'download_file';\n} else if (hasAny([\n  'copy file',\n  'nhan ban file',\n  'tao ban sao file',\n  'duplicate file',\n  'copy template'\n])) {\n  action = 'copy_file';\n} else if (hasAny([\n  'doi ten file',\n  'rename file',\n  'doi ten thu muc'\n]) || /doi ten .+ thanh .+/.test(text)) {\n  action = 'rename_file';\n} else if (hasAny([\n  'di chuyen file',\n  'move file',\n  'chuyen file',\n  'dua file'\n])) {\n  action = 'move_file';\n} else if (hasAny([\n  'xoa folder',\n  'xoa thu muc',\n  'delete folder',\n  'delete directory'\n])) {\n  action = 'delete_folder';\n} else if (hasAny([\n  'xoa file',\n  'delete file',\n  'bo file vao thung rac',\n  'move file to trash'\n])) {\n  action = 'delete_file';\n} else if (hasAny([\n  'share file',\n  'chia se file',\n  'cap quyen file',\n  'give access'\n])) {\n  action = 'share_file';\n} else if (hasAny([\n  'xuat file',\n  'export file',\n  'chuyen file',\n  'chuyen doc sang pdf',\n  'export sheet'\n])) {\n  action = 'export_file';\n} else if (hasAny([\n  'drive',\n  'google drive'\n])) {\n  action = 'list_files';\n}\n\nreturn [{\n  json: {\n    payload,\n    message: msg,\n    chatId,\n    rawText,\n    text,\n    action\n  }\n}];"
+        "jsCode": "const payload = $input.item.json || {};\nconst msg = payload.message || payload.body?.message || payload.payload?.message || {};\n\nconst rawText = String(\n  payload.rawText ||\n  payload.text ||\n  msg.text ||\n  msg.caption ||\n  payload.payload?.text ||\n  payload.payload?.rawText ||\n  ''\n).trim();\n\nconst chatId =\n  payload.chatId ||\n  msg.chat?.id ||\n  payload.payload?.chatId ||\n  payload.payload?.message?.chat?.id ||\n  '';\n\nconst document = payload.document || msg.document || payload.payload?.document || payload.payload?.message?.document || null;\nconst photo = payload.photo || msg.photo || payload.payload?.photo || payload.payload?.message?.photo || null;\nconst video = payload.video || msg.video || payload.payload?.video || payload.payload?.message?.video || null;\nconst audio = payload.audio || msg.audio || msg.voice || payload.payload?.audio || payload.payload?.message?.audio || payload.payload?.message?.voice || null;\n\nconst hasDocument = Boolean(document);\nconst hasPhoto = Boolean(photo);\nconst hasVideo = Boolean(video);\nconst hasAudio = Boolean(audio);\nconst hasAttachment = Boolean(payload.hasAttachment || hasDocument || hasPhoto || hasVideo || hasAudio);\n\nconst fileId = payload.fileId || document?.file_id || video?.file_id || audio?.file_id || '';\nconst fileName = payload.fileName || document?.file_name || video?.file_name || audio?.file_name || '';\nconst mimeType = payload.mimeType || document?.mime_type || video?.mime_type || audio?.mime_type || '';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nfunction hasAny(keywords) { return keywords.some((k) => text.includes(k)); }\n\nlet action = 'help';\n\nif (hasAny(['drive help','huong dan drive','dung drive nhu the nao','google drive help'])) action = 'help';\nelse if (hasAny(['xem drive','xem file drive','file gan day','liet ke file','danh sach file','list drive files','recent files'])) action = 'list_files';\nelse if (hasAny(['tim file','search file','kiem file','tim trong drive','find file'])) action = 'search_file';\nelse if (hasAny(['thong tin file','chi tiet file','file info','metadata file','noi dung file','doc file','read file'])) action = 'get_file_info';\nelse if (hasAny(['tao folder','tao thu muc','create folder'])) action = 'create_folder';\nelse if (hasAny(['tao file','tao tep','create file'])) action = 'create_file';\nelse if (hasAny(['upload file','upload tep','luu file nay vao drive','luu tep nay vao drive','tai file nay len drive','tai tep nay len drive','tai len drive','luu vao drive','up file'])) action = 'upload_file';\nelse if (hasAttachment && hasAny(['upload','luu','tai len'])) action = 'upload_file';\nelse if (hasAny(['download file','tai file','tai tep','gui toi file','lay file','tai xuong file','send me file'])) action = 'download_file';\nelse if (hasAny(['copy file','nhan ban file','tao ban sao file','duplicate file','copy template'])) action = 'copy_file';\nelse if (hasAny(['doi ten file','rename file','doi ten thu muc']) || /doi ten .+ thanh .+/.test(text)) action = 'rename_file';\nelse if (hasAny(['di chuyen file','move file','chuyen file','dua file'])) action = 'move_file';\nelse if (hasAny(['xoa folder','xoa thu muc','delete folder','delete directory'])) action = 'delete_folder';\nelse if (hasAny(['xoa file','delete file','bo file vao thung rac','move file to trash'])) action = 'delete_file';\nelse if (hasAny(['share file','chia se file','cap quyen file','give access','share folder','chia se folder','cap quyen folder'])) action = 'share_file';\nelse if (hasAny(['xuat file','export file','chuyen file sang','export sheet'])) action = 'export_file';\nelse if (hasAny(['drive','google drive'])) action = 'list_files';\n\nreturn [{\n  json: {\n    ...payload,\n    payload,\n    message: msg,\n    chatId,\n    rawText,\n    text,\n    action,\n    hasAttachment,\n    hasDocument,\n    hasPhoto,\n    hasVideo,\n    hasAudio,\n    document,\n    photo,\n    video,\n    audio,\n    fileId,\n    fileName,\n    mimeType\n  }\n}];"
       },
-      "id": "bdbf32c4-dc0d-4774-b8ec-5de67a4ca426",
+      "id": "cea4fad7-c860-452f-bacb-445fd8930804",
       "name": "Chuan Bi Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -28,7 +28,7 @@
       "parameters": {
         "jsCode": "const workflowMap = {\n  list_files: 'Sub-workflow: Google Drive - List Files',\n  search_file: 'Sub-workflow: Google Drive - Search File',\n  get_file_info: 'Sub-workflow: Google Drive - Get File Info',\n  create_folder: 'Sub-workflow: Google Drive - Create Folder',\n  create_file: 'Sub-workflow: Google Drive - Create File',\n  upload_file: 'Sub-workflow: Google Drive - Upload File',\n  download_file: 'Sub-workflow: Google Drive - Download File',\n  copy_file: 'Sub-workflow: Google Drive - Copy File',\n  rename_file: 'Sub-workflow: Google Drive - Rename File',\n  move_file: 'Sub-workflow: Google Drive - Move File',\n  delete_folder: 'Sub-workflow: Google Drive - Delete Folder',\n  delete_file: 'Sub-workflow: Google Drive - Delete File',\n  share_file: 'Sub-workflow: Google Drive - Share File',\n  export_file: 'Sub-workflow: Google Drive - Export File',\n  help: 'Sub-workflow: Google Drive - Help'\n};\nreturn [{ json: { ...$json, workflowName: workflowMap[$json.action] || workflowMap.help } }];"
       },
-      "id": "64f58d78-a363-4756-a049-8e641b0d1e31",
+      "id": "1cefc8e4-f485-4836-bd37-330e5c861c06",
       "name": "Chon Workflow Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -51,7 +51,7 @@
         },
         "options": {}
       },
-      "id": "d27b86b0-2456-46bd-ac63-3e7ed1a49df9",
+      "id": "068e0de7-f696-42e4-9ae9-73b0b76e8da5",
       "name": "Lookup Drive Workflow ID",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
@@ -64,7 +64,7 @@
       "parameters": {
         "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Drive').item.json;\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\nif (!found) return [{ json: { ...source, hasWorkflow: false, response: 'Khong tim thay workflow con: ' + source.workflowName } }];\nreturn [{ json: { ...source, hasWorkflow: true, workflowId: found.id } }];"
       },
-      "id": "0c47c12e-1bcc-4bf7-a008-0e4571bf2a10",
+      "id": "27223eac-1749-4570-bd3a-193be4020dd2",
       "name": "Extract Drive Workflow ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -84,7 +84,7 @@
           ]
         }
       },
-      "id": "22cea2f1-33e2-4f9f-b8f0-3ee79237f83a",
+      "id": "2be58987-ecaa-47f0-adc2-06e8396cbac8",
       "name": "Tim Thay Workflow Drive?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
@@ -102,7 +102,7 @@
         },
         "options": {}
       },
-      "id": "ef949114-0c17-493b-9aa7-71fff94df103",
+      "id": "9e5fd5cb-daf9-4b60-abc4-1b1766911b93",
       "name": "Goi Drive Sub Workflow",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -130,7 +130,7 @@
         },
         "options": {}
       },
-      "id": "2e33a68b-dd92-4da7-91ea-29be3d49116c",
+      "id": "bbb81b84-fb3f-4ea9-90d5-f150aeb5ae56",
       "name": "Gui Loi Lookup Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,

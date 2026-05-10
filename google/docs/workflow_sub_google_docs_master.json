@@ -1,0 +1,223 @@
+{
+  "name": "Sub-workflow: Google Docs Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "docs-master-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    payload.rawText ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nconst source = $input.item.json || {};\nconst ctx = getTelegramContext(source);\nconst text = normalize(ctx.rawText);\nconst hasAny = (keywords) => keywords.some((k) => text.includes(k));\n\nlet action = 'help';\n\nif (hasAny(['docs help', 'google docs help', 'huong dan docs', 'huong dan google docs', 'doc help'])) {\n  action = 'help';\n} else if (hasAny(['tao doc', 'tao tai lieu', 'create doc'])) {\n  action = 'create_doc';\n} else if (hasAny(['them vao doc', 'append doc', 'ghi them vao tai lieu'])) {\n  action = 'append_doc';\n} else if (hasAny(['doc doc', 'xem doc', 'noi dung doc', 'read doc'])) {\n  action = 'read_doc';\n} else if (hasAny(['tim doc', 'search doc', 'tim tai lieu'])) {\n  action = 'search_doc';\n} else if (hasAny(['xoa doc', 'delete doc', 'xoa tai lieu'])) {\n  action = 'delete_doc';\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: ctx.rawText,\n    text,\n    action\n  }\n}];"
+      },
+      "id": "docs-master-prepare",
+      "name": "Chuan Bi Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowMap = {\n  create_doc: 'Sub-workflow: Google Docs - Create Doc',\n  read_doc: 'Sub-workflow: Google Docs - Read Doc',\n  append_doc: 'Sub-workflow: Google Docs - Append Doc',\n  search_doc: 'Sub-workflow: Google Docs - Search Doc',\n  delete_doc: 'Sub-workflow: Google Docs - Delete Doc',\n  help: 'Sub-workflow: Google Docs - Help'\n};\n\nreturn [{ json: { ...$json, workflowName: workflowMap[$json.action] || workflowMap.help } }];"
+      },
+      "id": "docs-master-pick",
+      "name": "Chon Workflow Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?active=true&limit=250&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-master-lookup",
+      "name": "Lookup Docs Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -736,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Docs').item.json || {};\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\nif (!found) {\n  return [{ json: { ...source, hasWorkflow: false, response: 'Khong tim thay workflow con: ' + source.workflowName } }];\n}\nreturn [{ json: { ...source, hasWorkflow: true, workflowId: found.id } }];"
+      },
+      "id": "docs-master-extract",
+      "name": "Extract Docs Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasWorkflow }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-master-found",
+      "name": "Tim Thay Workflow Docs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "docs-master-call",
+      "name": "Goi Docs Sub Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "docs-master-send-error",
+      "name": "Gui Loi Lookup Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Docs": {
+      "main": [
+        [
+          {
+            "node": "Chon Workflow Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Workflow Docs": {
+      "main": [
+        [
+          {
+            "node": "Lookup Docs Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Docs Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Docs Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Docs Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Workflow Docs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Workflow Docs?": {
+      "main": [
+        [
+          {
+            "node": "Goi Docs Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Loi Lookup Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}
