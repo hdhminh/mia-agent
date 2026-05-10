@@ -1,33 +1,41 @@
 {
-  "name": "Sub-workflow: Google Gmail Master",
   "nodes": [
     {
       "parameters": {},
-      "id": "gmail-master-trigger",
+      "id": "a5cc84d4-38e7-44a5-b7a3-a7a10582a6f5",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [-4352, 640]
+      "position": [
+        -8544,
+        80
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(gui nhap|gui email nhap|gui mail nhap|send draft|gui mail|gui email|send mail|send email)\\b/.test(text)) {\n  action = 'send_email';\n} else if (/\\b(soan mail|soan email|viet nhap mail|viet nhap email|tao nhap mail|tao nhap email|draft mail|draft email)\\b/.test(text)) {\n  action = 'draft_email';\n} else if (/\\b(tra loi mail|tra loi email|reply mail|reply email)\\b/.test(text)) {\n  action = 'reply_email';\n} else if (/\\b(doc mail|doc email|read mail|read email|noi dung mail|noi dung email|open mail|open email|chi tiet mail|chi tiet email)\\b/.test(text)) {\n  action = 'read_email';\n} else if (/\\b(tim mail|tim email|search mail|search email|tim kiem mail|tim kiem email)\\b/.test(text)) {\n  action = 'search_email';\n} else if (/\\b(xem mail|xem email|inbox|hop thu|hop thu den|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email)\\b/.test(text)) {\n  action = 'list_inbox';\n} else if (/\\b(gmail|mail|email)\\b/.test(text)) {\n  action = 'list_inbox';\n}\n\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action } }];"
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(gmail help|mail help|email help|huong dan gmail|huong dan mail|huong dan email|google gmail help|help gmail)\\b/.test(text)) {\n  action = 'help';\n\n} else if (/\\b(gui nhap|gui email nhap|gui mail nhap|send draft|gui mail|gui email|send mail|send email)\\b/.test(text)) {\n  action = 'send_email';\n\n} else if (/\\b(soan mail|soan email|viet nhap mail|viet nhap email|tao nhap mail|tao nhap email|draft mail|draft email)\\b/.test(text)) {\n  action = 'draft_email';\n\n} else if (/\\b(tra loi mail|tra loi email|reply mail|reply email)\\b/.test(text)) {\n  action = 'reply_email';\n\n} else if (/\\b(doc mail|doc email|read mail|read email|noi dung mail|noi dung email|open mail|open email|chi tiet mail|chi tiet email)\\b/.test(text)) {\n  action = 'read_email';\n\n} else if (/\\b(tim mail|tim email|search mail|search email|tim kiem mail|tim kiem email)\\b/.test(text)) {\n  action = 'search_email';\n\n} else if (/\\b(xem mail|xem email|inbox|hop thu|hop thu den|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email)\\b/.test(text)) {\n  action = 'list_inbox';\n\n} else if (text === 'gmail' || text === 'mail' || text === 'email') {\n  action = 'help';\n\n} else if (/\\b(gmail|mail|email)\\b/.test(text)) {\n  action = 'list_inbox';\n}\n\nreturn [{\n  json: {\n    payload,\n    message: msg,\n    chatId,\n    rawText,\n    text,\n    action,\n  },\n}];"
       },
-      "id": "gmail-master-prepare",
+      "id": "955aef33-cd18-4b80-b512-71036fa28dd1",
       "name": "Chuan Bi Gmail",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-4112, 640]
+      "position": [
+        -8304,
+        80
+      ]
     },
     {
       "parameters": {
         "jsCode": "const workflowMap = {\n  list_inbox: 'Sub-workflow: Google Gmail - List Inbox',\n  read_email: 'Sub-workflow: Google Gmail - Read Email',\n  send_email: 'Sub-workflow: Google Gmail - Send Email',\n  draft_email: 'Sub-workflow: Google Gmail - Draft Email',\n  search_email: 'Sub-workflow: Google Gmail - Search Email',\n  reply_email: 'Sub-workflow: Google Gmail - Reply Email',\n  help: 'Sub-workflow: Google Gmail - Help'\n};\n\nconst workflowName = workflowMap[$json.action] || workflowMap.help;\nreturn [{ json: { ...$json, workflowName } }];"
       },
-      "id": "gmail-master-select",
+      "id": "866fb240-8fa9-4300-8592-f5e90a366855",
       "name": "Chon Workflow Gmail",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-3856, 640]
+      "position": [
+        -8048,
+        80
+      ]
     },
     {
       "parameters": {
@@ -43,21 +51,27 @@
         },
         "options": {}
       },
-      "id": "gmail-master-lookup",
+      "id": "73c4980b-c47f-414c-8133-12b8c8c77221",
       "name": "Lookup Gmail Workflow ID",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-3568, 640]
+      "position": [
+        -7760,
+        80
+      ]
     },
     {
       "parameters": {
         "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Gmail').item.json;\nconst found = workflows.find((w) => w.name === source.workflowName);\n\nif (!found) {\n  return [{ json: { ...source, hasWorkflow: false, response: `Khong tim thay workflow con: ${source.workflowName}` } }];\n}\n\nreturn [{ json: { ...source, hasWorkflow: true, workflowId: found.id } }];"
       },
-      "id": "gmail-master-extract",
+      "id": "10ad3f36-56f3-4db6-9a9c-d390d535951e",
       "name": "Extract Gmail Workflow ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-3328, 640]
+      "position": [
+        -7520,
+        80
+      ]
     },
     {
       "parameters": {
@@ -70,11 +84,14 @@
           ]
         }
       },
-      "id": "gmail-master-if",
+      "id": "347f09b6-deea-4b62-80e6-4ebd531f2de8",
       "name": "Tim Thay Workflow Gmail?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [-3088, 640]
+      "position": [
+        -7280,
+        80
+      ]
     },
     {
       "parameters": {
@@ -85,11 +102,14 @@
         },
         "options": {}
       },
-      "id": "gmail-master-call",
+      "id": "b8244cb9-2e5f-43a0-8399-9d13558126a2",
       "name": "Goi Gmail Sub Workflow",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [-2832, 560]
+      "position": [
+        -7024,
+        0
+      ]
     },
     {
       "parameters": {
@@ -110,11 +130,14 @@
         },
         "options": {}
       },
-      "id": "gmail-master-error",
+      "id": "76dff838-9de7-4026-a121-9b9337d89623",
       "name": "Gui Loi Lookup Gmail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-2832, 752]
+      "position": [
+        -7024,
+        192
+      ]
     }
   ],
   "connections": {
@@ -192,7 +215,8 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

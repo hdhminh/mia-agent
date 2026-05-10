@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Help",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-f416fc55",
+      "id": "6079b193-6cfe-4ea6-afe7-775d45d4ec14",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -336,
-        -144
+        0,
+        0
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📁 <b>Google Drive</b>\n\n- xem file drive\n- tim file hop dong\n- thong tin file bao cao\n- tao folder Khach hang\n- upload file nay vao drive\n- tai file bao cao\n- copy file mau hop dong thanh hop dong khach A\n- doi ten file A thanh B\n- di chuyen file A vao folder B\n- share file A cho email@example.com\n- xuat file A sang pdf\n- xoa file A';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst msg =\n  source.message ||\n  source.body?.message ||\n  source.payload?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  msg.chat?.id ||\n  source.payload?.chatId ||\n  source.body?.chatId ||\n  '';\n\nif (!chatId) {\n  throw new Error('Missing chatId. Cannot send Google Drive help message to Telegram.');\n}\n\nconst text = [\n  '📁 <b>Google Drive</b>',\n  '',\n  'Mình hỗ trợ các tác vụ sau:',\n  '',\n  '1. <b>Xem file gần đây</b>',\n  '- xem file drive',\n  '- xem drive',\n  '- file gần đây',\n  '- danh sách file drive',\n  '',\n  '2. <b>Tìm file / thư mục</b>',\n  '- tìm file hợp đồng',\n  '- tìm trong drive báo cáo',\n  '- kiếm file CV',\n  '',\n  '3. <b>Xem thông tin file</b>',\n  '- thông tin file báo cáo',\n  '- chi tiết file hợp đồng',\n  '- file info CV',\n  '',\n  '4. <b>Tạo thư mục</b>',\n  '- tạo folder Khách hàng',\n  '- tạo thư mục Dự án AI',\n  '',\n  '5. <b>Tạo file text</b>',\n  '- tạo file ghi-chu.txt nội dung Xin chào',\n  '- create file todo.txt content mua sữa',\n  '',\n  '6. <b>Upload file</b>',\n  '- upload file này vào drive',\n  '- lưu file này vào drive',\n  '- tải file này lên drive',\n  '',\n  '7. <b>Tải file</b>',\n  '- tải file báo cáo',\n  '- download file hợp đồng',\n  '- gửi tôi file CV',\n  '',\n  '8. <b>Copy / nhân bản file</b>',\n  '- copy file mẫu hợp đồng thành hợp đồng khách A',\n  '- nhân bản file báo giá mẫu',\n  '',\n  '9. <b>Đổi tên file</b>',\n  '- đổi tên file A thành B',\n  '- rename file báo cáo cũ thành báo cáo mới',\n  '',\n  '10. <b>Di chuyển file</b>',\n  '- di chuyển file A vào folder B',\n  '- chuyển file hợp đồng vào thư mục Khách hàng',\n  '',\n  '11. <b>Chia sẻ file</b>',\n  '- share file A cho email@example.com',\n  '- chia sẻ file báo cáo cho email@example.com',\n  '- cấp quyền file hợp đồng cho email@example.com',\n  '',\n  '12. <b>Xuất file</b>',\n  '- xuất file A sang pdf',\n  '- export file báo cáo sang docx',\n  '- xuất sheet doanh thu sang xlsx',\n  '',\n  '13. <b>Xóa file</b>',\n  '- xóa file A',\n  '- bỏ file test vào thùng rác',\n  '',\n  '14. <b>Xóa thư mục</b>',\n  '- xóa folder Dự án cũ',\n  '- delete folder Archive 2024',\n  '',\n  'Lệnh nhanh:',\n  '<code>drive help</code>',\n  '<code>xem file drive</code>',\n  '<code>tìm file hợp đồng</code>',\n  '<code>tạo folder Khách hàng</code>',\n  '<code>tạo file ghi-chu.txt nội dung Xin chào</code>',\n  '<code>xóa folder Dự án cũ</code>',\n].join('\\n');\n\nreturn [{\n  json: {\n    chatId,\n    text,\n  },\n}];"
       },
-      "id": "code-64a3c4c8",
+      "id": "7ecce338-cfbb-4ca6-a110-a13dd2332b4b",
       "name": "Huong Dan Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -80,
-        -144
+        256,
+        0
       ]
     },
     {
@@ -52,13 +51,13 @@
         },
         "options": {}
       },
-      "id": "tg-ab694af4",
+      "id": "87cc52d3-bb2f-487a-a234-308fbbc9e975",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        192,
-        -144
+        528,
+        0
       ]
     }
   ],
@@ -86,7 +85,8 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

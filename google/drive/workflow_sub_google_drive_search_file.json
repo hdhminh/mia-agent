@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Search File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-4c509e4a",
+      "id": "a6312059-8df5-4ba8-acee-680bb4252e6e",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -736,
+        80
       ]
     },
     {
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst query = String(source.fileName || payload.fileName || raw.replace(/^(tim file|search file|kiem file|tim trong drive|find file)\\s*/i, '')).trim();\nconst mimeType = source.mimeType || payload.mimeType || '';\nconst limit = Number(source.limit || payload.limit || 10) || 10;\nreturn [{ json: { ...source, payload, message, chatId, raw, query, mimeType, limit, hasTarget: Boolean(query), response: query ? '' : '📁 <b>Tim file trong Drive</b>\\n\\nVi du: tim file hop dong' } }];"
       },
-      "id": "code-761d02ed",
+      "id": "740a5038-b605-4860-b5ce-b9519b66b4d2",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -496,
+        80
       ]
     },
     {
@@ -36,22 +35,20 @@
           ]
         }
       },
-      "id": "if-c370efc5",
+      "id": "3f52e67d-e776-4e75-9deb-80da54fc39ff",
       "name": "Du Du Lieu Tim File?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        -256,
+        80
       ]
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "={{ \"name contains '\" + String($json.query || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" + ($json.mimeType ? \" and mimeType = '\" + String($json.mimeType).replace(/'/g, \"\\\\'\") + \"'\" : '') }}",
-        "returnAll": false,
         "limit": "={{ $json.limit }}",
         "filter": {
           "driveId": {
@@ -72,27 +69,33 @@
           ]
         }
       },
-      "id": "gds-54c5f53d",
+      "id": "ff36a883-64ad-49a1-9769-d8dae5452c1e",
       "name": "Drive Search File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        736,
-        -80
+        0,
+        0
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nlet text = '🔎 <b>Ket qua tim file</b>\n\n';\nif (!rows.length) {\n  text += 'Khong tim thay file phu hop voi: <i>' + escapeHtml(source.query) + '</i>';\n} else {\n  rows.forEach((file, index) => {\n    const link = pickFirst(file.webViewLink);\n    text += String(index + 1) + '. ';\n    text += link ? '<a href=\"' + escapeHtml(link) + '\">' + escapeHtml(file.name || 'Khong ro ten') + '</a>' : '<b>' + escapeHtml(file.name || 'Khong ro ten') + '</b>';\n    text += '\nID: ' + escapeHtml(file.id || '') + '\n';\n    text += 'Loai: ' + escapeHtml(file.mimeType || 'Khong ro') + '\n';\n    const modified = formatDate(file.modifiedTime);\n    if (modified) text += 'Sua luc: ' + escapeHtml(modified) + '\n';\n    text += '\n';\n  });\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime())\n    ? ''\n    : date.toLocaleString('vi-VN', {\n        timeZone: 'Asia/Ho_Chi_Minh',\n        hour12: false,\n      });\n};\n\nconst getFileType = (mimeType = '') => {\n  if (mimeType === 'application/vnd.google-apps.folder') {\n    return { icon: '📁', label: 'Folder' };\n  }\n\n  if (mimeType === 'application/vnd.google-apps.document') {\n    return { icon: '📝', label: 'Google Docs' };\n  }\n\n  if (mimeType === 'application/vnd.google-apps.spreadsheet') {\n    return { icon: '📊', label: 'Google Sheets' };\n  }\n\n  if (mimeType === 'application/vnd.google-apps.presentation') {\n    return { icon: '📽️', label: 'Google Slides' };\n  }\n\n  if (mimeType === 'application/pdf') {\n    return { icon: '📕', label: 'PDF' };\n  }\n\n  if (mimeType.includes('wordprocessingml') || mimeType === 'application/msword') {\n    return { icon: '📄', label: 'Word' };\n  }\n\n  if (mimeType.includes('spreadsheetml') || mimeType === 'application/vnd.ms-excel') {\n    return { icon: '📊', label: 'Excel' };\n  }\n\n  if (mimeType.includes('presentationml') || mimeType === 'application/vnd.ms-powerpoint') {\n    return { icon: '📽️', label: 'PowerPoint' };\n  }\n\n  if (mimeType.startsWith('image/')) {\n    return { icon: '🖼️', label: 'Image' };\n  }\n\n  if (mimeType.startsWith('video/')) {\n    return { icon: '🎬', label: 'Video' };\n  }\n\n  if (mimeType.startsWith('audio/')) {\n    return { icon: '🎵', label: 'Audio' };\n  }\n\n  if (\n    mimeType === 'application/zip' ||\n    mimeType === 'application/x-zip-compressed' ||\n    mimeType.includes('compressed')\n  ) {\n    return { icon: '🗜️', label: 'Archive' };\n  }\n\n  if (mimeType.startsWith('text/')) {\n    return { icon: '📄', label: 'Text' };\n  }\n\n  return { icon: '📄', label: 'File' };\n};\n\nconst shortenId = (id = '') => {\n  const value = String(id || '');\n  if (value.length <= 16) return value;\n  return `${value.slice(0, 8)}...${value.slice(-6)}`;\n};\n\nconst source = $('Prepare Action').item.json;\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name)\n  .sort((a, b) => {\n    const timeA = new Date(a.modifiedTime || a.createdTime || 0).getTime();\n    const timeB = new Date(b.modifiedTime || b.createdTime || 0).getTime();\n    return timeB - timeA;\n  });\n\nconst query = pickFirst(source.query, source.fileName, source.rawText, source.text);\n\nlet text = '🔎 <b>Kết quả tìm file trong Google Drive</b>\\n\\n';\n\nif (query) {\n  text += `Từ khóa: <i>${escapeHtml(query)}</i>\\n\\n`;\n}\n\nif (!rows.length) {\n  text += query\n    ? `Không tìm thấy file phù hợp với: <i>${escapeHtml(query)}</i>`\n    : 'Không tìm thấy file phù hợp.';\n} else {\n  rows.forEach((file, index) => {\n    const name = file.name || 'Không rõ tên';\n    const link = pickFirst(file.webViewLink);\n    const modified = formatDate(file.modifiedTime);\n    const created = formatDate(file.createdTime);\n    const fileType = getFileType(file.mimeType || '');\n    const fileId = pickFirst(file.id, file.fileId);\n\n    text += `${index + 1}. ${fileType.icon} `;\n\n    if (link) {\n      text += `<a href=\"${escapeHtml(link)}\">${escapeHtml(name)}</a>\\n`;\n    } else {\n      text += `<b>${escapeHtml(name)}</b>\\n`;\n    }\n\n    text += `   Loại: ${escapeHtml(fileType.label)}\\n`;\n\n    if (modified) {\n      text += `   Sửa lúc: ${escapeHtml(modified)}\\n`;\n    } else if (created) {\n      text += `   Tạo lúc: ${escapeHtml(created)}\\n`;\n    }\n\n    if (fileId) {\n      text += `   ID: <code>${escapeHtml(shortenId(fileId))}</code>\\n`;\n    }\n\n    text += '\\n';\n  });\n\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId,\n    text: text.trim(),\n  },\n}];"
       },
-      "id": "code-f6ec7ad3",
+      "id": "13cd08bd-e167-463a-b81c-beb330fcd3dc",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        -80
+        224,
+        0
       ]
     },
     {
@@ -122,13 +125,13 @@
         },
         "options": {}
       },
-      "id": "tg-7e803656",
+      "id": "46fd3694-81bd-495b-9391-95f77716c0c8",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1200,
-        0
+        464,
+        80
       ]
     }
   ],
@@ -196,8 +199,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

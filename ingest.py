@@ -51,10 +51,14 @@ intents = [
     ("google drive", "tool"), ("xem drive", "tool"), ("xem file drive", "tool"), ("file gan day", "tool"),
     ("danh sach file drive", "tool"), ("tim file hop dong", "tool"), ("search file bao cao", "tool"),
     ("thong tin file bao cao", "tool"), ("tao folder Khach hang", "tool"), ("tao thu muc Du an", "tool"),
+    ("create folder archive 2025", "tool"), ("tao file ghi chu.txt noi dung Xin chao", "tool"),
+    ("tao tep todo.txt noi dung mua sua", "tool"), ("create file note.txt content hello team", "tool"),
     ("upload file nay vao drive", "tool"), ("luu file nay vao drive", "tool"), ("download file bao cao", "tool"),
     ("tai file hop dong", "tool"), ("share file bao cao cho email", "tool"), ("chia se file hop dong", "tool"),
     ("xuat file bao cao sang pdf", "tool"), ("export file sang pdf", "tool"), ("doi ten file A thanh B", "tool"),
-    ("di chuyen file A vao folder B", "tool"), ("copy file mau hop dong thanh hop dong khach A", "tool"), ("xoa file test", "tool")
+    ("di chuyen file A vao folder B", "tool"), ("copy file mau hop dong thanh hop dong khach A", "tool"),
+    ("xoa file test", "tool"), ("xoa folder Du an cu", "tool"), ("xoa thu muc Archive 2024", "tool"),
+    ("delete folder old reports", "tool")
 ]
 
 def pg_exec(sql):

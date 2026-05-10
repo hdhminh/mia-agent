@@ -1,23 +1,28 @@
 {
-  "name": "Sub-workflow: Google Gmail - Help",
   "nodes": [
     {
       "parameters": {},
-      "id": "gmail-help-trigger",
+      "id": "07caf6db-24f7-4922-a69c-3155ebcd3e66",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [-336, -144]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst text = '📧 <b>Google Gmail</b>\\n\\nMình hỗ trợ các tác vụ sau:\\n- xem mail / inbox: xem 5 email mới nhất\\n- đọc mail [từ khóa]: đọc chi tiết email\\n- gửi mail [email] [tiêu đề] [nội dung]: gửi email ngay\\n- gửi nháp [email] [tiêu đề] [nội dung]: gửi email theo chế độ draft\\n- soạn mail [email] [tiêu đề] [nội dung]: tạo email nháp\\n- tìm mail [từ khóa]: tìm kiếm email\\n- trả lời mail [từ khóa] [nội dung]\\n\\n<i>Ví dụ: xem mail, đọc mail từ Google, gửi mail test@gmail.com Chào bạn Nội dung thư, gửi nháp test@gmail.com Chào bạn Nội dung thư, soạn mail test@gmail.com Chào bạn Nội dung thư</i>';\nreturn [{ json: { chatId: source.chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst msg =\n  source.message ||\n  source.body?.message ||\n  source.payload?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  msg.chat?.id ||\n  source.payload?.chatId ||\n  source.body?.chatId ||\n  '';\n\nif (!chatId) {\n  throw new Error('Missing chatId. Cannot send Gmail help message to Telegram.');\n}\n\nconst text = [\n  '📧 <b>Google Gmail</b>',\n  '',\n  'Mình hỗ trợ các tác vụ sau:',\n  '',\n  '1. <b>Xem hộp thư</b>',\n  '- xem mail',\n  '- xem email',\n  '- inbox',\n  '- mail mới',\n  '- kiểm tra mail',\n  '',\n  '2. <b>Đọc email</b>',\n  '- đọc mail từ Google',\n  '- đọc email hóa đơn',\n  '- nội dung mail khách hàng',\n  '- chi tiết email VPBank',\n  '',\n  '3. <b>Tìm kiếm email</b>',\n  '- tìm mail hợp đồng',\n  '- tìm email từ Google',\n  '- search mail invoice',\n  '',\n  '4. <b>Soạn nháp email</b>',\n  '- soạn mail cho test@gmail.com tiêu đề Chào bạn nội dung Hẹn gặp bạn ngày mai',\n  '- draft email cho abc@gmail.com',\n  '',\n  '5. <b>Gửi email</b>',\n  '- gửi mail test@gmail.com Chào bạn Nội dung thư',\n  '- gửi email abc@gmail.com tiêu đề Báo cáo nội dung Mình gửi bạn báo cáo',\n  '',\n  '6. <b>Trả lời email</b>',\n  '- trả lời mail từ Google nội dung Cảm ơn bạn',\n  '- reply email hóa đơn nội dung Tôi đã nhận được',\n  '',\n  'Lệnh nhanh:',\n  '<code>gmail help</code>',\n  '<code>xem mail</code>',\n  '<code>đọc mail từ Google</code>',\n  '<code>tìm mail hóa đơn</code>',\n  '<code>soạn mail cho test@gmail.com</code>',\n].join('\\n');\n\nreturn [{\n  json: {\n    chatId,\n    text,\n  },\n}];"
       },
-      "id": "gmail-help-content",
+      "id": "6217cf07-7a12-4562-8465-bf52e2b49e86",
       "name": "Huong Dan Gmail",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-80, -144]
+      "position": [
+        256,
+        0
+      ]
     },
     {
       "parameters": {
@@ -46,11 +51,14 @@
         },
         "options": {}
       },
-      "id": "gmail-help-send",
+      "id": "383be530-aeae-48b3-87d4-65b7ab5c6d07",
       "name": "Gui Gmail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [192, -144]
+      "position": [
+        528,
+        0
+      ]
     }
   ],
   "connections": {
@@ -77,7 +85,8 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

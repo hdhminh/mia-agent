@@ -9,11 +9,13 @@ Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8
 - `workflow_sub_google_drive_search_file.json`
 - `workflow_sub_google_drive_get_file_info.json`
 - `workflow_sub_google_drive_create_folder.json`
+- `workflow_sub_google_drive_create_file.json`
 - `workflow_sub_google_drive_upload_file.json`
 - `workflow_sub_google_drive_download_file.json`
 - `workflow_sub_google_drive_copy_file.json`
 - `workflow_sub_google_drive_rename_file.json`
 - `workflow_sub_google_drive_move_file.json`
+- `workflow_sub_google_drive_delete_folder.json`
 - `workflow_sub_google_drive_delete_file.json`
 - `workflow_sub_google_drive_share_file.json`
 - `workflow_sub_google_drive_export_file.json`
@@ -33,6 +35,7 @@ Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8
 - `tim file hop dong`
 - `thong tin file bao cao`
 - `tao folder Khach hang`
+- `tao file ghi-chu.txt noi dung Xin chao`
 - `upload file nay vao drive`
 - `tai file bao cao`
 - `copy file mau hop dong thanh hop dong khach A`
@@ -40,12 +43,15 @@ Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8
 - `di chuyen file A vao folder B`
 - `share file A cho email@example.com`
 - `xuat file A sang pdf`
+- `xoa folder Du an cu`
 - `xoa file A`
 
 ## Ghi chu
 
 - Master moi khong can gan tay workflowId cho tung node con nua.
 - Moi workflow con tu gui tin nhan Telegram sau khi xu ly xong.
+- Create file mac dinh tao file text, ho tro them noi dung truc tiep trong cau lenh.
 - Delete chi dua file vao thung rac, khong xoa vinh vien.
+- Delete folder chi dua folder vao thung rac, khong xoa vinh vien.
 - Export dung cho Google Docs/Sheets/Slides.
 - Download dung cho file thuong nhu PDF, anh, DOCX, ZIP.

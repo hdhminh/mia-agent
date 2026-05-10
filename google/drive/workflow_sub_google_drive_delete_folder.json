@@ -1,9 +1,9 @@
 {
-  "name": "Sub-workflow: Google Drive - Delete File",
+  "name": "Sub-workflow: Google Drive - Delete Folder",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-ba8b2a6e",
+      "id": "trigger-delete-folder",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
@@ -14,9 +14,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nconst fileName = String(source.fileName || payload.fileName || raw.replace(/^(xoa file|delete file|bo file vao thung rac|move file to trash)\\s*/i, '')).trim();\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, hasTarget: Boolean(fileId || fileName), response: (fileId || fileName) ? '' : '🗑️ <b>Xoa file</b>\\n\\nVi du: xoa file test' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst folderId = source.folderId || payload.folderId || source.fileId || payload.fileId || '';\nconst folderName = String(source.folderName || payload.folderName || raw.replace(/^(xoa folder|xoa thu muc|delete folder|delete directory)\\s*/i, '')).trim();\nreturn [{ json: { ...source, payload, message, chatId, raw, folderId, folderName, hasTarget: Boolean(folderId || folderName), response: (folderId || folderName) ? '' : '🗑️ <b>Xoa folder</b>\\n\\nVi du: xoa folder Du an cu' } }];"
       },
-      "id": "code-9e469337",
+      "id": "prepare-delete-folder",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -36,8 +36,8 @@
           ]
         }
       },
-      "id": "if-d3ff60a1",
-      "name": "Co File De Xoa?",
+      "id": "if-delete-folder-target",
+      "name": "Co Folder De Xoa?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
@@ -50,18 +50,18 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ Boolean($json.fileId) }}",
+              "value1": "={{ Boolean($json.folderId) }}",
               "value2": true
             }
           ]
         }
       },
-      "id": "if-a1ec39b4",
-      "name": "Co File ID?",
+      "id": "if-delete-folder-id",
+      "name": "Co Folder ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
+        704,
         0
       ]
     },
@@ -70,7 +70,7 @@
         "resource": "fileFolder",
         "operation": "search",
         "searchMethod": "query",
-        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
+        "queryString": "={{ \"name contains '\" + String($json.folderName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.folder' and trashed = false\" }}",
         "returnAll": false,
         "limit": "={{ 1 }}",
         "filter": {
@@ -81,7 +81,7 @@
           "folderId": {
             "__rl": true,
             "mode": "id",
-            "value": "={{ $json.folderId || 'root' }}"
+            "value": "={{ $json.parentFolderId || 'root' }}"
           },
           "whatToSearch": "all",
           "includeTrashed": false
@@ -92,26 +92,46 @@
           ]
         }
       },
-      "id": "gds-0b84b40f",
-      "name": "Drive Tim File Xoa",
+      "id": "search-delete-folder",
+      "name": "Drive Tim Folder Xoa",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        920,
+        944,
         -120
       ],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, folderId: '', response: 'Khong tim thay folder phu hop.' } }];\n}\nconst folder = rows[0];\nreturn [{ json: { ...source, folderId: folder.id || source.folderId || '', folderName: folder.name || source.folderName || '', webViewLink: folder.webViewLink || '', mimeType: folder.mimeType || '' } }];"
       },
-      "id": "code-6098d3f2",
+      "id": "resolve-delete-folder",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
+        1168,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.folderId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-delete-folder-resolved",
+      "name": "Tim Thay Folder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1392,
         -120
       ]
     },
@@ -122,7 +142,7 @@
         "fileId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.fileId }}"
+          "value": "={{ $json.folderId }}"
         },
         "changeFileContent": false,
         "newUpdatedFileName": "",
@@ -133,25 +153,25 @@
           ]
         }
       },
-      "id": "gdf-2987106a",
-      "name": "Drive Trash File",
+      "id": "trash-delete-folder",
+      "name": "Drive Trash Folder",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1140,
+        944,
         120
       ]
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nlet text = '🗑️ <b>Da dua file vao thung rac</b>\n\n';\ntext += '<b>' + escapeHtml(source.fileName || 'Khong ro ten') + '</b>\n';\ntext += 'ID: ' + escapeHtml(source.fileId || '') + '\n';\nif (source.webViewLink) text += '🔗 <a href=\"' + escapeHtml(source.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst folderName = item.name || source.folderName || 'Khong ro ten';\nconst folderId = item.id || source.folderId || '';\nconst link = item.webViewLink || source.webViewLink || '';\n\nlet text = '🗑️ <b>Da dua folder vao thung rac</b>\\n\\n';\ntext += '<b>' + escapeHtml(folderName) + '</b>\\n';\nif (folderId) text += 'ID: <code>' + escapeHtml(folderId) + '</code>\\n';\nif (link) text += '🔗 <a href=\"' + escapeHtml(link) + '\">Mo folder</a>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "code-01630bd1",
+      "id": "format-delete-folder",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
+        1168,
         120
       ]
     },
@@ -182,12 +202,12 @@
         },
         "options": {}
       },
-      "id": "tg-f8a92210",
+      "id": "send-delete-folder",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
+        1648,
         0
       ]
     }
@@ -208,18 +228,18 @@
       "main": [
         [
           {
-            "node": "Co File De Xoa?",
+            "node": "Co Folder De Xoa?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Co File De Xoa?": {
+    "Co Folder De Xoa?": {
       "main": [
         [
           {
-            "node": "Co File ID?",
+            "node": "Co Folder ID?",
             "type": "main",
             "index": 0
           }
@@ -233,25 +253,25 @@
         ]
       ]
     },
-    "Co File ID?": {
+    "Co Folder ID?": {
       "main": [
         [
           {
-            "node": "Drive Trash File",
+            "node": "Drive Trash Folder",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Drive Tim File Xoa",
+            "node": "Drive Tim Folder Xoa",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Drive Tim File Xoa": {
+    "Drive Tim Folder Xoa": {
       "main": [
         [
           {
@@ -266,14 +286,32 @@
       "main": [
         [
           {
-            "node": "Drive Trash File",
+            "node": "Tim Thay Folder?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Drive Trash File": {
+    "Tim Thay Folder?": {
+      "main": [
+        [
+          {
+            "node": "Drive Trash Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Trash Folder": {
       "main": [
         [
           {
