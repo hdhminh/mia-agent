@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Create File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-create-file",
+      "id": "60cb36ad-ff91-4e8f-9367-ab003f5d82e6",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -736,
+        80
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst folderId = source.folderId || payload.folderId || 'root';\nconst mimeType = source.mimeType || payload.mimeType || 'text/plain';\n\nconst providedName = String(source.fileName || payload.fileName || '').trim();\nlet content = source.content ?? payload.content;\nconst extracted = raw.replace(/^(tao file|tao tep|create file)\\s*/i, '').trim();\nlet fileName = providedName;\n\nif (!fileName && extracted) {\n  const match = extracted.match(/^(.*?)(?:\\s+(?:noi dung|content)\\s*[:=-]?\\s*(.*))?$/i);\n  if (match) {\n    fileName = String(match[1] || '').trim();\n    if (content === undefined && match[2] !== undefined) {\n      content = match[2];\n    }\n  }\n}\n\nconst hasTarget = Boolean(fileName);\n\nif (!fileName) {\n  fileName = 'ghi-chu.txt';\n}\n\nif (!/\\.[a-z0-9]{1,8}$/i.test(fileName) && mimeType === 'text/plain') {\n  fileName += '.txt';\n}\n\ncontent = String(content ?? '');\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    folderId,\n    mimeType,\n    fileName,\n    content,\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📄 <b>Tao file</b>\\n\\nVi du: tao file ghi-chu.txt noi dung Xin chao',\n  },\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nconst folderId =\n  source.folderId ||\n  payload.folderId ||\n  'root';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction getExtension(fileName) {\n  const match = String(fileName || '').match(/\\.([a-z0-9]{1,12})$/i);\n  return match ? match[1].toLowerCase() : '';\n}\n\nfunction mimeFromExtension(ext) {\n  const map = {\n    // text / note\n    txt: 'text/plain',\n    text: 'text/plain',\n    log: 'text/plain',\n    md: 'text/markdown',\n    markdown: 'text/markdown',\n\n    // data\n    json: 'application/json',\n    jsonl: 'application/x-ndjson',\n    csv: 'text/csv',\n    tsv: 'text/tab-separated-values',\n    xml: 'application/xml',\n    yaml: 'application/x-yaml',\n    yml: 'application/x-yaml',\n    toml: 'application/toml',\n    ini: 'text/plain',\n    env: 'text/plain',\n\n    // web\n    html: 'text/html',\n    htm: 'text/html',\n    css: 'text/css',\n    js: 'application/javascript',\n    mjs: 'application/javascript',\n    ts: 'application/typescript',\n    jsx: 'text/jsx',\n    tsx: 'text/tsx',\n    svg: 'image/svg+xml',\n\n    // programming\n    py: 'text/x-python',\n    java: 'text/x-java-source',\n    c: 'text/x-c',\n    h: 'text/x-c',\n    cpp: 'text/x-c++src',\n    cc: 'text/x-c++src',\n    cs: 'text/x-csharp',\n    go: 'text/x-go',\n    rs: 'text/rust',\n    php: 'application/x-httpd-php',\n    rb: 'text/x-ruby',\n    swift: 'text/x-swift',\n    kt: 'text/x-kotlin',\n    sql: 'application/sql',\n    r: 'text/x-r',\n    lua: 'text/x-lua',\n\n    // scripts/config\n    sh: 'application/x-sh',\n    bash: 'application/x-sh',\n    zsh: 'application/x-sh',\n    bat: 'application/x-msdos-program',\n    cmd: 'application/x-msdos-program',\n    ps1: 'text/plain',\n    dockerfile: 'text/plain',\n    gitignore: 'text/plain',\n\n    // docs/binary phổ biến - chỉ hợp khi có binary upload thật\n    pdf: 'application/pdf',\n    doc: 'application/msword',\n    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n    xls: 'application/vnd.ms-excel',\n    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n    ppt: 'application/vnd.ms-powerpoint',\n    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n\n    // image\n    png: 'image/png',\n    jpg: 'image/jpeg',\n    jpeg: 'image/jpeg',\n    gif: 'image/gif',\n    webp: 'image/webp',\n\n    // archive\n    zip: 'application/zip',\n    rar: 'application/vnd.rar',\n    '7z': 'application/x-7z-compressed'\n  };\n\n  return map[ext] || 'text/plain';\n}\n\nfunction defaultExtensionForMime(mimeType) {\n  const map = {\n    'text/plain': 'txt',\n    'text/markdown': 'md',\n    'application/json': 'json',\n    'text/csv': 'csv',\n    'text/html': 'html',\n    'text/css': 'css',\n    'application/javascript': 'js',\n    'application/typescript': 'ts',\n    'text/x-python': 'py',\n    'application/xml': 'xml',\n    'application/x-yaml': 'yaml',\n    'application/sql': 'sql',\n    'image/svg+xml': 'svg'\n  };\n\n  return map[mimeType] || 'txt';\n}\n\nfunction isSafeTextMime(mimeType) {\n  return [\n    'text/plain',\n    'text/markdown',\n    'application/json',\n    'application/x-ndjson',\n    'text/csv',\n    'text/tab-separated-values',\n    'application/xml',\n    'application/x-yaml',\n    'application/toml',\n    'text/html',\n    'text/css',\n    'application/javascript',\n    'application/typescript',\n    'text/jsx',\n    'text/tsx',\n    'image/svg+xml',\n    'text/x-python',\n    'text/x-java-source',\n    'text/x-c',\n    'text/x-c++src',\n    'text/x-csharp',\n    'text/x-go',\n    'text/rust',\n    'application/x-httpd-php',\n    'text/x-ruby',\n    'text/x-swift',\n    'text/x-kotlin',\n    'application/sql',\n    'text/x-r',\n    'text/x-lua',\n    'application/x-sh',\n    'application/x-msdos-program'\n  ].includes(mimeType);\n}\n\nfunction parseCreateFile(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'tao file',\n    'tao tep',\n    'create file',\n    'new file'\n  ];\n\n  let body = '';\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      body = original.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (normalized === prefix) {\n      body = '';\n      break;\n    }\n  }\n\n  if (!body) {\n    return {\n      fileName: '',\n      content: undefined\n    };\n  }\n\n  const bodyNormalized = normalize(body);\n\n  const contentMarkers = [\n    ' noi dung ',\n    ' content ',\n    ' with content ',\n    ' co noi dung '\n  ];\n\n  let splitIndex = -1;\n  let markerLength = 0;\n\n  for (const marker of contentMarkers) {\n    const index = bodyNormalized.indexOf(marker);\n    if (index !== -1) {\n      splitIndex = index;\n      markerLength = marker.length;\n      break;\n    }\n  }\n\n  if (splitIndex !== -1) {\n    return {\n      fileName: cleanName(body.slice(0, splitIndex)),\n      content: body.slice(splitIndex + markerLength).replace(/^[:=\\-\\s]+/, '')\n    };\n  }\n\n  return {\n    fileName: cleanName(body),\n    content: undefined\n  };\n}\n\nconst parsed = parseCreateFile(raw);\n\nlet fileName = cleanName(\n  source.fileName ||\n  payload.fileName ||\n  parsed.fileName\n);\n\nlet content =\n  source.content ??\n  payload.content ??\n  parsed.content;\n\nlet mimeType =\n  source.mimeType ||\n  payload.mimeType ||\n  '';\n\nlet ext = getExtension(fileName);\n\nif (!mimeType && ext) {\n  mimeType = mimeFromExtension(ext);\n}\n\nif (!mimeType) {\n  mimeType = 'text/plain';\n}\n\nif (fileName && !ext) {\n  const defaultExt = defaultExtensionForMime(mimeType);\n  fileName += `.${defaultExt}`;\n  ext = defaultExt;\n}\n\nconst hasTarget = Boolean(fileName);\n\nif (!fileName) {\n  fileName = 'ghi-chu.txt';\n  mimeType = 'text/plain';\n}\n\nconst safeTextMime = isSafeTextMime(mimeType);\n\nif (!safeTextMime) {\n  return [{\n    json: {\n      ...source,\n      payload,\n      message,\n      chatId,\n      raw,\n      rawText: raw,\n      folderId,\n      fileName,\n      mimeType,\n      content: '',\n      hasTarget: false,\n      response: [\n        '⚠️ <b>Không nên tạo file rỗng dạng binary bằng lệnh này</b>',\n        '',\n        `File bạn yêu cầu: <code>${fileName}</code>`,\n        `Loại: <code>${mimeType}</code>`,\n        '',\n        'Các định dạng như PDF, DOCX, XLSX, PPTX, ảnh, ZIP nên dùng:',\n        '- upload file này vào drive',\n        '- xuất file A sang pdf',\n        '- tạo Google Docs/Sheets riêng',\n        '',\n        'Ví dụ tạo file text/code/data:',\n        '<code>tạo file note.md nội dung # Ghi chú</code>',\n        '<code>tạo file data.json nội dung {\"name\":\"n8n\"}</code>',\n        '<code>tạo file table.csv nội dung name,age</code>'\n      ].join('\\n')\n    }\n  }];\n}\n\ncontent = String(content ?? '');\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    folderId,\n    mimeType,\n    fileName,\n    content,\n    extension: ext,\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📄 <b>Tạo file</b>\\n\\nVí dụ:\\n<code>tạo file ghi-chu.txt nội dung Xin chào</code>\\n<code>tạo file data.json nội dung {\"name\":\"n8n\"}</code>',\n  },\n}];"
       },
-      "id": "prepare-create-file",
+      "id": "498d0da1-0d06-4b44-8b08-5a90bd2eb9f2",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -496,
+        80
       ]
     },
     {
@@ -36,35 +35,34 @@
           ]
         }
       },
-      "id": "if-create-file-target",
+      "id": "3282acd3-78e8-47b6-97a7-33d85969d7d7",
       "name": "Co Ten File?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nconst content = String(source.content ?? '');\nconst mimeType = String(source.mimeType || 'text/plain');\nconst fileName = String(source.fileName || 'ghi-chu.txt');\n\nreturn [{\n  json: {\n    ...source,\n    binaryPropertyName: 'data',\n    contentLength: content.length,\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType,\n      fileName,\n    },\n  },\n}];"
+      },
+      "id": "79e2f496-df81-421c-b155-09a41b288b4b",
+      "name": "Build File Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst content = String(source.content ?? '');\nconst mimeType = String(source.mimeType || 'text/plain');\nconst fileName = String(source.fileName || 'ghi-chu.txt');\n\nreturn [{\n  json: {\n    ...source,\n    binaryPropertyName: 'data',\n    contentLength: content.length,\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType,\n      fileName,\n    },\n  },\n}];"
-      },
-      "id": "build-create-file-binary",
-      "name": "Build File Binary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        736,
-        -80
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "file",
-        "operation": "upload",
         "inputDataFieldName": "={{ $json.binaryPropertyName }}",
         "name": "={{ $json.fileName }}",
         "driveId": {
+          "__rl": true,
           "mode": "list",
           "value": "My Drive"
         },
@@ -77,26 +75,32 @@
           "simplifyOutput": true
         }
       },
-      "id": "drive-create-file",
+      "id": "945941eb-b11f-495a-a51b-d973c8231c8d",
       "name": "Drive Create File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        960,
-        -80
-      ]
+        224,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst source = $('Build File Binary').item.json || $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst fileName = item.name || source.fileName || 'Khong ro ten';\nconst fileId = item.id || '';\nconst link = item.webViewLink || '';\nconst sizeLabel = Number.isFinite(Number(source.contentLength)) ? `${Number(source.contentLength)} ky tu` : '';\n\nlet text = '✅ <b>Da tao file tren Google Drive</b>\\n\\n';\ntext += '<b>' + escapeHtml(fileName) + '</b>\\n';\nif (fileId) text += 'ID: <code>' + escapeHtml(fileId) + '</code>\\n';\nif (sizeLabel) text += 'Noi dung: ' + escapeHtml(sizeLabel) + '\\n';\nif (link) text += '🔗 <a href=\"' + escapeHtml(link) + '\">Mo file</a>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst source = $('Build File Binary').item.json || $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\n\nconst fileName = item.name || source.fileName || 'Không rõ tên';\nconst fileId = item.id || '';\nconst link =\n  item.webViewLink ||\n  item.webContentLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst sizeLabel = Number.isFinite(Number(source.contentLength))\n  ? `${Number(source.contentLength)} ký tự`\n  : '';\n\nconst mimeType = source.mimeType || item.mimeType || '';\n\nlet text = '✅ <b>Đã tạo file trên Google Drive</b>\\n\\n';\n\ntext += `📄 <b>${escapeHtml(fileName)}</b>\\n`;\n\nif (mimeType) {\n  text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\n}\n\nif (fileId) {\n  text += `ID: <code>${escapeHtml(fileId)}</code>\\n`;\n}\n\nif (sizeLabel) {\n  text += `Nội dung: ${escapeHtml(sizeLabel)}\\n`;\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId,\n    text: text.trim()\n  }\n}];"
       },
-      "id": "format-create-file",
+      "id": "e6c36db0-d68c-45c3-ab02-0ee85df0ea6c",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1184,
-        -80
+        448,
+        0
       ]
     },
     {
@@ -126,13 +130,13 @@
         },
         "options": {}
       },
-      "id": "send-create-file",
+      "id": "bc7be02a-06e6-4c18-babb-b25f47e57f11",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1424,
-        0
+        688,
+        80
       ]
     }
   ],
@@ -211,8 +215,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

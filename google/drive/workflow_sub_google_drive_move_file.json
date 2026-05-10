@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Move File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-2e6d80e2",
+      "id": "c4b66b71-419c-4f44-ae98-cf61b67e3f4c",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -752,
+        -192
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nconst targetFolderId = source.targetFolderId || payload.targetFolderId || '';\nconst fileName = String(source.fileName || payload.fileName || raw.replace(/^(di chuyen file|move file|chuyen file|dua file)\\s*/i, '')).trim();\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, targetFolderId, hasTarget: Boolean((fileId || fileName) && targetFolderId), response: ((fileId || fileName) && targetFolderId) ? '' : '📁 <b>Di chuyen file</b>\\n\\nVi du: di chuyen file A vao folder B (MVP nen truyen targetFolderId)' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseMoveCommand(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'di chuyen file',\n    'chuyen file',\n    'move file',\n    'dua file'\n  ];\n\n  let bodyOriginal = original;\n  let bodyNormalized = normalized;\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      bodyOriginal = original.slice(prefix.length + 1).trim();\n      bodyNormalized = normalized.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (normalized === prefix) {\n      return { fileName: '', targetFolderName: '' };\n    }\n  }\n\n  const separators = [\n    ' vao folder ',\n    ' vao thu muc ',\n    ' den folder ',\n    ' den thu muc ',\n    ' to folder ',\n    ' into folder ',\n    ' to '\n  ];\n\n  for (const sep of separators) {\n    const index = bodyNormalized.indexOf(sep);\n\n    if (index !== -1) {\n      return {\n        fileName: cleanName(bodyOriginal.slice(0, index)),\n        targetFolderName: cleanName(bodyOriginal.slice(index + sep.length))\n      };\n    }\n  }\n\n  return {\n    fileName: cleanName(bodyOriginal),\n    targetFolderName: ''\n  };\n}\n\nconst parsed = parseMoveCommand(raw);\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst targetFolderId =\n  source.targetFolderId ||\n  source.folderId ||\n  payload.targetFolderId ||\n  payload.folderId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  payload.fileName ||\n  parsed.fileName\n);\n\nconst targetFolderName = cleanName(\n  source.targetFolderName ||\n  source.folderName ||\n  payload.targetFolderName ||\n  payload.folderName ||\n  parsed.targetFolderName\n);\n\nconst hasFileTarget = Boolean(fileId || fileName);\nconst hasFolderTarget = Boolean(targetFolderId || targetFolderName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    fileId,\n    targetId: fileId,\n    fileName,\n\n    targetFolderId,\n    folderId: targetFolderId,\n    targetFolderName,\n    folderName: targetFolderName,\n\n    hasFileTarget,\n    hasFolderTarget,\n    hasTarget: Boolean(hasFileTarget && hasFolderTarget),\n\n    response: hasFileTarget && hasFolderTarget\n      ? ''\n      : '📁 <b>Di chuyển file</b>\\n\\nVí dụ:\\n<code>di chuyển file test_n8n.md vào folder test_n8n</code>'\n  }\n}];"
       },
-      "id": "code-e090b687",
+      "id": "26264115-e841-4d40-a172-32f922c5255f",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -512,
+        -192
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "if-fc477eee",
+      "id": "4033dfab-75ff-4e4a-957b-169455edb8cd",
       "name": "Du Du Lieu Move?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        -272,
+        -192
       ]
     },
     {
@@ -50,38 +49,44 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ Boolean($json.fileId) }}",
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
               "value2": true
             }
           ]
         }
       },
-      "id": "if-89ecb733",
+      "id": "95e35b89-05a1-4399-97b0-b5d66e90690b",
       "name": "Co File ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
-        0
+        -48,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json || {};\nconst fileId = item.fileId || item.targetId || '';\n\nif (!fileId) {\n  return [{\n    json: {\n      ...item,\n      response: 'Không có File ID để di chuyển.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    fileId,\n    targetId: fileId\n  }\n}];"
+      },
+      "id": "f1e2fdc7-f73a-4017-90cb-e5a674fe05e9",
+      "name": "Prepare File Target",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -80
       ]
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
-        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
-        "returnAll": false,
+        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType != 'application/vnd.google-apps.folder' and trashed = false\" }}",
         "limit": "={{ 1 }}",
         "filter": {
           "driveId": {
             "mode": "list",
             "value": "My Drive"
-          },
-          "folderId": {
-            "__rl": true,
-            "mode": "id",
-            "value": "={{ $json.folderId || 'root' }}"
           },
           "whatToSearch": "all",
           "includeTrashed": false
@@ -92,68 +97,202 @@
           ]
         }
       },
-      "id": "gds-e7f0616b",
+      "id": "de323767-3103-4028-9ffc-ed7609f86ae9",
       "name": "Drive Tim File Move",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        920,
-        -120
+        176,
+        -320
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      foundFile: false,\n      fileId: '',\n      targetId: '',\n      response: 'Không tìm thấy file phù hợp với: <b>' + escapeHtml(source.fileName || '') + '</b>'\n    }\n  }];\n}\n\nconst file = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...file,\n    foundFile: true,\n    fileId: file.id || source.fileId || '',\n    targetId: file.id || source.targetId || source.fileId || '',\n    fileName: file.name || source.fileName || '',\n    webViewLink: file.webViewLink || source.webViewLink || '',\n    webContentLink: file.webContentLink || source.webContentLink || '',\n    mimeType: file.mimeType || source.mimeType || '',\n    targetFolderId: source.targetFolderId || '',\n    folderId: source.folderId || '',\n    targetFolderName: source.targetFolderName || '',\n    folderName: source.folderName || ''\n  }\n}];"
       },
-      "id": "code-1b2c6c93",
-      "name": "Resolve Search Result",
+      "id": "4347a8bb-020c-4a89-9997-a086ace99e2c",
+      "name": "Resolve File Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        -120
+        400,
+        -320
       ]
     },
     {
       "parameters": {
-        "resource": "file",
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "7aa1bada-8d98-4a46-8c84-e32a9ff51218",
+      "name": "Tim Thay File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.targetFolderId || $json.folderId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "cd43f43f-9717-41c1-8650-eefa694dc9e8",
+      "name": "Co Folder ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json || {};\nconst targetFolderId = item.targetFolderId || item.folderId || '';\n\nif (!targetFolderId) {\n  return [{\n    json: {\n      ...item,\n      response: 'Không có Folder ID đích để di chuyển file.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    targetFolderId,\n    folderId: targetFolderId\n  }\n}];"
+      },
+      "id": "c6ffc819-7033-4eb0-96b8-5a0a8bbd42e4",
+      "name": "Prepare Folder Target",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.targetFolderName || $json.folderName || '').replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.folder' and trashed = false\" }}",
+        "limit": "={{ 1 }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "bcf46d2e-c2a6-4dd2-9610-1b096617bfdd",
+      "name": "Drive Tim Folder Move",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1072,
+        -320
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.first().json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nconst previous = (() => {\n  try { return $('Tim Thay File?').item.json || {}; } catch (e) { return {}; }\n})();\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...previous,\n      foundFolder: false,\n      targetFolderId: '',\n      response: 'Không tìm thấy folder đích: <b>' + escapeHtml(previous.targetFolderName || previous.folderName || '') + '</b>'\n    }\n  }];\n}\n\nconst folder = rows[0];\n\nreturn [{\n  json: {\n    ...previous,\n    foundFolder: true,\n    targetFolderId: folder.id || previous.targetFolderId || '',\n    folderId: folder.id || previous.folderId || '',\n    targetFolderName: folder.name || previous.targetFolderName || previous.folderName || '',\n    folderName: folder.name || previous.folderName || '',\n    targetFolderLink: folder.webViewLink || ''\n  }\n}];"
+      },
+      "id": "61c750a2-a467-4f85-9fef-663dba0d8837",
+      "name": "Resolve Folder Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.targetFolderId || $json.folderId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "b27b850d-bea8-4567-bde9-044a8491d2b3",
+      "name": "Tim Thay Folder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -320
+      ]
+    },
+    {
+      "parameters": {
         "operation": "move",
         "fileId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.fileId }}"
+          "value": "={{ $json.fileId || $json.targetId || $json.id }}"
         },
         "driveId": {
+          "__rl": true,
           "mode": "list",
           "value": "My Drive"
         },
         "folderId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.targetFolderId }}"
+          "value": "={{ $json.targetFolderId || $json.folderId }}"
         }
       },
-      "id": "gdf-22ec8c79",
+      "id": "f7baa600-a6d4-4493-84b2-c5bd3701c468",
       "name": "Drive Move File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1140,
-        120
-      ]
+        1744,
+        -192
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nlet text = '✅ <b>Da di chuyen file</b>\n\n';\ntext += '<b>' + escapeHtml(source.fileName || 'Khong ro ten') + '</b>\n';\ntext += 'Folder dich: ' + escapeHtml(source.targetFolderId || '') + '\n';\nif (source.webViewLink) text += '🔗 <a href=\"' + escapeHtml(source.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nfunction getJson(nodeName) {\n  try { return $(nodeName).item.json || {}; } catch (e) { return {}; }\n}\n\nconst moveResult = $input.item.json || {};\nconst prepared = getJson('Prepare Action');\nconst folderResolved = getJson('Resolve Folder Result');\nconst folderDirect = getJson('Prepare Folder Target');\nconst fileResolved = getJson('Resolve File Result');\nconst fileDirect = getJson('Prepare File Target');\n\nconst source = {\n  ...prepared,\n  ...fileDirect,\n  ...fileResolved,\n  ...folderDirect,\n  ...folderResolved\n};\n\nconst fileName =\n  moveResult.name ||\n  source.fileName ||\n  source.targetName ||\n  'Không rõ tên';\n\nconst fileId =\n  moveResult.id ||\n  source.fileId ||\n  source.targetId ||\n  '';\n\nconst folderName =\n  source.targetFolderName ||\n  source.folderName ||\n  '';\n\nconst folderId =\n  source.targetFolderId ||\n  source.folderId ||\n  '';\n\nconst link =\n  moveResult.webViewLink ||\n  source.webViewLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst mimeType =\n  moveResult.mimeType ||\n  source.mimeType ||\n  '';\n\nlet text = '✅ <b>Đã di chuyển file</b>\\n\\n';\n\ntext += `📄 <b>${escapeHtml(fileName)}</b>\\n`;\n\nif (mimeType) {\n  text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\n}\n\nif (fileId) {\n  text += `File ID: <code>${escapeHtml(fileId)}</code>\\n`;\n}\n\nif (folderName || folderId) {\n  text += '📁 Folder đích: ';\n  if (folderName) text += `<b>${escapeHtml(folderName)}</b>`;\n  if (folderId) text += `\\nFolder ID: <code>${escapeHtml(folderId)}</code>`;\n  text += '\\n';\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId || moveResult.chatId,\n    text: text.trim()\n  }\n}];"
       },
-      "id": "code-5f3b73ad",
+      "id": "483421d4-0ca2-47fe-8280-256d853749e0",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        120
+        1968,
+        -192
       ]
     },
     {
@@ -183,13 +322,13 @@
         },
         "options": {}
       },
-      "id": "tg-aeb008c3",
+      "id": "5e76ddcd-8bc6-45f9-bfb4-88f66fafac2a",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
-        0
+        2208,
+        -192
       ]
     }
   ],
@@ -238,7 +377,7 @@
       "main": [
         [
           {
-            "node": "Drive Move File",
+            "node": "Prepare File Target",
             "type": "main",
             "index": 0
           }
@@ -252,22 +391,120 @@
         ]
       ]
     },
-    "Drive Tim File Move": {
+    "Prepare File Target": {
       "main": [
         [
           {
-            "node": "Resolve Search Result",
+            "node": "Co Folder ID?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resolve Search Result": {
+    "Drive Tim File Move": {
+      "main": [
+        [
+          {
+            "node": "Resolve File Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve File Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay File?": {
+      "main": [
+        [
+          {
+            "node": "Co Folder ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Folder ID?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Folder Target",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Tim Folder Move",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Folder Target": {
       "main": [
         [
           {
             "node": "Drive Move File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Tim Folder Move": {
+      "main": [
+        [
+          {
+            "node": "Resolve Folder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Folder Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Folder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Folder?": {
+      "main": [
+        [
+          {
+            "node": "Drive Move File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
             "type": "main",
             "index": 0
           }
@@ -297,8 +534,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

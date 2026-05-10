@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Copy File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-c51eb09a",
+      "id": "3b2c7245-f4df-4b4f-b0a9-9eed2bcea532",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -928,
+        128
       ]
     },
     {
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nlet fileName = String(source.fileName || payload.fileName || '').trim();\nlet newName = String(source.newName || payload.newName || '').trim();\nconst targetFolderId = source.targetFolderId || payload.targetFolderId || '';\nconst cleaned = raw.replace(/^(copy file|nhan ban file|tao ban sao file|duplicate file|copy template)\\s*/i, '').trim();\nif (!fileName) { const m = cleaned.match(/^(.*?)\\s+(?:thanh|to)\\s+(.*)$/i); if (m) { fileName = m[1].trim(); if (!newName) newName = m[2].trim(); } else { fileName = cleaned; } }\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, newName, targetFolderId, hasTarget: Boolean(fileId || fileName), response: (fileId || fileName) ? '' : '📄 <b>Copy file</b>\\n\\nVi du: copy file mau hop dong thanh hop dong khach A' } }];"
       },
-      "id": "code-c5497aa2",
+      "id": "4680d4c8-08f4-4843-90cc-8cb66e461efc",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -688,
+        128
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "if-8c7b1a04",
+      "id": "64f50cbe-ec67-4594-8fb1-c159cce8cdb0",
       "name": "Co File De Copy?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        -448,
+        128
       ]
     },
     {
@@ -56,22 +55,20 @@
           ]
         }
       },
-      "id": "if-67622b9f",
+      "id": "54c1d9a6-53ef-41f9-a8a0-f5299f7e12b8",
       "name": "Co File ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
-        0
+        -224,
+        128
       ]
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
-        "returnAll": false,
         "limit": "={{ 1 }}",
         "filter": {
           "driveId": {
@@ -92,32 +89,37 @@
           ]
         }
       },
-      "id": "gds-a159bb1d",
+      "id": "698014aa-7eda-4ad6-913c-cf76f750dc88",
       "name": "Drive Tim File Copy",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        920,
-        -120
+        0,
+        0
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
       },
-      "id": "code-4b90dbb8",
+      "id": "10ac0da8-9929-4964-b673-b315c83cece8",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        -120
+        224,
+        0
       ]
     },
     {
       "parameters": {
-        "resource": "file",
         "operation": "copy",
         "fileId": {
           "__rl": true,
@@ -127,6 +129,7 @@
         "name": "={{ $json.newName || ('Copy of ' + ($json.fileName || 'untitled')) }}",
         "sameFolder": "={{ !$json.targetFolderId }}",
         "driveId": {
+          "__rl": true,
           "mode": "list",
           "value": "My Drive"
         },
@@ -139,26 +142,32 @@
           "description": ""
         }
       },
-      "id": "gdf-9aed7472",
+      "id": "22327f9a-54a3-4b8d-abdf-47b1928933f3",
       "name": "Drive Copy File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1140,
-        120
-      ]
+        224,
+        240
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst item = $input.item.json || {};\nlet text = '✅ <b>Da copy file</b>\n\n';\ntext += '<b>' + escapeHtml(item.name || source.newName || source.fileName) + '</b>\n';\ntext += 'ID: ' + escapeHtml(item.id || '') + '\n';\nif (item.webViewLink) text += '🔗 <a href=\"' + escapeHtml(item.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\n\nconst fileName =\n  item.name ||\n  source.newName ||\n  source.fileName ||\n  source.targetName ||\n  'Không rõ tên';\n\nconst fileId =\n  item.id ||\n  item.fileId ||\n  source.newFileId ||\n  source.fileId ||\n  source.targetId ||\n  '';\n\nconst link =\n  item.webViewLink ||\n  item.webContentLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst mimeType =\n  item.mimeType ||\n  source.mimeType ||\n  '';\n\nlet text = '✅ <b>Đã copy file</b>\\n\\n';\n\ntext += `📄 <b>${escapeHtml(fileName)}</b>\\n`;\n\nif (mimeType) {\n  text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\n}\n\nif (fileId) {\n  text += `ID: <code>${escapeHtml(fileId)}</code>\\n`;\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>\\n`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId || item.chatId,\n    text: text.trim(),\n  },\n}];"
       },
-      "id": "code-2013b9fc",
+      "id": "e3e1dda1-1467-4f26-83c0-d5453ddb9ecd",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        120
+        448,
+        240
       ]
     },
     {
@@ -188,13 +197,13 @@
         },
         "options": {}
       },
-      "id": "tg-cfeda1d1",
+      "id": "7fe269ab-6672-4646-ac49-dcafe3a94d24",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
-        0
+        688,
+        128
       ]
     }
   ],
@@ -302,8 +311,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

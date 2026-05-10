@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Rename File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-ddfc4817",
+      "id": "dfb49425-1d94-4017-8281-5a554f851e5f",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -624,
+        -96
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nlet fileName = String(source.fileName || payload.fileName || '').trim();\nlet newName = String(source.newName || payload.newName || '').trim();\nconst cleaned = raw.replace(/^(doi ten file|rename file|doi ten thu muc)\\s*/i, '').trim();\nif ((!fileName || !newName) && cleaned) { const m = cleaned.match(/^(.*?)\\s+(?:thanh|to)\\s+(.*)$/i); if (m) { if (!fileName) fileName = m[1].trim(); if (!newName) newName = m[2].trim(); } }\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, newName, hasTarget: Boolean((fileId || fileName) && newName), response: ((fileId || fileName) && newName) ? '' : '📄 <b>Doi ten file</b>\\n\\nVi du: doi ten file A thanh B' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseRenameCommand(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'doi ten file',\n    'rename file',\n    'doi ten tep',\n    'doi ten thu muc',\n    'rename folder'\n  ];\n\n  let bodyOriginal = original;\n  let bodyNormalized = normalized;\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      bodyOriginal = original.slice(prefix.length + 1).trim();\n      bodyNormalized = normalized.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (normalized === prefix) {\n      return { fileName: '', newName: '' };\n    }\n  }\n\n  const separators = [\n    ' thanh ',\n    ' sang ',\n    ' doi thanh ',\n    ' to ',\n    ' into ',\n    ' as '\n  ];\n\n  for (const sep of separators) {\n    const index = bodyNormalized.indexOf(sep);\n\n    if (index !== -1) {\n      return {\n        fileName: cleanName(bodyOriginal.slice(0, index)),\n        newName: cleanName(bodyOriginal.slice(index + sep.length))\n      };\n    }\n  }\n\n  return {\n    fileName: cleanName(bodyOriginal),\n    newName: ''\n  };\n}\n\nfunction preserveExtensionIfNeeded(oldName, newName) {\n  const oldExt = String(oldName || '').match(/\\.[^\\.\\s]+$/)?.[0] || '';\n  const newExt = String(newName || '').match(/\\.[^\\.\\s]+$/)?.[0] || '';\n\n  if (oldExt && !newExt) {\n    return `${newName}${oldExt}`;\n  }\n\n  return newName;\n}\n\nconst parsed = parseRenameCommand(raw);\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  parsed.fileName\n);\n\nlet newName = cleanName(\n  source.newName ||\n  payload.newName ||\n  parsed.newName\n);\n\nnewName = preserveExtensionIfNeeded(fileName, newName);\n\nconst hasTarget = Boolean((fileId || fileName) && newName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n    newName,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📄 <b>Đổi tên file</b>\\n\\nVí dụ:\\n<code>đổi tên file test_n8n.md thành test_n9n</code>\\n<code>rename file old.txt to new.txt</code>'\n  }\n}];"
       },
-      "id": "code-7a29d0f0",
+      "id": "f1e17afe-f9b2-47ca-ae2a-f33aea994353",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -384,
+        -96
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "if-7c99b03f",
+      "id": "8a0b03f0-82f6-4243-97c0-ddf286eb37cd",
       "name": "Du Du Lieu Doi Ten?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        -144,
+        -96
       ]
     },
     {
@@ -50,38 +49,31 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ Boolean($json.fileId) }}",
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
               "value2": true
             }
           ]
         }
       },
-      "id": "if-3cfdd43c",
+      "id": "c85b77e7-acba-4c2a-a55a-4822fe40d4e0",
       "name": "Co File ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
-        0
+        80,
+        -96
       ]
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
-        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
-        "returnAll": false,
+        "queryString": "={{ \"name contains '\" + String($json.fileName || $json.targetName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
         "limit": "={{ 1 }}",
         "filter": {
           "driveId": {
             "mode": "list",
             "value": "My Drive"
-          },
-          "folderId": {
-            "__rl": true,
-            "mode": "id",
-            "value": "={{ $json.folderId || 'root' }}"
           },
           "whatToSearch": "all",
           "includeTrashed": false
@@ -92,67 +84,113 @@
           ]
         }
       },
-      "id": "gds-6011e125",
+      "id": "4926faab-9e6b-476a-b885-af4b55cd80a6",
       "name": "Drive Tim File Rename",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        920,
-        -120
+        304,
+        -224
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      found: false,\n      fileId: '',\n      targetId: '',\n      response: 'Không tìm thấy file phù hợp với: <b>' + escapeHtml(source.fileName || source.targetName || '') + '</b>'\n    }\n  }];\n}\n\nconst file = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...file,\n    found: true,\n    oldName: file.name || source.fileName || source.targetName || '',\n    fileId: file.id || source.fileId || '',\n    targetId: file.id || source.targetId || source.fileId || '',\n    fileName: file.name || source.fileName || source.targetName || '',\n    webViewLink: file.webViewLink || source.webViewLink || '',\n    webContentLink: file.webContentLink || source.webContentLink || '',\n    mimeType: file.mimeType || source.mimeType || '',\n    newName: source.newName || ''\n  }\n}];"
       },
-      "id": "code-57c646e9",
+      "id": "dd1c9283-8841-4f04-a457-8447aa7b3917",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        -120
+        528,
+        -224
       ]
     },
     {
       "parameters": {
-        "resource": "file",
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "956ab9fb-539c-4f29-aff4-38ff1a9d83b3",
+      "name": "Tim Thay File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        752,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json || {};\nconst fileId = item.fileId || item.targetId || item.id || '';\n\nif (!fileId) {\n  return [{\n    json: {\n      ...item,\n      response: 'Không có File ID để đổi tên.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    fileId,\n    targetId: fileId\n  }\n}];"
+      },
+      "id": "6c0723e1-90df-411d-90ac-657f1fcb2690",
+      "name": "Prepare Rename Target",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -96
+      ]
+    },
+    {
+      "parameters": {
         "operation": "update",
         "fileId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.fileId }}"
+          "value": "={{ $json.fileId || $json.targetId || $json.id }}"
         },
-        "changeFileContent": false,
         "newUpdatedFileName": "={{ $json.newName }}",
         "options": {
-          "trashed": false,
           "fields": [
-            "*"
+            "id",
+            "name",
+            "mimeType",
+            "webViewLink",
+            "modifiedTime"
           ]
         }
       },
-      "id": "gdf-e7d036ad",
+      "id": "252ee85a-ee96-4f3e-a388-e64836d4a5e2",
       "name": "Drive Rename File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1140,
-        120
-      ]
+        1216,
+        -96
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst item = $input.item.json || {};\nlet text = '✅ <b>Da doi ten file</b>\n\n';\ntext += 'Ten moi: <b>' + escapeHtml(item.name || source.newName) + '</b>\n';\ntext += 'ID: ' + escapeHtml(item.id || source.fileId || '') + '\n';\nif (item.webViewLink) text += '🔗 <a href=\"' + escapeHtml(item.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nfunction getJson(nodeName) {\n  try { return $(nodeName).item.json || {}; } catch (e) { return {}; }\n}\n\nconst item = $input.item.json || {};\nconst prepared = getJson('Prepare Action');\nconst resolved = getJson('Resolve Search Result');\nconst target = getJson('Prepare Rename Target');\n\nconst source = {\n  ...prepared,\n  ...resolved,\n  ...target\n};\n\nconst oldName = source.oldName || source.fileName || prepared.fileName || 'Không rõ tên cũ';\nconst newName = item.name || source.newName || 'Không rõ tên mới';\nconst fileId = item.id || source.fileId || source.targetId || '';\nconst mimeType = item.mimeType || source.mimeType || '';\nconst link = item.webViewLink || source.webViewLink || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nlet text = '✅ <b>Đã đổi tên file</b>\\n\\n';\ntext += `Tên cũ: <b>${escapeHtml(oldName)}</b>\\n`;\ntext += `Tên mới: <b>${escapeHtml(newName)}</b>\\n`;\n\nif (mimeType) {\n  text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\n}\n\nif (fileId) {\n  text += `ID: <code>${escapeHtml(fileId)}</code>\\n`;\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId || item.chatId,\n    text: text.trim()\n  }\n}];"
       },
-      "id": "code-0232873a",
+      "id": "b0213cbe-24aa-492e-a2bb-2718293b1d7f",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        120
+        1440,
+        -96
       ]
     },
     {
@@ -182,13 +220,13 @@
         },
         "options": {}
       },
-      "id": "tg-da3fdcc0",
+      "id": "1a3ac970-a4f8-48d1-b5f7-344d24530892",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
-        0
+        1680,
+        -96
       ]
     }
   ],
@@ -237,7 +275,7 @@
       "main": [
         [
           {
-            "node": "Drive Rename File",
+            "node": "Prepare Rename Target",
             "type": "main",
             "index": 0
           }
@@ -263,6 +301,35 @@
       ]
     },
     "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay File?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Rename Target",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Rename Target": {
       "main": [
         [
           {
@@ -296,8 +363,9 @@
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }
