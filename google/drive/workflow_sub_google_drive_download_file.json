@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Drive - Download File",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-e3c33768",
+      "id": "a0cbc720-0771-4fc8-a310-825c955a5d2b",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -1232,
+        -80
       ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst fileId = source.fileId || payload.fileId || '';\nconst fileName = String(source.fileName || payload.fileName || raw.replace(/^(download file|tai file|gui toi file|lay file|tai xuong file|send me file)\\s*/i, '')).trim();\nreturn [{ json: { ...source, payload, message, chatId, raw, fileId, fileName, hasTarget: Boolean(fileId || fileName), response: (fileId || fileName) ? '' : '📥 <b>Tai file tu Drive</b>\\n\\nVi du: tai file bao cao' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction extractFileName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'download file',\n    'download tep',\n    'tai file',\n    'tai tep',\n    'tai xuong file',\n    'tai xuong tep',\n    'gui toi file',\n    'gui toi tep',\n    'gui file',\n    'send me file',\n    'send file',\n    'lay file',\n    'lay tep'\n  ];\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      return cleanName(original.slice(prefix.length + 1));\n    }\n\n    if (normalized === prefix) {\n      return '';\n    }\n  }\n\n  return '';\n}\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  extractFileName(raw)\n);\n\nconst hasTarget = Boolean(fileId || fileName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📥 <b>Tải file từ Drive</b>\\n\\nVí dụ:\\n<code>tải file báo cáo.pdf</code>\\n<code>download file test_n8n.md</code>'\n  }\n}];"
       },
-      "id": "code-97285899",
+      "id": "9535d38b-4271-4166-9408-04a7da3207c9",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        -992,
+        -80
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "if-c22554b5",
+      "id": "465feb4d-b5e9-483a-b639-c1e38f683b9f",
       "name": "Co File Can Tai?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        -752,
+        -80
       ]
     },
     {
@@ -50,38 +49,31 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ Boolean($json.fileId) }}",
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
               "value2": true
             }
           ]
         }
       },
-      "id": "if-3f7b750c",
+      "id": "29cc1b8a-7706-46e0-8024-88c55c8b112b",
       "name": "Co File ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
-        0
+        -528,
+        -80
       ]
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
-        "queryString": "={{ \"name contains '\" + String($json.fileName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
-        "returnAll": false,
+        "queryString": "={{ \"name contains '\" + String($json.fileName || $json.targetName || '').replace(/'/g, \"\\\\'\") + \"' and trashed = false\" }}",
         "limit": "={{ 1 }}",
         "filter": {
           "driveId": {
             "mode": "list",
             "value": "My Drive"
-          },
-          "folderId": {
-            "__rl": true,
-            "mode": "id",
-            "value": "={{ $json.folderId || 'root' }}"
           },
           "whatToSearch": "all",
           "includeTrashed": false
@@ -92,66 +84,200 @@
           ]
         }
       },
-      "id": "gds-eac9338f",
+      "id": "e299c16d-d868-4014-8b7c-eb57991135a7",
       "name": "Drive Tim File Download",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        920,
-        -120
+        -304,
+        -224
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $('Prepare Action').item.json;\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) return [{ json: { ...source, found: false, response: 'Khong tim thay file phu hop.' } }];\nconst file = rows[0];\nreturn [{ json: { ...source, found: true, fileId: file.id, fileName: file.name || source.fileName || '', webViewLink: file.webViewLink || '', mimeType: file.mimeType || '', modifiedTime: file.modifiedTime || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      found: false,\n      fileId: '',\n      targetId: '',\n      response: 'Không tìm thấy file phù hợp với: <b>' + escapeHtml(source.fileName || source.targetName || '') + '</b>'\n    }\n  }];\n}\n\nconst file = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...file,\n    found: true,\n    fileId: file.id || source.fileId || '',\n    targetId: file.id || source.targetId || source.fileId || '',\n    fileName: file.name || source.fileName || source.targetName || '',\n    targetName: file.name || source.targetName || source.fileName || '',\n    webViewLink: file.webViewLink || source.webViewLink || '',\n    webContentLink: file.webContentLink || source.webContentLink || '',\n    mimeType: file.mimeType || source.mimeType || ''\n  }\n}];"
       },
-      "id": "code-db42146e",
+      "id": "c6f562e4-9147-439f-8422-28026f72f69a",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        -120
+        -80,
+        -224
       ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://www.googleapis.com/drive/v3/files/{{$json.fileId}}",
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.fileId || $json.targetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "fabd14bd-e72a-495a-8216-1199a68ad1e0",
+      "name": "Tim Thay File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.fileId || $json.targetId) }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleDriveOAuth2Api",
-        "sendQueryParameters": true,
+        "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "fields",
-              "value": "id,name,mimeType,webViewLink,createdTime,modifiedTime,size,owners"
+              "value": "id,name,mimeType,webViewLink,webContentLink,size,owners,trashed,createdTime,modifiedTime,originalFilename,fileExtension,fullFileExtension"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
             }
           ]
         },
         "options": {}
       },
-      "id": "http-3ac55b8b",
-      "name": "Drive Get File Info",
+      "id": "6a0a6aad-ce55-425a-8775-ebca0cb82c07",
+      "name": "Drive Get Metadata",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1140,
-        120
+        384,
+        -80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Action').item.json || {};\nconst meta = $input.item.json || {};\n\nconst fileId = meta.id || prepared.fileId || prepared.targetId || '';\nconst fileName = meta.name || prepared.fileName || prepared.targetName || 'download';\nconst mimeType = meta.mimeType || prepared.mimeType || '';\nconst isGoogleWorkspace = String(mimeType).startsWith('application/vnd.google-apps');\n\nconst webViewLink =\n  meta.webViewLink ||\n  prepared.webViewLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst downloadUrl = fileId\n  ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`\n  : '';\n\nconst caption = [\n  '📥 <b>Đã tải file từ Google Drive</b>',\n  '',\n  `📄 <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n  mimeType ? `Loại: <code>${mimeType.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : '',\n  fileId ? `ID: <code>${fileId.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...prepared,\n    ...meta,\n    fileId,\n    targetId: fileId,\n    fileName,\n    mimeType,\n    webViewLink,\n    downloadUrl,\n    isGoogleWorkspace,\n    caption,\n    response: isGoogleWorkspace\n      ? [\n          '⚠️ <b>Đây là file Google Workspace</b>',\n          '',\n          `File: <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n          'Google Docs/Sheets/Slides không tải trực tiếp bằng flow Download.',\n          'Hãy dùng lệnh <code>xuất file ... sang pdf/docx/xlsx/pptx</code>.',\n          webViewLink ? `🔗 <a href=\"${webViewLink.replace(/&/g, '&amp;').replace(/\"/g, '&quot;')}\">Mở file gốc</a>` : ''\n        ].filter(Boolean).join('\\n')\n      : ''\n  }\n}];"
+      },
+      "id": "bfce1bf9-6a57-4e79-b76b-a8ee982ebe1e",
+      "name": "Prepare Download",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -80
       ]
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\nconst formatDate = (value) => {\n  if (!value) return '';\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst source = $input.item.json || {};\nconst isGoogle = String(source.mimeType || '').startsWith('application/vnd.google-apps');\nlet text = '📥 <b>Download file</b>\n\n';\ntext += '<b>' + escapeHtml(source.name || source.fileName || 'Khong ro ten') + '</b>\n';\nif (isGoogle) text += 'Day la Google Docs/Sheets/Slides. Ban nen dung lenh xuat file.\n';\nelse text += 'MVP hien tai chua gui binary qua Telegram. Ban co the mo file bang link ben duoi.\n';\nif (source.webViewLink) text += '🔗 <a href=\"' + escapeHtml(source.webViewLink) + '\">Mo file</a>';\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isGoogleWorkspace }}",
+              "value2": true
+            }
+          ]
+        }
       },
-      "id": "code-6bff3426",
-      "name": "Format Action",
+      "id": "b619dbf2-60e2-4299-b876-6ef5de13c345",
+      "name": "La Google Workspace?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.downloadUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "bc678b43-1f69-4c76-9443-20c1cdd516f2",
+      "name": "Drive Download Binary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1088,
+        16
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $('Prepare Download').item.json || {};\nconst item = $input.item || {};\nconst json = item.json || {};\nconst binary = item.binary || {};\n\nconst fileName = meta.fileName || meta.name || 'download';\nconst mimeType = meta.mimeType || 'application/octet-stream';\n\nif (!binary.data) {\n  return [{\n    json: {\n      ...meta,\n      response: 'Không tải được binary của file. Hãy mở link file gốc để kiểm tra quyền truy cập.'\n    }\n  }];\n}\n\nbinary.data.fileName = binary.data.fileName || fileName;\nbinary.data.mimeType = binary.data.mimeType || mimeType;\n\nreturn [{\n  json: {\n    ...meta,\n    ...json,\n    chatId: meta.chatId,\n    caption: meta.caption || `📥 ${fileName}`\n  },\n  binary\n}];"
+      },
+      "id": "2321eac2-7565-45ea-9ddb-8673541d0850",
+      "name": "Attach Telegram Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        120
+        1296,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "document",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8b981e9d-345d-4d62-bfe7-2a1e711ba710",
+      "name": "Gui File Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1520,
+        16
       ]
     },
     {
@@ -181,13 +307,13 @@
         },
         "options": {}
       },
-      "id": "tg-1e6e6c09",
+      "id": "4a631e3a-7261-4ecb-8ed4-d4826e6a8630",
       "name": "Gui Drive",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
-        0
+        1088,
+        -224
       ]
     }
   ],
@@ -236,7 +362,7 @@
       "main": [
         [
           {
-            "node": "Drive Get File Info",
+            "node": "Drive Get Metadata",
             "type": "main",
             "index": 0
           }
@@ -265,26 +391,22 @@
       "main": [
         [
           {
-            "node": "Drive Get File Info",
+            "node": "Tim Thay File?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Drive Get File Info": {
+    "Tim Thay File?": {
       "main": [
         [
           {
-            "node": "Format Action",
+            "node": "Drive Get Metadata",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Format Action": {
-      "main": [
+        ],
         [
           {
             "node": "Gui Drive",
@@ -293,10 +415,73 @@
           }
         ]
       ]
+    },
+    "Drive Get Metadata": {
+      "main": [
+        [
+          {
+            "node": "Prepare Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Download": {
+      "main": [
+        [
+          {
+            "node": "La Google Workspace?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "La Google Workspace?": {
+      "main": [
+        [
+          {
+            "node": "Gui Drive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive Download Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Download Binary": {
+      "main": [
+        [
+          {
+            "node": "Attach Telegram Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Telegram Payload": {
+      "main": [
+        [
+          {
+            "node": "Gui File Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }
