@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Docs - Read Doc",
   "nodes": [
     {
       "parameters": {},
-      "id": "docs-read-trigger",
+      "id": "c4114fae-53b4-4c78-ae78-2ed9a42a8ee6",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1232,
-        80
+        -928,
+        144
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc doc', 'xem doc', 'noi dung doc', 'read doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.fileId || source.targetId || source.payload?.docId || '';\nconst docName = cleanName(source.docName || source.fileName || source.title || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '📖 <b>Doc Google Doc</b>\\n\\nVi du: <code>doc doc Project Plan</code>'\n  }\n}];"
       },
-      "id": "docs-read-prepare",
+      "id": "51c25443-6056-4b83-8900-e9c596c05d8d",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -992,
-        80
+        -688,
+        144
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "docs-read-has-target",
+      "id": "ead68c0e-6d8f-49cc-a954-41d5e7ac1719",
       "name": "Co Tai Lieu Can Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -752,
-        80
+        -448,
+        144
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "docs-read-has-id",
+      "id": "4b9b275c-1095-46ef-af55-a1c41c2c29f4",
       "name": "Co Doc ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -528,
-        80
+        -224,
+        144
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "docs-read-search",
+      "id": "25a46eeb-5c66-4064-85c6-3a1793d01d43",
       "name": "Drive Tim Google Doc",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -304,
-        -64
+        0,
+        0
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -105,13 +104,13 @@
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '', mimeType: doc.mimeType || '' } }];"
       },
-      "id": "docs-read-resolve",
+      "id": "d4df4733-34d1-4f63-987e-413e4dfbc862",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -80,
-        -64
+        224,
+        0
       ]
     },
     {
@@ -125,13 +124,13 @@
           ]
         }
       },
-      "id": "docs-read-found",
+      "id": "3692fbe4-e61f-46c4-91f7-6199e023a2c5",
       "name": "Tim Thay Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        144,
-        -64
+        448,
+        0
       ]
     },
     {
@@ -141,13 +140,13 @@
         "nodeCredentialType": "googleDriveOAuth2Api",
         "options": {}
       },
-      "id": "docs-read-get",
+      "id": "be0f534a-8240-4d98-8e3e-6e487bc73d9d",
       "name": "Docs Get Document",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        384,
-        80
+        688,
+        144
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -158,15 +157,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nfunction collectText(node, out = []) {\n  if (Array.isArray(node)) {\n    node.forEach((item) => collectText(item, out));\n    return out;\n  }\n  if (!node || typeof node !== 'object') return out;\n  if (node.textRun && typeof node.textRun.content === 'string') out.push(node.textRun.content);\n  Object.values(node).forEach((value) => collectText(value, out));\n  return out;\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst docId = doc.documentId || source.docId || '';\nconst title = doc.title || source.docName || 'Khong ro ten';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();\nconst preview = content.slice(0, 3000);\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs read response.');\n}\n\nlet text = '📖 <b>Noi dung Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>\\n`;\ntext += '\\n<b>Noi dung xem truoc:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Tai lieu rong)')}</pre>`;\nif (content.length > 3000) text += '\\n<i>Noi dung da duoc rut gon.</i>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nfunction collectText(node, out = []) {\n  if (Array.isArray(node)) {\n    node.forEach((item) => collectText(item, out));\n    return out;\n  }\n  if (!node || typeof node !== 'object') return out;\n  if (node.textRun && typeof node.textRun.content === 'string') out.push(node.textRun.content);\n  Object.values(node).forEach((value) => collectText(value, out));\n  return out;\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst docId = doc.documentId || source.docId || '';\nconst title = doc.title || source.docName || 'Khong ro ten';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();\nconst preview = content.slice(0, 3000);\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs read response.');\n}\n\nlet text = '📖 <b>Nội dung Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệu</a>\\n`;\ntext += '\\n<b>Nội dung xem trướcc:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Tài liệu rỗng)')}</pre>`;\nif (content.length > 3000) text += '\\n<i>Nội dung đã được rút gọn.</i>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "docs-read-format",
+      "id": "3f649ef5-536f-4f2c-891c-aa68aa9ab890",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        624,
-        80
+        928,
+        144
       ]
     },
     {
@@ -196,13 +195,13 @@
         },
         "options": {}
       },
-      "id": "docs-read-send",
+      "id": "00d96ace-5c62-4c00-9d87-941cb8f27466",
       "name": "Gui Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        864,
-        80
+        1168,
+        144
       ]
     }
   ],

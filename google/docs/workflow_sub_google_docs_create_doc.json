@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Docs - Create Doc",
   "nodes": [
     {
       "parameters": {},
-      "id": "docs-create-trigger",
+      "id": "34ca96fe-e753-40c1-9735-47bb22477318",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1184,
-        80
+        -1216,
+        160
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['tao doc', 'tao tai lieu', 'create doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet title = cleanName(source.title || source.docTitle || source.fileName || source.documentTitle || '');\nlet content = source.content || source.docContent || '';\n\nif (!title && body) {\n  const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n  if (markerMatch) {\n    const idx = markerMatch.index || 0;\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + markerMatch[0].length)).trim();\n  } else if (body.includes(':')) {\n    const idx = body.indexOf(':');\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + 1)).trim();\n  } else {\n    title = cleanName(body);\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    title,\n    content: String(content || ''),\n    hasTarget: Boolean(title),\n    response: title ? '' : '📝 <b>Tao Google Doc</b>\\n\\nVi du: <code>tao doc Project Plan noi dung Muc tieu du an</code>'\n  }\n}];"
       },
-      "id": "docs-create-prepare",
+      "id": "0e17bc96-a1c5-414a-8dec-ddb01ad4bf63",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -944,
-        80
+        -976,
+        160
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "docs-create-has-title",
+      "id": "1fc3b7d5-54db-4113-8aa4-64b764ab29db",
       "name": "Co Ten Tai Lieu?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -704,
-        80
+        -736,
+        160
       ]
     },
     {
@@ -65,13 +64,13 @@
         "jsonBody": "={{ { name: $json.title, mimeType: 'application/vnd.google-apps.document' } }}",
         "options": {}
       },
-      "id": "docs-create-file",
+      "id": "8deb3235-cdd9-49eb-878d-1e7308a47e92",
       "name": "Docs Create File",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -448,
-        0
+        -480,
+        80
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -91,13 +90,13 @@
           ]
         }
       },
-      "id": "docs-create-has-content",
+      "id": "18e2bc6e-e2d5-4991-b79c-e637261c5ab6",
       "name": "Co Noi Dung Ban Dau?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -208,
-        0
+        -240,
+        80
       ]
     },
     {
@@ -111,13 +110,13 @@
         "jsonBody": "={{ { requests: [ { insertText: { location: { index: 1 }, text: $('Prepare Action').item.json.content } } ] } }}",
         "options": {}
       },
-      "id": "docs-create-append",
+      "id": "9fb041ff-5a11-42bb-9026-34e44ee85602",
       "name": "Docs Append Initial Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        32,
-        -80
+        0,
+        0
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -128,15 +127,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst created = $('Docs Create File').item.json || {};\nconst title = created.name || source.title || 'Khong ro ten';\nconst docId = created.id || '';\nconst link = created.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst contentLength = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs create response.');\n}\n\nlet text = '✅ <b>Da tao Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (contentLength) text += `Noi dung ban dau: ${contentLength} ky tu\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst created = $('Docs Create File').item.json || {};\nconst title = created.name || source.title || 'Khong ro ten';\nconst docId = created.id || '';\nconst link = created.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst contentLength = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs create response.');\n}\n\nlet text = '✅ <b>Đã tạo Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (contentLength) text += `Nội dung ban đầu: ${contentLength} ký tự\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "docs-create-format",
+      "id": "7f99bbc8-17e6-4a08-aea6-4c04271047f2",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        272,
-        0
+        240,
+        80
       ]
     },
     {
@@ -166,13 +165,13 @@
         },
         "options": {}
       },
-      "id": "docs-create-send",
+      "id": "c466a827-361e-4184-a9b8-871cd74e6118",
       "name": "Gui Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        528,
-        80
+        496,
+        160
       ]
     }
   ],

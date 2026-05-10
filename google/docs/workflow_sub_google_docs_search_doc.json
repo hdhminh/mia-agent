@@ -1,9 +1,8 @@
 {
-  "name": "Sub-workflow: Google Docs - Search Doc",
   "nodes": [
     {
       "parameters": {},
-      "id": "docs-search-trigger",
+      "id": "3046fb5e-b0d6-4f50-a58c-7aa9014d63d3",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
@@ -16,7 +15,7 @@
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText || source.text || message.text || message.caption || payload.text || ''\n  ).trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanQuery(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['tim doc', 'search doc', 'tim tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst query = cleanQuery(source.query || source.docName || source.fileName || body);\nconst limit = Number(source.limit || source.payload?.limit || 10) || 10;\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    query,\n    limit,\n    hasTarget: Boolean(query),\n    response: query ? '' : '📝 <b>Tim Google Doc</b>\\n\\nVi du: <code>tim doc Project Plan</code>'\n  }\n}];"
       },
-      "id": "docs-search-prepare",
+      "id": "97443402-5b8b-4463-b49f-d87b1b4e1a3a",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -36,7 +35,7 @@
           ]
         }
       },
-      "id": "docs-search-has-target",
+      "id": "42e0b0db-06b5-464b-b8aa-ad1884790c28",
       "name": "Co Tu Khoa Tim?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
@@ -65,7 +64,7 @@
           ]
         }
       },
-      "id": "docs-search-drive",
+      "id": "0465a3ea-fc94-412b-96d9-d35dd497e4c2",
       "name": "Drive Search Docs",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -83,9 +82,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nconst query = source.query || '';\n\nlet text = '🔎 <b>Ket qua tim Google Docs</b>\\n\\n';\nif (query) text += `Tu khoa: <i>${escapeHtml(query)}</i>\\n\\n`;\n\nif (!rows.length) {\n  text += query ? `Khong tim thay tai lieu phu hop voi: <i>${escapeHtml(query)}</i>` : 'Khong tim thay tai lieu phu hop.';\n} else {\n  rows.forEach((doc, index) => {\n    const name = doc.name || 'Khong ro ten';\n    const link = doc.webViewLink || (doc.id ? `https://docs.google.com/document/d/${doc.id}/edit` : '');\n    const modified = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : '';\n    text += `${index + 1}. 📝 `;\n    text += link ? `<a href=\"${escapeHtml(link)}\">${escapeHtml(name)}</a>\\n` : `<b>${escapeHtml(name)}</b>\\n`;\n    if (modified) text += `   Sua luc: ${escapeHtml(modified)}\\n`;\n    if (doc.id) text += `   ID: <code>${escapeHtml(doc.id)}</code>\\n`;\n    text += '\\n';\n  });\n}\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nconst query = source.query || '';\n\nlet text = '🔎 <b>Kết quả tìm Google Docs</b>\\n\\n';\nif (query) text += `Từ khóa: <i>${escapeHtml(query)}</i>\\n\\n`;\n\nif (!rows.length) {\n  text += query ? `Không tìm thấy tài liệu phù hợp với: <i>${escapeHtml(query)}</i>` : 'Không tìm thấy tài liệu phù hợp.';\n} else {\n  rows.forEach((doc, index) => {\n    const name = doc.name || 'Khong ro ten';\n    const link = doc.webViewLink || (doc.id ? `https://docs.google.com/document/d/${doc.id}/edit` : '');\n    const modified = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : '';\n    text += `${index + 1}. 📝 `;\n    text += link ? `<a href=\"${escapeHtml(link)}\">${escapeHtml(name)}</a>\\n` : `<b>${escapeHtml(name)}</b>\\n`;\n    if (modified) text += `   Sua luc: ${escapeHtml(modified)}\\n`;\n    if (doc.id) text += `   ID: <code>${escapeHtml(doc.id)}</code>\\n`;\n    text += '\\n';\n  });\n}\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "docs-search-format",
+      "id": "6cf1eb60-8477-4d4e-a969-6f7c80b7c1d9",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -121,7 +120,7 @@
         },
         "options": {}
       },
-      "id": "docs-search-send",
+      "id": "f2f0008c-2f2f-4648-8c67-80af9f890196",
       "name": "Gui Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
