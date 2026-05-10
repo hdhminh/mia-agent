@@ -8,6 +8,7 @@ import urllib.error
 from typing import Any, Dict, List, Optional
 
 
+
 DEFAULT_ERROR_WORKFLOW_NAME = "Global Error Monitor"
 
 
@@ -156,7 +157,31 @@ def should_skip_workflow(
 
 
 def build_update_payload(full: Dict[str, Any], error_workflow_id: str) -> Dict[str, Any]:
-    settings = dict(full.get("settings") or {})
+    """
+    n8n API validates workflow.settings strictly.
+    Do not send unknown settings fields back, otherwise API returns:
+    "request/body/settings must NOT have additional properties"
+    """
+
+    original_settings = dict(full.get("settings") or {})
+
+    allowed_settings_keys = {
+        "saveExecutionProgress",
+        "saveManualExecutions",
+        "saveDataErrorExecution",
+        "saveDataSuccessExecution",
+        "executionTimeout",
+        "timezone",
+        "errorWorkflow",
+        "executionOrder",
+    }
+
+    settings = {
+        key: value
+        for key, value in original_settings.items()
+        if key in allowed_settings_keys
+    }
+
     settings["errorWorkflow"] = str(error_workflow_id)
 
     payload: Dict[str, Any] = {
@@ -166,14 +191,11 @@ def build_update_payload(full: Dict[str, Any], error_workflow_id: str) -> Dict[s
         "settings": settings,
     }
 
+    if "pinData" in full:
+        payload["pinData"] = full.get("pinData") or {}
+
     if "staticData" in full:
         payload["staticData"] = full.get("staticData")
-
-    if "pinData" in full:
-        payload["pinData"] = full.get("pinData", {})
-
-    if "tags" in full:
-        payload["tags"] = full.get("tags", [])
 
     return payload
 
