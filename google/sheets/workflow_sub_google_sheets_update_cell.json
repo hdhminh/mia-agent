@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Sheets - Update Cell",
   "nodes": [
     {
       "parameters": {},
-      "id": "sheets-update-trigger",
+      "id": "5515602f-7b97-4289-8b02-ca063c73e303",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1328,
-        80
+        -448,
+        -160
       ]
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nlet spreadsheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nlet sheetName = cleanName(source.sheetName || source.fileName || '');\nlet cell = String(source.cell || source.range || '').trim().toUpperCase();\nlet value = source.value || '';\n\nconst patterns = [\n  /^(?:cập nhật sheet|cap nhat sheet)\\s+(.+?)\\s+(?:ô|o)\\s+([A-Za-z]+\\d+)\\s+(?:thành|thanh|=)\\s+(.+)$/i,\n  /^(?:update cell(?: sheet)?)\\s+(.+?)\\s+([A-Za-z]+\\d+)\\s+(.+)$/i\n];\n\nfor (const pattern of patterns) {\n  const match = raw.match(pattern);\n  if (match) {\n    sheetName = sheetName || cleanName(match[1]);\n    cell = cell || String(match[2] || '').toUpperCase();\n    value = value || String(match[3] || '').trim();\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalize(raw),\n    spreadsheetId,\n    sheetName,\n    cell,\n    value: String(value || ''),\n    hasTarget: Boolean(spreadsheetId || sheetName),\n    hasContent: Boolean(cell && String(value || '').trim()),\n    response: (spreadsheetId || sheetName) && cell && String(value || '').trim() ? '' : '📊 <b>Cap nhat o trong Google Sheet</b>\\n\\nVi du: <code>cap nhat sheet Chi tieu o B2 thanh 35000</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n\n  const chatId =\n    source.chatId ||\n    message.chat?.id ||\n    payload.chatId ||\n    '';\n\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseSheetTab(rawText) {\n  const text = String(rawText || '').trim();\n\n  // Hỗ trợ: tab Data, sheet tab Data, trang tính Data\n  const match = text.match(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?([^\"'“”‘’]+?)[\"'“”‘’]?(?:\\s+(?:o|ô|cell|[A-Z]{1,3}\\d+)|\\s+(?:thanh|thành|=)|$)/i);\n  if (!match) return '';\n\n  return cleanName(match[1]);\n}\n\nfunction stripSheetTab(rawText) {\n  return String(rawText || '')\n    .replace(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?[^\"'“”‘’]+?[\"'“”‘’]?(?:\\s+(?=o|ô|cell|[A-Z]{1,3}\\d+|thanh|thành|=)|$)/i, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\n\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\n\nlet spreadsheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  source.fileId ||\n  source.targetId ||\n  ctx.payload.spreadsheetId ||\n  ctx.payload.sheetId ||\n  ctx.payload.fileId ||\n  '';\n\nlet sheetName = cleanName(\n  source.sheetName ||\n  source.fileName ||\n  source.title ||\n  source.query ||\n  ctx.payload.sheetName ||\n  ctx.payload.fileName ||\n  ctx.payload.title ||\n  ctx.payload.query ||\n  ''\n);\n\nlet sheetTab =\n  source.sheetTab ||\n  ctx.payload.sheetTab ||\n  parseSheetTab(raw) ||\n  '';\n\nlet cell = String(\n  source.cell ||\n  source.range ||\n  ctx.payload.cell ||\n  ctx.payload.range ||\n  ''\n).trim().toUpperCase();\n\nlet value = String(\n  source.value ||\n  ctx.payload.value ||\n  ''\n).trim();\n\nconst patterns = [\n  /^(?:cập nhật sheet|cap nhat sheet)\\s+(.+?)\\s+(?:ô|o|cell)\\s+([A-Za-z]{1,3}\\d+)\\s+(?:thành|thanh|=)\\s+(.+)$/i,\n  /^(?:update cell(?: sheet)?)\\s+(.+?)\\s+([A-Za-z]{1,3}\\d+)\\s+(.+)$/i\n];\n\nfor (const pattern of patterns) {\n  const match = raw.match(pattern);\n  if (match) {\n    let parsedName = cleanName(match[1]);\n    const parsedTab = parseSheetTab(parsedName);\n\n    if (parsedTab) {\n      sheetTab = sheetTab || parsedTab;\n      parsedName = cleanName(stripSheetTab(parsedName));\n    }\n\n    sheetName = sheetName || parsedName;\n    cell = cell || String(match[2] || '').toUpperCase();\n    value = value || String(match[3] || '').trim();\n    break;\n  }\n}\n\nconst hasTarget = Boolean(spreadsheetId || sheetName);\nconst hasContent = Boolean(cell && String(value || '').trim());\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n\n    spreadsheetId,\n    sheetId: spreadsheetId,\n    sheetName,\n    query: sheetName,\n    sheetTab,\n\n    cell,\n    value,\n\n    hasTarget,\n    hasContent,\n\n    response: hasTarget && hasContent\n      ? ''\n      : '📊 <b>Cập nhật ô trong Google Sheet</b>\\n\\nVí dụ:\\n<code>cập nhật sheet Chi tiêu ô B2 thành 35000</code>\\n<code>cập nhật sheet Chi tiêu tab Data ô B2 thành 35000</code>'\n  }\n}];"
       },
-      "id": "sheets-update-prepare",
+      "id": "2536eea1-e6a1-4718-a41c-8f198de68f3a",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1088,
-        80
+        -208,
+        -160
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "sheets-update-ready",
+      "id": "962976ea-b9cd-4b17-8f6e-19af06384e6a",
       "name": "Du Dieu Kien Update?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -848,
-        80
+        32,
+        -160
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "sheets-update-has-id",
+      "id": "c7c3b411-9e69-4c39-9841-ca4d5dfd5d1c",
       "name": "Co Spreadsheet ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -624,
-        80
+        256,
+        -160
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "sheets-update-search",
+      "id": "cc37c5d0-ec82-450c-9afc-d80ebfdc3317",
       "name": "Drive Tim Google Sheet",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -384,
-        -64
+        496,
+        -304
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -103,15 +102,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, spreadsheetId: '', response: 'Khong tim thay Google Sheet phu hop.' } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetName: sheet.name || source.sheetName || '', webViewLink: sheet.webViewLink || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      spreadsheetId: '',\n      sheetId: '',\n      found: false,\n      response: 'Không tìm thấy Google Sheet phù hợp với: <b>' + escapeHtml(source.sheetName || source.query || '') + '</b>'\n    }\n  }];\n}\n\nconst sheet = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...sheet,\n\n    found: true,\n    spreadsheetId: sheet.id || source.spreadsheetId || '',\n    sheetId: sheet.id || source.sheetId || '',\n    sheetName: sheet.name || source.sheetName || source.query || '',\n    query: source.query || source.sheetName || '',\n    webViewLink: sheet.webViewLink || source.webViewLink || '',\n    mimeType: sheet.mimeType || source.mimeType || '',\n    sheetTab: source.sheetTab || '',\n    cell: source.cell || '',\n    value: source.value || '',\n    chatId: source.chatId || ''\n  }\n}];"
       },
-      "id": "sheets-update-resolve",
+      "id": "d37cd5e5-47f9-4966-9924-c17e08295a89",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        -64
+        736,
+        -304
       ]
     },
     {
@@ -125,19 +124,19 @@
           ]
         }
       },
-      "id": "sheets-update-found",
+      "id": "d403252d-251e-4bfe-91a4-a30a0985573c",
       "name": "Tim Thay Sheet?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        96,
-        -64
+        976,
+        -304
       ]
     },
     {
       "parameters": {
         "method": "PUT",
-        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent($json.spreadsheetId) + '/values/' + encodeURIComponent('Sheet1!' + $json.cell) }}",
+        "url": "={{ \"https://sheets.googleapis.com/v4/spreadsheets/\" + encodeURIComponent($json.spreadsheetId || $json.sheetId) + \"/values/\" + encodeURIComponent(($json.sheetTab ? (\"'\" + String($json.sheetTab).replace(/'/g, \"''\") + \"'!\") : \"\") + ($json.cell || \"A1\")) }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleDriveOAuth2Api",
         "sendQuery": true,
@@ -154,13 +153,13 @@
         "jsonBody": "={{ { values: [ [ $json.value ] ] } }}",
         "options": {}
       },
-      "id": "sheets-update-call",
+      "id": "95851828-199f-4145-845c-ac0790f7b679",
       "name": "Sheets Update Cell",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        352,
-        80
+        1232,
+        -160
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -171,15 +170,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst sheetId = source.spreadsheetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets update response.');\n}\n\nlet text = '✅ <b>Da cap nhat o trong Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(source.sheetName || 'Khong ro ten')}</b>\\n`;\nif (sheetId) text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\ntext += `O da cap nhat: <code>Sheet1!${escapeHtml(source.cell || '')}</code>\\n`;\ntext += `Gia tri moi: <code>${escapeHtml(source.value || '')}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo bang tinh</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nfunction getJson(nodeName) {\n  try {\n    return $(nodeName).item.json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nconst source = {\n  ...getJson('Prepare Action'),\n  ...getJson('Resolve Search Result')\n};\n\nconst result = $input.item.json || {};\n\nconst sheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  '';\n\nconst link =\n  source.webViewLink ||\n  (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nconst chatId =\n  source.chatId ||\n  result.chatId ||\n  '';\n\nif (!chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets update response.');\n}\n\nconst updatedRange =\n  result.updatedRange ||\n  result.updatedData?.range ||\n  '';\n\nconst shownCell = source.sheetTab\n  ? `'${source.sheetTab}'!${source.cell || ''}`\n  : (source.cell || '');\n\nconst shownTarget = source.sheetTab\n  ? `${source.sheetName || 'Không rõ tên'} / tab ${source.sheetTab}`\n  : (source.sheetName || 'Không rõ tên');\n\nlet text = '✅ <b>Đã cập nhật ô trong Google Sheet</b>\\n\\n';\n\ntext += `<b>${escapeHtml(shownTarget)}</b>\\n`;\n\nif (sheetId) {\n  text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\n}\n\ntext += `Ô đã cập nhật: <code>${escapeHtml(updatedRange || shownCell)}</code>\\n`;\ntext += `Giá trị mới: <code>${escapeHtml(source.value || '')}</code>\\n`;\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở bảng tính</a>`;\n}\n\nreturn [{\n  json: {\n    chatId,\n    text: text.trim()\n  }\n}];"
       },
-      "id": "sheets-update-format",
+      "id": "1e121fb4-37e2-40f5-9e3a-1e0026902e68",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        592,
-        80
+        1472,
+        -160
       ]
     },
     {
@@ -209,13 +208,13 @@
         },
         "options": {}
       },
-      "id": "sheets-update-send",
+      "id": "1e0c7073-7ac4-4fc9-acf2-5b89bbfe9089",
       "name": "Gui Sheets",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        848,
-        160
+        1728,
+        -80
       ]
     }
   ],

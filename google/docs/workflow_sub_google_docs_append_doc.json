@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Docs - Append Doc",
   "nodes": [
     {
       "parameters": {},
-      "id": "docs-append-trigger",
+      "id": "c7e87f3f-ff87-4daf-bedf-d7e3d10d71fb",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1424,
-        80
+        -960,
+        144
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['them vao doc', 'append doc', 'ghi them vao tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet docId = source.docId || source.fileId || source.targetId || '';\nlet docName = cleanName(source.docName || source.fileName || '');\nlet content = String(source.content || '').trim();\n\nif ((!docName || !content) && body) {\n  const separator = body.indexOf(':');\n  if (separator !== -1) {\n    docName = docName || cleanName(body.slice(0, separator));\n    content = content || body.slice(separator + 1).trim();\n  } else {\n    const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n    if (markerMatch) {\n      const idx = markerMatch.index || 0;\n      docName = docName || cleanName(body.slice(0, idx));\n      content = content || body.slice(idx + markerMatch[0].length).trim();\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    docId,\n    docName,\n    content,\n    hasTarget: Boolean(docId || docName),\n    hasContent: Boolean(content),\n    response: (docId || docName) && content ? '' : '📝 <b>Append Google Doc</b>\\n\\nVi du: <code>them vao doc Project Plan: dong moi</code>'\n  }\n}];"
       },
-      "id": "docs-append-prepare",
+      "id": "ac38ab5d-b4c3-4e37-97ce-510e3297bf2e",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1184,
-        80
+        -720,
+        144
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "docs-append-ready",
+      "id": "1c890c9e-1e2c-49fa-ae54-0e7b07788b59",
       "name": "Du Dieu Kien Append?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -944,
-        80
+        -480,
+        144
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "docs-append-has-id",
+      "id": "cbda00de-6aaf-4406-a730-1a388894a8de",
       "name": "Co Doc ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -704,
-        80
+        -240,
+        144
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "docs-append-search",
+      "id": "e903fec4-c559-4782-8c92-5f8a8b73add0",
       "name": "Drive Tim Google Doc",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -464,
-        -64
+        0,
+        0
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -105,13 +104,13 @@
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '' } }];"
       },
-      "id": "docs-append-resolve",
+      "id": "19890836-136d-4221-91c1-5a2236e0b779",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -224,
-        -64
+        240,
+        0
       ]
     },
     {
@@ -125,13 +124,13 @@
           ]
         }
       },
-      "id": "docs-append-found",
+      "id": "c26bedd6-aaf8-4ac5-8d39-084c1f45354a",
       "name": "Tim Thay Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        16,
-        -64
+        480,
+        0
       ]
     },
     {
@@ -141,13 +140,13 @@
         "nodeCredentialType": "googleDriveOAuth2Api",
         "options": {}
       },
-      "id": "docs-append-get",
+      "id": "125b7021-2f9e-417d-87ee-5a5c71b0e6a1",
       "name": "Docs Get Document",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        256,
-        80
+        720,
+        144
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -158,35 +157,35 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst items = Array.isArray(doc.body?.content) ? doc.body.content : [];\nconst endIndex = items.length ? Number(items[items.length - 1].endIndex || 1) : 1;\nreturn [{ json: { ...source, docId: source.docId, docName: doc.title || source.docName || '', endIndex: endIndex > 1 ? endIndex - 1 : 1 } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nconst resolved = (() => {\n  try {\n    return $('Resolve Search Result').item.json || {};\n  } catch (e) {\n    return {};\n  }\n})();\n\nconst doc = (() => {\n  try {\n    return $('Docs Get Document').item.json || {};\n  } catch (e) {\n    return {};\n  }\n})();\n\nconst documentId =\n  source.documentId ||\n  source.docId ||\n  source.fileId ||\n  resolved.documentId ||\n  resolved.docId ||\n  resolved.fileId ||\n  resolved.id ||\n  doc.documentId ||\n  '';\n\nconst title =\n  resolved.name ||\n  resolved.title ||\n  doc.title ||\n  source.title ||\n  source.docName ||\n  source.query ||\n  'Không rõ tên';\n\nconst content = String(\n  source.content ||\n  source.appendContent ||\n  source.textToAppend ||\n  ''\n).trim();\n\nif (!documentId) {\n  throw new Error('Missing documentId. Cannot append Google Docs content.');\n}\n\nif (!content) {\n  throw new Error('Missing content. Cannot append empty content to Google Docs.');\n}\n\nconst bodyContent = Array.isArray(doc.body?.content)\n  ? doc.body.content\n  : [];\n\nlet insertIndex = 1;\n\nif (bodyContent.length) {\n  const last = bodyContent[bodyContent.length - 1];\n  const endIndex = Number(last.endIndex || 2);\n\n  // Google Docs cần insert trước ký tự newline cuối document.\n  insertIndex = Math.max(1, endIndex - 1);\n}\n\nconst appendText = '\\n' + content;\n\nreturn [{\n  json: {\n    ...source,\n    ...resolved,\n\n    chatId: source.chatId || resolved.chatId || '',\n    documentId,\n    docId: documentId,\n    title,\n    content,\n    insertIndex,\n    appendLength: appendText.length,\n\n    body: {\n      requests: [\n        {\n          insertText: {\n            location: {\n              index: insertIndex\n            },\n            text: appendText\n          }\n        }\n      ]\n    }\n  }\n}];"
       },
-      "id": "docs-append-build",
+      "id": "86da6df9-1231-4b6c-94b4-10fd884f22f4",
       "name": "Build Append Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        496,
-        80
+        960,
+        144
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent($json.docId) + ':batchUpdate' }}",
+        "url": "={{ \"https://docs.googleapis.com/v1/documents/\" + encodeURIComponent($json.documentId) + \":batchUpdate\" }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleDriveOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { requests: [ { insertText: { location: { index: $json.endIndex }, text: '\\n' + $json.content } } ] } }}",
+        "jsonBody": "={{ $json.body }}",
         "options": {}
       },
-      "id": "docs-append-call",
+      "id": "2b397cb7-8873-4847-915f-bea435558739",
       "name": "Docs Append Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        736,
-        80
+        1200,
+        144
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -197,15 +196,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Build Append Request').item.json || $('Prepare Action').item.json || {};\nconst docId = source.docId || '';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst charCount = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs append response.');\n}\n\nlet text = '✅ <b>Da them noi dung vao Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(source.docName || 'Khong ro ten')}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\ntext += `So ky tu da them: ${charCount}\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Build Append Request').item.json || $('Prepare Action').item.json || {};\nconst docId = source.docId || '';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst charCount = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs append response.');\n}\n\nlet text = '✅ <b>Đã thêm nội dung vào Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(source.docName || 'Không rõ tên')}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\ntext += `Số ký tự đã thêm: ${charCount}\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "docs-append-format",
+      "id": "d087ee98-35e1-4e1a-a41b-69fdfbd78052",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        976,
-        80
+        1440,
+        144
       ]
     },
     {
@@ -235,13 +234,13 @@
         },
         "options": {}
       },
-      "id": "docs-append-send",
+      "id": "681781d0-5a76-420e-b60c-9a9a93773d50",
       "name": "Gui Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1216,
-        160
+        1680,
+        224
       ]
     }
   ],

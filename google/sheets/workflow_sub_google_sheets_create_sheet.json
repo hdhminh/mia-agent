@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Sheets - Create Sheet",
   "nodes": [
     {
       "parameters": {},
-      "id": "sheets-create-trigger",
+      "id": "6a6dff30-1fc7-4590-9ec0-c969f56d14f2",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -960,
-        80
+        -1104,
+        -16
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['tao sheet', 'tao bang tinh', 'create sheet'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst title = cleanName(source.title || source.sheetTitle || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    title,\n    hasTarget: Boolean(title),\n    response: title ? '' : '📊 <b>Tao Google Sheet</b>\\n\\nVi du: <code>tao sheet Chi tieu</code>'\n  }\n}];"
       },
-      "id": "sheets-create-prepare",
+      "id": "7cb85db1-e397-444e-811a-9be975af5873",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -720,
-        80
+        -864,
+        -16
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "sheets-create-has-title",
+      "id": "72a05daf-566d-45d6-9d14-89186970a869",
       "name": "Co Ten Bang Tinh?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -480,
-        80
+        -624,
+        -16
       ]
     },
     {
@@ -56,13 +55,13 @@
         "jsonBody": "={{ { properties: { title: $json.title } } }}",
         "options": {}
       },
-      "id": "sheets-create-call",
+      "id": "e42b0d57-e8b8-4753-96a0-991ca09b0b48",
       "name": "Sheets Create Spreadsheet",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -224,
-        0
+        -368,
+        -96
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -73,15 +72,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst sheet = $input.item.json || {};\nconst spreadsheetId = sheet.spreadsheetId || '';\nconst title = sheet.properties?.title || source.title || 'Khong ro ten';\nconst link = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : '';\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets create response.');\n}\n\nlet text = '✅ <b>Da tao Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\nif (spreadsheetId) text += `ID: <code>${escapeHtml(spreadsheetId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo bang tinh</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst sheet = $input.item.json || {};\n\nconst spreadsheetId = sheet.spreadsheetId || '';\nconst title = sheet.properties?.title || source.title || 'Không rõ tên';\nconst link = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : '';\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets create response.');\n}\n\nlet text = '✅ <b>Đã tạo Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\n\nif (spreadsheetId) {\n  text += `ID: <code>${escapeHtml(spreadsheetId)}</code>\\n`;\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở bảng tính</a>`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId,\n    text: text.trim(),\n  },\n}];"
       },
-      "id": "sheets-create-format",
+      "id": "0885a0f2-fa3e-49e5-b000-a1351ef952c4",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        16,
-        0
+        -128,
+        -96
       ]
     },
     {
@@ -111,13 +110,13 @@
         },
         "options": {}
       },
-      "id": "sheets-create-send",
+      "id": "fa7b7709-9226-4591-bd9d-28d03bc74f29",
       "name": "Gui Sheets",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        272,
-        80
+        128,
+        -16
       ]
     }
   ],

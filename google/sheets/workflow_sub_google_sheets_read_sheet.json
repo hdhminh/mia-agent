@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Sheets - Read Sheet",
   "nodes": [
     {
       "parameters": {},
-      "id": "sheets-read-trigger",
+      "id": "8d75c460-127e-45c2-b8bd-df19af937197",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1328,
-        80
+        -992,
+        -128
       ]
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc sheet', 'xem sheet', 'read sheet'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet range = source.range || source.payload?.range || '';\nconst rangeMatch = body.match(/([A-Za-z]+\\d+(?::[A-Za-z]+\\d+)?)/);\nif (!range && rangeMatch) range = rangeMatch[1].toUpperCase();\n\nlet sheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nlet sheetName = cleanName(source.sheetName || source.fileName || body.replace(rangeMatch ? rangeMatch[0] : '', '').trim());\nif (!range) range = 'A1:Z30';\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    spreadsheetId: sheetId,\n    sheetName,\n    range,\n    hasTarget: Boolean(sheetId || sheetName),\n    response: (sheetId || sheetName) ? '' : '📖 <b>Doc Google Sheet</b>\\n\\nVi du: <code>doc sheet Chi tieu</code>'\n  }\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  message.caption ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseRange(text) {\n  const match = String(text || '').match(/\\b([A-Z]{1,3}\\d+:[A-Z]{1,3}\\d+|[A-Z]{1,3}\\d+)\\b/i);\n  return match ? match[1].toUpperCase() : '';\n}\n\nfunction parseSheetTab(rawText) {\n  const text = String(rawText || '').trim();\n  const match = text.match(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?([^\"'“”‘’]+?)[\"'“”‘’]?(?:\\s+(?:range|vung|[A-Z]{1,3}\\d+)|$)/i);\n  return match ? cleanName(match[1]) : '';\n}\n\nfunction parseSheetName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'doc sheet',\n    'xem sheet',\n    'read sheet',\n    'doc bang tinh',\n    'xem bang tinh',\n    'noi dung sheet',\n    'noi dung bang tinh'\n  ];\n\n  let bodyOriginal = original;\n  let bodyNormalized = normalized;\n\n  for (const prefix of prefixes) {\n    if (bodyNormalized.startsWith(prefix + ' ')) {\n      bodyOriginal = original.slice(prefix.length + 1).trim();\n      bodyNormalized = normalized.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (bodyNormalized === prefix) {\n      return '';\n    }\n  }\n\n  const range = parseRange(bodyOriginal);\n  if (range) {\n    bodyOriginal = bodyOriginal.replace(new RegExp(range, 'i'), ' ').trim();\n  }\n\n  const tab = parseSheetTab(bodyOriginal);\n  if (tab) {\n    bodyOriginal = bodyOriginal\n      .replace(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?[^\"'“”‘’]+?[\"'“”‘’]?(?:\\s+(?:range|vung)|$)/i, ' ')\n      .trim();\n  }\n\n  bodyOriginal = bodyOriginal\n    .replace(/\\brange\\b/gi, ' ')\n    .replace(/\\bvung\\b/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  return cleanName(bodyOriginal);\n}\n\nconst spreadsheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  source.fileId ||\n  payload.spreadsheetId ||\n  payload.sheetId ||\n  payload.fileId ||\n  '';\n\nconst range =\n  source.range ||\n  payload.range ||\n  parseRange(raw) ||\n  'A1:Z30';\n\nconst sheetTab =\n  source.sheetTab ||\n  payload.sheetTab ||\n  parseSheetTab(raw) ||\n  '';\n\nconst sheetName = cleanName(\n  source.sheetName ||\n  source.title ||\n  source.query ||\n  payload.sheetName ||\n  payload.title ||\n  payload.query ||\n  parseSheetName(raw)\n);\n\nconst hasTarget = Boolean(spreadsheetId || sheetName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    spreadsheetId,\n    sheetId: spreadsheetId,\n    sheetName,\n    query: sheetName,\n    range,\n    sheetTab,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📊 <b>Đọc Google Sheet</b>\\n\\nVí dụ:\\n<code>đọc sheet Chi tiêu</code>\\n<code>đọc sheet Chi tiêu A1:C10</code>'\n  }\n}];"
       },
-      "id": "sheets-read-prepare",
+      "id": "1e8fc33a-e684-4148-8983-508d8e6170a3",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1088,
-        80
+        -752,
+        -128
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "sheets-read-has-target",
+      "id": "4a96c6b5-fc9e-419c-8c9e-558ca73d1bdf",
       "name": "Co Sheet Can Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -848,
-        80
+        -512,
+        -128
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "sheets-read-has-id",
+      "id": "cbf1af72-3367-49d8-890e-d093250d400a",
       "name": "Co Spreadsheet ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -624,
-        80
+        -288,
+        -128
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "sheets-read-search",
+      "id": "40a1ea43-0218-40a0-adf1-9de434c3df12",
       "name": "Drive Tim Google Sheet",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -384,
-        -64
+        -48,
+        -272
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -103,15 +102,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, spreadsheetId: '', response: 'Khong tim thay Google Sheet phu hop.' } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetName: sheet.name || source.sheetName || '', webViewLink: sheet.webViewLink || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      found: false,\n      spreadsheetId: '',\n      sheetId: '',\n      response: 'Không tìm thấy bảng tính phù hợp với: <b>' + escapeHtml(source.sheetName || source.query || '') + '</b>'\n    }\n  }];\n}\n\nconst sheet = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...sheet,\n\n    found: true,\n    spreadsheetId: sheet.id || source.spreadsheetId || '',\n    sheetId: sheet.id || source.sheetId || '',\n    sheetName: sheet.name || source.sheetName || source.query || '',\n    query: source.query || source.sheetName || '',\n    webViewLink: sheet.webViewLink || source.webViewLink || '',\n    mimeType: sheet.mimeType || source.mimeType || '',\n    range: source.range || 'A1:Z30',\n    sheetTab: source.sheetTab || '',\n    chatId: source.chatId || ''\n  }\n}];"
       },
-      "id": "sheets-read-resolve",
+      "id": "934e475c-cd8e-4dd5-8670-5fe4c89f8233",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        -64
+        192,
+        -272
       ]
     },
     {
@@ -125,29 +124,29 @@
           ]
         }
       },
-      "id": "sheets-read-found",
+      "id": "9ff23569-a0db-45fa-9249-20b15de838d3",
       "name": "Tim Thay Sheet?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        96,
-        -64
+        432,
+        -272
       ]
     },
     {
       "parameters": {
-        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent($json.spreadsheetId) + '/values/' + encodeURIComponent('Sheet1!' + $json.range) }}",
+        "url": "={{ \"https://sheets.googleapis.com/v4/spreadsheets/\" + encodeURIComponent($json.spreadsheetId || $json.sheetId) + \"/values/\" + encodeURIComponent(($json.sheetTab ? (\"'\" + String($json.sheetTab).replace(/'/g, \"''\") + \"'!\") : \"\") + ($json.range || \"A1:Z30\")) }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleDriveOAuth2Api",
         "options": {}
       },
-      "id": "sheets-read-call",
+      "id": "c6bc26ec-9a02-44de-94a9-9d55e66796de",
       "name": "Sheets Get Values",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        352,
-        80
+        688,
+        -128
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -158,15 +157,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst result = $input.item.json || {};\nconst rows = Array.isArray(result.values) ? result.values : [];\nconst limited = rows.slice(0, 30);\nlet preview = limited.map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`).join('\\n');\nlet truncated = false;\nif (rows.length > 30) truncated = true;\nif (preview.length > 3000) {\n  preview = preview.slice(0, 3000);\n  truncated = true;\n}\nconst sheetId = source.spreadsheetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets read response.');\n}\n\nlet text = '📖 <b>Noi dung Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(source.sheetName || 'Khong ro ten')}</b>\\n`;\nif (sheetId) text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\ntext += `Range: <code>Sheet1!${escapeHtml(source.range || 'A1:Z30')}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo bang tinh</a>\\n`;\ntext += '\\n<b>Du lieu xem truoc:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Khong co du lieu)')}</pre>`;\nif (truncated) text += '\\n<i>Noi dung da duoc rut gon.</i>';\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nfunction getJson(nodeName) {\n  try {\n    return $(nodeName).item.json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nconst source = {\n  ...getJson('Prepare Action'),\n  ...getJson('Resolve Search Result')\n};\n\nconst result = $input.item.json || {};\nconst rows = Array.isArray(result.values) ? result.values : [];\nconst limited = rows.slice(0, 30);\n\nlet preview = limited\n  .map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`)\n  .join('\\n');\n\nlet truncated = false;\n\nif (rows.length > 30) {\n  truncated = true;\n}\n\nif (preview.length > 3000) {\n  preview = preview.slice(0, 3000);\n  truncated = true;\n}\n\nconst sheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  '';\n\nconst link =\n  source.webViewLink ||\n  (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nconst shownRange = source.sheetTab\n  ? `'${source.sheetTab}'!${source.range || 'A1:Z30'}`\n  : (source.range || 'A1:Z30');\n\nconst chatId =\n  source.chatId ||\n  result.chatId ||\n  '';\n\nif (!chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets read response.');\n}\n\nlet text = '📖 <b>Nội dung Google Sheet</b>\\n\\n';\n\ntext += `<b>${escapeHtml(source.sheetName || source.name || 'Không rõ tên')}</b>\\n`;\n\nif (sheetId) {\n  text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\n}\n\ntext += `Range: <code>${escapeHtml(shownRange)}</code>\\n`;\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở bảng tính</a>\\n`;\n}\n\ntext += '\\n<b>Dữ liệu xem trước:</b>\\n';\ntext += `<pre>${escapeHtml(preview || '(Không có dữ liệu)')}</pre>`;\n\nif (truncated) {\n  text += '\\n<i>Nội dung đã được rút gọn.</i>';\n}\n\nreturn [{\n  json: {\n    chatId,\n    text: text.trim(),\n  },\n}];"
       },
-      "id": "sheets-read-format",
+      "id": "ad346294-9c6c-426a-b5f8-89c140e5e5bd",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        592,
-        80
+        928,
+        -128
       ]
     },
     {
@@ -196,13 +195,13 @@
         },
         "options": {}
       },
-      "id": "sheets-read-send",
+      "id": "d02ee5a5-6425-4536-bd01-b138d9b84c4f",
       "name": "Gui Sheets",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        848,
-        80
+        1184,
+        -128
       ]
     }
   ],

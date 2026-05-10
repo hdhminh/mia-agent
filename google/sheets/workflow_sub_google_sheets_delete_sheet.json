@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Sheets - Delete Sheet",
   "nodes": [
     {
       "parameters": {},
-      "id": "sheets-delete-trigger",
+      "id": "b7e96129-a054-4df0-b0dd-fb53553bd5f4",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1184,
-        80
+        -944,
+        144
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['xoa sheet', 'delete sheet', 'xoa bang tinh'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst spreadsheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nconst sheetName = cleanName(source.sheetName || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    spreadsheetId,\n    sheetName,\n    hasTarget: Boolean(spreadsheetId || sheetName),\n    response: (spreadsheetId || sheetName) ? '' : '🗑️ <b>Xoa Google Sheet</b>\\n\\nVi du: <code>xoa sheet Chi tieu</code>'\n  }\n}];"
       },
-      "id": "sheets-delete-prepare",
+      "id": "75f43338-0c15-4737-88b6-1d5d3d913058",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -944,
-        80
+        -704,
+        144
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "sheets-delete-has-target",
+      "id": "02cfa2b5-86bf-4f64-8ca3-c068801f1f1e",
       "name": "Co Sheet De Xoa?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -704,
-        80
+        -464,
+        144
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "sheets-delete-has-id",
+      "id": "1da8d4ce-d0ae-4231-9c85-0bacd380f705",
       "name": "Co Spreadsheet ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -480,
-        80
+        -240,
+        144
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "sheets-delete-search",
+      "id": "d545a6fe-918a-435f-a832-f8bf7ca0b271",
       "name": "Drive Tim Google Sheet",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -240,
-        -64
+        0,
+        0
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -105,13 +104,13 @@
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, spreadsheetId: '', response: 'Khong tim thay Google Sheet phu hop.' } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetName: sheet.name || source.sheetName || '', webViewLink: sheet.webViewLink || '' } }];"
       },
-      "id": "sheets-delete-resolve",
+      "id": "b75d40ac-8792-4ff2-8c54-03da49182ee8",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        -64
+        240,
+        0
       ]
     },
     {
@@ -125,13 +124,13 @@
           ]
         }
       },
-      "id": "sheets-delete-found",
+      "id": "82a9d0f2-f7b7-40bd-bbc6-9959f2de7647",
       "name": "Tim Thay Sheet?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        240,
-        -64
+        480,
+        0
       ]
     },
     {
@@ -158,13 +157,13 @@
         "jsonBody": "={{ { trashed: true } }}",
         "options": {}
       },
-      "id": "sheets-delete-trash",
+      "id": "bf79e50b-b3f7-409c-aaad-b2ed0845f6fe",
       "name": "Drive Trash Sheet",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        480,
-        80
+        720,
+        144
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -175,15 +174,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst sheetId = item.id || source.spreadsheetId || '';\nconst sheetName = item.name || source.sheetName || 'Khong ro ten';\nconst link = item.webViewLink || source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets delete response.');\n}\n\nlet text = '🗑️ <b>Da dua Google Sheet vao thung rac</b>\\n\\n';\ntext += `<b>${escapeHtml(sheetName)}</b>\\n`;\nif (sheetId) text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo bang tinh</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst sheetId = item.id || source.spreadsheetId || '';\nconst sheetName = item.name || source.sheetName || 'Khong ro ten';\nconst link = item.webViewLink || source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets delete response.');\n}\n\nlet text = '🗑️ <b>Đã đưa Google Sheet vào thùng rác</b>\\n\\n';\ntext += `<b>${escapeHtml(sheetName)}</b>\\n`;\nif (sheetId) text += `ID: <code>${escapeHtml(sheetId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệuh</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "sheets-delete-format",
+      "id": "6f19aa4b-9bb6-4b6b-940e-f404d1f84902",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        720,
-        80
+        960,
+        144
       ]
     },
     {
@@ -213,13 +212,13 @@
         },
         "options": {}
       },
-      "id": "sheets-delete-send",
+      "id": "fe39d8bc-86a3-4935-9403-b067e4095db2",
       "name": "Gui Sheets",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        160
+        1200,
+        224
       ]
     }
   ],

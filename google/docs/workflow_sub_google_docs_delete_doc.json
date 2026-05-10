@@ -1,28 +1,27 @@
 {
-  "name": "Sub-workflow: Google Docs - Delete Doc",
   "nodes": [
     {
       "parameters": {},
-      "id": "docs-delete-trigger",
+      "id": "4bc0ab33-9357-4f47-9648-71122ec4d111",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -1184,
-        80
+        -944,
+        144
       ]
     },
     {
       "parameters": {
         "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['xoa doc', 'delete doc', 'xoa tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.fileId || source.targetId || '';\nconst docName = cleanName(source.docName || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '🗑️ <b>Xoa Google Doc</b>\\n\\nVi du: <code>xoa doc Project Plan</code>'\n  }\n}];"
       },
-      "id": "docs-delete-prepare",
+      "id": "2ae79c81-9255-4ea6-a28e-a00fe41c44d7",
       "name": "Prepare Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -944,
-        80
+        -704,
+        144
       ]
     },
     {
@@ -36,13 +35,13 @@
           ]
         }
       },
-      "id": "docs-delete-has-target",
+      "id": "eeb8ac6e-2d59-43a9-a5e0-2848dd918a83",
       "name": "Co Doc De Xoa?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -704,
-        80
+        -464,
+        144
       ]
     },
     {
@@ -56,13 +55,13 @@
           ]
         }
       },
-      "id": "docs-delete-has-id",
+      "id": "d64afeef-ce8b-4a8e-b422-46049a985066",
       "name": "Co Doc ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -480,
-        80
+        -240,
+        144
       ]
     },
     {
@@ -85,13 +84,13 @@
           ]
         }
       },
-      "id": "docs-delete-search",
+      "id": "1237662d-4f34-40cd-8085-e8296f333f54",
       "name": "Drive Tim Google Doc",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -240,
-        -64
+        0,
+        0
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -105,13 +104,13 @@
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '' } }];"
       },
-      "id": "docs-delete-resolve",
+      "id": "d6e3d1eb-56f1-49be-bedc-c01734d10f14",
       "name": "Resolve Search Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        -64
+        240,
+        0
       ]
     },
     {
@@ -125,13 +124,13 @@
           ]
         }
       },
-      "id": "docs-delete-found",
+      "id": "6134caf0-68d8-4559-954e-7a071e475068",
       "name": "Tim Thay Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        240,
-        -64
+        480,
+        0
       ]
     },
     {
@@ -158,13 +157,13 @@
         "jsonBody": "={{ { trashed: true } }}",
         "options": {}
       },
-      "id": "docs-delete-trash",
+      "id": "625d0228-716a-4eb7-a17e-3806c6b207ce",
       "name": "Drive Trash Doc",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        480,
-        80
+        720,
+        144
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -175,15 +174,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst docId = item.id || source.docId || '';\nconst docName = item.name || source.docName || 'Khong ro ten';\nconst link = item.webViewLink || source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs delete response.');\n}\n\nlet text = '🗑️ <b>Da dua Google Doc vao thung rac</b>\\n\\n';\ntext += `<b>${escapeHtml(docName)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mo tai lieu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst docId = item.id || source.docId || '';\nconst docName = item.name || source.docName || 'Không rõ tên';\nconst link = item.webViewLink || source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs delete response.');\n}\n\nlet text = '🗑️ <b>Đã đưa Google Doc vào thùng rác</b>\\n\\n';\ntext += `<b>${escapeHtml(docName)}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
-      "id": "docs-delete-format",
+      "id": "0fad2d56-179e-4c07-962c-16242ef29302",
       "name": "Format Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        720,
-        80
+        960,
+        144
       ]
     },
     {
@@ -213,13 +212,13 @@
         },
         "options": {}
       },
-      "id": "docs-delete-send",
+      "id": "b83fb874-609a-457f-b2ca-12da18b83b1f",
       "name": "Gui Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        160
+        1200,
+        224
       ]
     }
   ],
