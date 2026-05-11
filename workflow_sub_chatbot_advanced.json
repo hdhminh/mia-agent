@@ -2,13 +2,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "a3f42510-6449-468f-8216-4976705557f5",
+      "id": "838793fe-a07e-46a7-9be0-aa14f349d44a",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -880,
-        208
+        -1040,
+        336
       ]
     },
     {
@@ -30,26 +30,26 @@
         },
         "options": {}
       },
-      "id": "8962350f-97c5-4271-b4f0-5c6f330f0263",
+      "id": "14af8d85-7547-4a47-9ab6-3dd7cf20d30f",
       "name": "Get Embedding",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -624,
-        208
+        -784,
+        336
       ]
     },
     {
       "parameters": {
         "jsCode": "const embedding = $input.item.json.embedding;\nconst vectorStr = '[' + embedding.join(',') + ']';\nreturn { json: { embedding_str: vectorStr } };"
       },
-      "id": "5ffc8d52-cf72-49d5-b681-23a7fe1d143c",
+      "id": "668ac337-b4d7-4013-bc36-16e9045c83ca",
       "name": "Format Embedding",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -432,
-        208
+        -592,
+        336
       ]
     },
     {
@@ -58,13 +58,13 @@
         "query": "SELECT metadata->>'intent' as intent, 1 - (embedding <=> '{{ $json.embedding_str }}'::vector) AS similarity FROM intents ORDER BY similarity DESC LIMIT 1;",
         "options": {}
       },
-      "id": "ffa39a8c-0148-469b-afc4-523011885bff",
+      "id": "90bded5c-6dcf-4f3f-8a8c-5322d2586126",
       "name": "Vector Search Postgres",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        -224,
-        208
+        -384,
+        336
       ],
       "credentials": {
         "postgres": {
@@ -77,13 +77,13 @@
       "parameters": {
         "jsCode": "const input = $('Execute Workflow Trigger').item.json || {};\nconst message = input.message || input.payload?.message || input.body?.message || {};\nconst raw = String(input.rawText || input.text || message.text || message.caption || '').trim();\nconst intent = String($json.intent || 'tool');\nconst similarity = Number($json.similarity || 0);\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D');\n}\n\nconst text = normalize(raw);\nconst hasAttachment = Boolean(input.hasAttachment || input.document || input.photo || input.video || input.audio || message.document || message.photo || message.video || message.audio || message.voice);\nconst hasDocument = Boolean(input.hasDocument || input.document || message.document);\n\nconst hasGoldCue = /(vang|gold|sjc|9999)/.test(text);\nconst hasNewsCue = /(tin tuc|doc bao|bao hom nay|news|vnexpress|bao moi)/.test(text);\nconst hasWeatherCue = /(thoi tiet|weather|nhiet do|do am|mua|du bao|forecast)/.test(text);\nconst hasCalendarCue = /\\b(calendar|google calendar|xem lich|lich hom nay|lich ngay mai|lich tuan nay|lich tuan sau|tao lich|dat lich|them lich|tao su kien|dat su kien|su kien|hop voi|meeting|kiem tra lich ranh|kiem tra lich ban|co ranh|ranh luc|xoa lich|huy lich|tim lich|cuoi tuan nay|cuoi tuan sau|thu [2-7]|chu nhat)\\b/.test(text);\nconst hasGmailCue = /\\b(gmail|mail|email|inbox|hop thu|hop thu den|xem mail|xem email|doc mail|doc email|gui mail|gui email|gui nhap|gui email nhap|gui mail nhap|soan mail|soan email|viet nhap email|draft email|draft mail|tim mail|tim email|tra loi mail|tra loi email|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email|send mail|send email|send draft|read mail|read email|reply mail|reply email|search mail|search email)\\b/.test(text);\nconst hasDriveCue = /\\b(drive|google drive|xem drive|file drive|tim file|kiem file|tim tep|kiem tep|tim trong drive|danh sach file|file gan day|thong tin file|chi tiet file|file info|metadata file|noi dung file|doc file|read file|tao folder|tao thu muc|create folder|tao file|tao tep|create file|upload file|upload tep|tai file nay len|tai tep nay len|luu file nay|luu tep nay|luu vao drive|tai len drive|download file|tai file|tai tep|luu file|luu tep|share file|share tep|share drive|share folder|chia se file|chia se tep|chia se folder|chia se thu muc|chia se drive|cap quyen file|cap quyen tep|cap quyen folder|cap quyen thu muc|give access|give access file|give access folder|phan quyen file|phan quyen folder|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet|xuat file|export file|doi ten file|rename file|move file|di chuyen file|chuyen file|copy file|nhan ban file|duplicate file|xoa file|delete file|xoa folder|xoa thu muc|delete folder|folder|thu muc)\\b/.test(text);\nconst hasDocsCue = /\\b(google docs|docs help|google docs help|doc help|tao doc|tao tai lieu|create doc|doc doc|xem doc|noi dung doc|read doc|them vao doc|append doc|ghi them vao tai lieu|tim doc|search doc|tim tai lieu|xoa doc|delete doc|xoa tai lieu|tai lieu)\\b/.test(text);\nconst hasSheetsCue = /\\b(google sheets|sheets help|google sheets help|sheet help|tao sheet|tao bang tinh|create sheet|doc sheet|xem sheet|read sheet|them dong vao sheet|append row|cap nhat sheet|cap nhat o|update cell|tim sheet|search sheet|tim bang tinh|xoa sheet|delete sheet|xoa bang tinh|bang tinh)\\b/.test(text);\nconst hasDriveShareWithEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/i.test(text) && /\\b(share|chia se|cap quyen|give access|phan quyen|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet)\\b/.test(text);\nconst hasShortlinkCue = /\\b(shortlink|short link|shorten url|rut gon link|rút gọn link|tao link ngan|tạo link ngắn|thu gon url|thu gọn url|link ngan|link ngắn)\\b/.test(text);\nconst hasSearchCue = /(tim|tra cuu|search|google|duckduckgo|wiki|wikipedia|cho toi biet|thong tin ve|noi ve)/.test(text);\nconst hasResearchCue = /(nghien cuu|paper|pubmed|journal|drug|interaction|gdp|imf|world bank|statista|bao cao|report|dataset)/.test(text);\nconst hasFactCue = /(ai la|la gi|o dau|nam nao|khi nao|bao nhieu|how|what|who|when|where)/.test(text);\nconst hasYearOrMetric = /(19\\d{2}|20\\d{2}|\\d+\\s*(usd|vnd|%|trieu|ty|billion|million))/i.test(text);\n\nlet routeIntent = intent;\nlet routeReason = `vector:${intent}:${similarity.toFixed(3)}`;\n\nif (hasGoldCue || hasNewsCue || hasWeatherCue || hasCalendarCue || hasGmailCue || hasDriveCue || hasDocsCue || hasSheetsCue || hasDriveShareWithEmail || hasShortlinkCue) {\n  routeIntent = 'tool';\n  routeReason = hasDriveShareWithEmail ? 'keyword:drive_share_email' : 'keyword:direct_tool';\n} else if ((hasSearchCue || hasResearchCue || hasFactCue || hasYearOrMetric) && similarity < 0.78) {\n  routeIntent = 'tool';\n  routeReason = 'keyword_override_search';\n} else if (hasAttachment && !raw) {\n  routeIntent = 'chat';\n  routeReason = 'attachment_without_caption_chat';\n}\n\nreturn [{ json: { ...$json, raw, normalizedText: text, hasAttachment, hasDocument, routeIntent, routeReason } }];"
       },
-      "id": "6fab5fe3-2999-44b2-9415-582b9d539d41",
+      "id": "7ccbe9a4-1ab0-4525-8d3f-5e8fd137d068",
       "name": "Intent Guard",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -32,
-        208
+        -192,
+        336
       ]
     },
     {
@@ -103,13 +103,13 @@
         },
         "fallbackOutput": 1
       },
-      "id": "dfaa6d61-b260-49f0-ba51-4f626a8c276a",
+      "id": "94f1ad7a-734f-4fe4-91d7-a3934e5f4074",
       "name": "Semantic Router",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        192,
-        208
+        32,
+        336
       ]
     },
     {
@@ -120,13 +120,13 @@
           "systemMessage": "Ban la tro ly AI than thien ten la Nova. Hay tra loi ngan gon, tu nhien bang tieng Viet. Giu cau tra loi duoi 100 tu."
         }
       },
-      "id": "722328f2-3270-41b9-a3d7-59eb0bac582c",
+      "id": "099dadc1-22cf-4b68-a124-9def3ed70100",
       "name": "AI Chat Qwen 3B",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        240,
-        16
+        80,
+        144
       ]
     },
     {
@@ -134,13 +134,13 @@
         "model": "qwen2.5:3b",
         "options": {}
       },
-      "id": "1c1402a9-64af-4490-bdcc-7b5976d41d22",
+      "id": "b397e6ea-bcc0-4585-ab61-ceb08e950ea7",
       "name": "Model Qwen 3B",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        160,
-        -128
+        0,
+        0
       ],
       "credentials": {
         "ollamaApi": {
@@ -155,26 +155,26 @@
         "sessionKey": "={{ $('Execute Workflow Trigger').item.json.message.chat.id }}_3b",
         "contextWindowLength": 8
       },
-      "id": "37a802a8-70d3-498e-8d8a-96290f27fc21",
+      "id": "c3667699-20c3-4f60-bad7-35d793095001",
       "name": "Memory 3B",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.2,
       "position": [
-        336,
-        -128
+        176,
+        0
       ]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================\n// TOOL ROUTER - supports text, caption, document/photo/audio/video metadata\n// =============================================\nconst workflowMap = {\n  gold:     'Sub-workflow: Giá Vàng',\n  news:     'Sub-workflow: Tin Tức',\n  search:   'Sub-workflow: Tìm Kiếm Web',\n  weather:  'Sub-workflow: Thời Tiết',\n  calendar: 'Sub-workflow: Google Calendar Master',\n  gmail:    'Sub-workflow: Google Gmail Master',\n  drive:    'Sub-workflow: Google Drive Master',\n  docs:     'Sub-workflow: Google Docs Master',\n  sheets:   'Sub-workflow: Google Sheets Master',\n  shortlink:'Sub-workflow: Short Link Service'\n};\n\nconst input = $('Execute Workflow Trigger').item.json || {};\nconst message = input.message || input.body?.message || input.payload?.message || {};\nconst raw = String(input.rawText || input.text || message.text || message.caption || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D');\n}\n\nconst text = normalize(raw);\nlet toolKey = null;\n\nconst hasGoldCue = text.includes('vang') || text.includes('gold') || text.includes('sjc');\nconst hasNewsCue = text.includes('tin tuc') || text.includes('doc bao') || text.includes('bao hom nay') || text.includes('news');\nconst hasWeatherCue = text.includes('thoi tiet') || text.includes('weather') || text.includes('nhiet do') || text.includes('do am') || text.includes('du bao');\nconst hasCalendarCue = /\\b(calendar|google calendar|xem lich|lich hom nay|lich ngay mai|lich tuan nay|lich tuan sau|tao lich|dat lich|them lich|tao su kien|dat su kien|su kien|hop voi|meeting|kiem tra lich ranh|kiem tra lich ban|co ranh|ranh luc|xoa lich|huy lich|tim lich|cuoi tuan nay|cuoi tuan sau|thu [2-7]|chu nhat)\\b/.test(text);\nconst hasGmailCue = /\\b(gmail|mail|email|inbox|hop thu|hop thu den|xem mail|xem email|doc mail|doc email|gui mail|gui email|gui nhap|gui email nhap|gui mail nhap|soan mail|soan email|viet nhap email|draft email|draft mail|tim mail|tim email|tra loi mail|tra loi email|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email|send mail|send email|send draft|read mail|read email|reply mail|reply email|search mail|search email)\\b/.test(text);\nconst hasDriveCue = /\\b(drive|google drive|xem drive|file drive|tim file|kiem file|tim tep|kiem tep|tim trong drive|danh sach file|file gan day|thong tin file|chi tiet file|file info|metadata file|noi dung file|doc file|read file|tao folder|tao thu muc|create folder|tao file|tao tep|create file|upload file|upload tep|tai file nay len|tai tep nay len|luu file nay|luu tep nay|luu vao drive|tai len drive|download file|tai file|tai tep|luu file|luu tep|share file|share tep|share drive|share folder|chia se file|chia se tep|chia se folder|chia se thu muc|chia se drive|cap quyen file|cap quyen tep|cap quyen folder|cap quyen thu muc|give access|give access file|give access folder|phan quyen file|phan quyen folder|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet|xuat file|export file|doi ten file|rename file|move file|di chuyen file|chuyen file|copy file|nhan ban file|duplicate file|xoa file|delete file|xoa folder|xoa thu muc|delete folder|folder|thu muc)\\b/.test(text);\nconst hasDocsCue = /\\b(google docs|docs help|google docs help|doc help|tao doc|tao tai lieu|create doc|doc doc|xem doc|noi dung doc|read doc|them vao doc|append doc|ghi them vao tai lieu|tim doc|search doc|tim tai lieu|xoa doc|delete doc|xoa tai lieu|tai lieu)\\b/.test(text);\nconst hasSheetsCue = /\\b(google sheets|sheets help|google sheets help|sheet help|tao sheet|tao bang tinh|create sheet|doc sheet|xem sheet|read sheet|them dong vao sheet|append row|cap nhat sheet|cap nhat o|update cell|tim sheet|search sheet|tim bang tinh|xoa sheet|delete sheet|xoa bang tinh|bang tinh)\\b/.test(text);\nconst hasDriveShareWithEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/i.test(text) && /\\b(share|chia se|cap quyen|give access|phan quyen|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet)\\b/.test(text);\nconst hasShortlinkCue = /\\b(shortlink|short link|shorten url|rut gon link|rút gọn link|tao link ngan|tạo link ngắn|thu gon url|thu gọn url|link ngan|link ngắn)\\b/.test(text);\n\nif (hasGoldCue) toolKey = 'gold';\nelse if (hasNewsCue) toolKey = 'news';\nelse if (hasWeatherCue) toolKey = 'weather';\nelse if (hasCalendarCue) toolKey = 'calendar';\nelse if (hasDriveCue || hasDriveShareWithEmail) toolKey = 'drive';\nelse if (hasDocsCue) toolKey = 'docs';\nelse if (hasSheetsCue) toolKey = 'sheets';\nelse if (hasGmailCue) toolKey = 'gmail';\nelse if (hasShortlinkCue) toolKey = 'shortlink';\nelse if (text.includes('tim') || text.includes('search') || text.includes('tra cuu') || text.includes('cho toi biet') || text.includes('thong tin ve') || text.includes('duckduckgo') || text.includes('google')) toolKey = 'search';\nelse if (/[\\d+\\-*\\/()%.]+/.test(text) && (text.includes('tinh') || text.includes('bang') || text.includes('cong') || text.includes('nhan') || text.includes('chia') || text.includes('tru'))) {\n  const match = raw.match(/[\\d+\\-*\\/().%\\s]+/);\n  if (match) {\n    try {\n      const result = eval(match[0].trim());\n      return [{ json: { route: 'calc_done', response: 'Ket qua: ' + match[0].trim() + ' = ' + result, text: raw, rawText: raw, chatId: input.chatId || message.chat?.id } }];\n    } catch (e) {}\n  }\n  return [{ json: { route: 'calc_done', response: 'Khong the tinh duoc phep tinh nay.', text: raw, rawText: raw, chatId: input.chatId || message.chat?.id } }];\n}\n\nif (toolKey) {\n  return [{\n    json: {\n      ...input,\n      route: 'sub',\n      workflowName: workflowMap[toolKey],\n      toolKey,\n      text: raw,\n      rawText: raw,\n      message,\n      payload: input,\n      chatId: input.chatId || message.chat?.id || input.body?.chatId,\n      hasAttachment: Boolean(input.hasAttachment || input.document || input.photo || input.video || input.audio || message.document || message.photo || message.video || message.audio || message.voice),\n      attachmentKind: input.attachmentKind || (message.document ? 'document' : message.photo ? 'photo' : message.video ? 'video' : (message.audio || message.voice) ? 'audio' : 'none'),\n      document: input.document || message.document || null,\n      photo: input.photo || message.photo || null,\n      video: input.video || message.video || null,\n      audio: input.audio || message.audio || message.voice || null,\n      fileId: input.fileId || message.document?.file_id || message.video?.file_id || message.audio?.file_id || message.voice?.file_id || '',\n      fileName: input.fileName || message.document?.file_name || message.video?.file_name || message.audio?.file_name || '',\n      mimeType: input.mimeType || message.document?.mime_type || message.video?.mime_type || message.audio?.mime_type || ''\n    }\n  }];\n}\n\nreturn [{ json: { ...input, route: 'ai', text: raw, rawText: raw, message, payload: input, chatId: input.chatId || message.chat?.id || input.body?.chatId } }];"
+        "jsCode": "// =============================================\n// TOOL ROUTER - supports text, caption, document/photo/audio/video metadata\n// =============================================\nconst workflowMap = {\n  gold:     'Sub-workflow: Giá Vàng',\n  news:     'Sub-workflow: Tin Tức',\n  search:   'Sub-workflow: Tìm Kiếm Web',\n  weather:  'Sub-workflow: Thời Tiết',\n  calendar: 'Sub-workflow: Google Calendar Master',\n  gmail:    'Sub-workflow: Google Gmail Master',\n  drive:    'Sub-workflow: Google Drive Master',\n  docs:     'Sub-workflow: Google Docs Master',\n  sheets:   'Sub-workflow: Google Sheets Master',\n  shortlink:'Sub-workflow: Short Link Create'\n};\n\nconst input = $('Execute Workflow Trigger').item.json || {};\nconst message = input.message || input.body?.message || input.payload?.message || {};\nconst raw = String(input.rawText || input.text || message.text || message.caption || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D');\n}\n\nconst text = normalize(raw);\nlet toolKey = null;\n\nconst hasGoldCue = text.includes('vang') || text.includes('gold') || text.includes('sjc');\nconst hasNewsCue = text.includes('tin tuc') || text.includes('doc bao') || text.includes('bao hom nay') || text.includes('news');\nconst hasWeatherCue = text.includes('thoi tiet') || text.includes('weather') || text.includes('nhiet do') || text.includes('do am') || text.includes('du bao');\nconst hasCalendarCue = /\\b(calendar|google calendar|xem lich|lich hom nay|lich ngay mai|lich tuan nay|lich tuan sau|tao lich|dat lich|them lich|tao su kien|dat su kien|su kien|hop voi|meeting|kiem tra lich ranh|kiem tra lich ban|co ranh|ranh luc|xoa lich|huy lich|tim lich|cuoi tuan nay|cuoi tuan sau|thu [2-7]|chu nhat)\\b/.test(text);\nconst hasGmailCue = /\\b(gmail|mail|email|inbox|hop thu|hop thu den|xem mail|xem email|doc mail|doc email|gui mail|gui email|gui nhap|gui email nhap|gui mail nhap|soan mail|soan email|viet nhap email|draft email|draft mail|tim mail|tim email|tra loi mail|tra loi email|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email|send mail|send email|send draft|read mail|read email|reply mail|reply email|search mail|search email)\\b/.test(text);\nconst hasDriveCue = /\\b(drive|google drive|xem drive|file drive|tim file|kiem file|tim tep|kiem tep|tim trong drive|danh sach file|file gan day|thong tin file|chi tiet file|file info|metadata file|noi dung file|doc file|read file|tao folder|tao thu muc|create folder|tao file|tao tep|create file|upload file|upload tep|tai file nay len|tai tep nay len|luu file nay|luu tep nay|luu vao drive|tai len drive|download file|tai file|tai tep|luu file|luu tep|share file|share tep|share drive|share folder|chia se file|chia se tep|chia se folder|chia se thu muc|chia se drive|cap quyen file|cap quyen tep|cap quyen folder|cap quyen thu muc|give access|give access file|give access folder|phan quyen file|phan quyen folder|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet|xuat file|export file|doi ten file|rename file|move file|di chuyen file|chuyen file|copy file|nhan ban file|duplicate file|xoa file|delete file|xoa folder|xoa thu muc|delete folder|folder|thu muc)\\b/.test(text);\nconst hasDocsCue = /\\b(google docs|docs help|google docs help|doc help|tao doc|tao tai lieu|create doc|doc doc|xem doc|noi dung doc|read doc|them vao doc|append doc|ghi them vao tai lieu|tim doc|search doc|tim tai lieu|xoa doc|delete doc|xoa tai lieu|tai lieu)\\b/.test(text);\nconst hasSheetsCue = /\\b(google sheets|sheets help|google sheets help|sheet help|tao sheet|tao bang tinh|create sheet|doc sheet|xem sheet|read sheet|them dong vao sheet|append row|cap nhat sheet|cap nhat o|update cell|tim sheet|search sheet|tim bang tinh|xoa sheet|delete sheet|xoa bang tinh|bang tinh)\\b/.test(text);\nconst hasDriveShareWithEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/i.test(text) && /\\b(share|chia se|cap quyen|give access|phan quyen|quyen xem|quyen sua|quyen edit|quyen comment|quyen nhan xet)\\b/.test(text);\nconst hasShortlinkCue = /\\b(shortlink|short link|shorten url|rut gon link|rút gọn link|tao link ngan|tạo link ngắn|thu gon url|thu gọn url|link ngan|link ngắn)\\b/.test(text);\n\nif (hasGoldCue) toolKey = 'gold';\nelse if (hasNewsCue) toolKey = 'news';\nelse if (hasWeatherCue) toolKey = 'weather';\nelse if (hasCalendarCue) toolKey = 'calendar';\nelse if (hasShortlinkCue) toolKey = 'shortlink';\nelse if (hasDriveCue || hasDriveShareWithEmail) toolKey = 'drive';\nelse if (hasDocsCue) toolKey = 'docs';\nelse if (hasSheetsCue) toolKey = 'sheets';\nelse if (hasGmailCue) toolKey = 'gmail';\nelse if (text.includes('tim') || text.includes('search') || text.includes('tra cuu') || text.includes('cho toi biet') || text.includes('thong tin ve') || text.includes('duckduckgo') || text.includes('google')) toolKey = 'search';\nelse if (/[\\d+\\-*\\/()%.]+/.test(text) && (text.includes('tinh') || text.includes('bang') || text.includes('cong') || text.includes('nhan') || text.includes('chia') || text.includes('tru'))) {\n  const match = raw.match(/[\\d+\\-*\\/().%\\s]+/);\n  if (match) {\n    try {\n      const result = eval(match[0].trim());\n      return [{ json: { route: 'calc_done', response: 'Ket qua: ' + match[0].trim() + ' = ' + result, text: raw, rawText: raw, chatId: input.chatId || message.chat?.id } }];\n    } catch (e) {}\n  }\n  return [{ json: { route: 'calc_done', response: 'Khong the tinh duoc phep tinh nay.', text: raw, rawText: raw, chatId: input.chatId || message.chat?.id } }];\n}\n\nif (toolKey) {\n  return [{\n    json: {\n      ...input,\n      route: 'sub',\n      workflowName: workflowMap[toolKey],\n      toolKey,\n      text: raw,\n      rawText: raw,\n      message,\n      payload: input,\n      chatId: input.chatId || message.chat?.id || input.body?.chatId,\n      hasAttachment: Boolean(input.hasAttachment || input.document || input.photo || input.video || input.audio || message.document || message.photo || message.video || message.audio || message.voice),\n      attachmentKind: input.attachmentKind || (message.document ? 'document' : message.photo ? 'photo' : message.video ? 'video' : (message.audio || message.voice) ? 'audio' : 'none'),\n      document: input.document || message.document || null,\n      photo: input.photo || message.photo || null,\n      video: input.video || message.video || null,\n      audio: input.audio || message.audio || message.voice || null,\n      fileId: input.fileId || message.document?.file_id || message.video?.file_id || message.audio?.file_id || message.voice?.file_id || '',\n      fileName: input.fileName || message.document?.file_name || message.video?.file_name || message.audio?.file_name || '',\n      mimeType: input.mimeType || message.document?.mime_type || message.video?.mime_type || message.audio?.mime_type || ''\n    }\n  }];\n}\n\nreturn [{ json: { ...input, route: 'ai', text: raw, rawText: raw, message, payload: input, chatId: input.chatId || message.chat?.id || input.body?.chatId } }];"
       },
-      "id": "73e0c314-cf65-4ef9-ad24-a5d9d62aea65",
+      "id": "fea62a35-2e32-4fe0-9b0d-54d5a5094dc3",
       "name": "Tool Router",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        432
+        80,
+        560
       ]
     },
     {
@@ -194,13 +194,13 @@
         },
         "fallbackOutput": 2
       },
-      "id": "682e427d-90ec-46d4-a736-8de381cb1b98",
+      "id": "7445aa32-2379-4e31-9bd1-2ec28b994ddd",
       "name": "Route Switch",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        448,
-        432
+        288,
+        560
       ]
     },
     {
@@ -217,26 +217,26 @@
         },
         "options": {}
       },
-      "id": "580129e9-902b-4cce-b0f7-5d012e28bfcd",
+      "id": "92122515-f458-444b-b1d6-7f0b54a4da13",
       "name": "Lookup Workflow ID",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        672,
-        336
+        512,
+        464
       ]
     },
     {
       "parameters": {
         "jsCode": "const workflows = $input.item.json.data;\nconst routed = $('Tool Router').item.json || {};\nconst targetName = routed.workflowName;\nconst message = routed.message || $('Execute Workflow Trigger').item.json.message;\n\nconst found = workflows.find((w) => w.name === targetName);\nif (!found) {\n  return [{ json: { ...routed, workflowId: null, error: 'Workflow not found: ' + targetName, message } }];\n}\n\nreturn [{ json: { ...routed, workflowId: found.id, message } }];"
       },
-      "id": "f52fcf72-bb51-47cc-bafe-d5b08cc5269e",
+      "id": "0be6a73a-3c99-47d4-86fd-e0b5d8c56640",
       "name": "Extract Workflow ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
-        336
+        720,
+        464
       ]
     },
     {
@@ -248,13 +248,13 @@
         },
         "options": {}
       },
-      "id": "53601d1a-5a24-43a3-8c0e-9c4cdc3409f8",
+      "id": "6170f42a-e7a1-44b7-90b9-402cc2a3659b",
       "name": "Goi Sub Workflow",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
       "position": [
-        1072,
-        336
+        912,
+        464
       ]
     },
     {
@@ -265,13 +265,13 @@
           "systemMessage": "Ban la chuyen gia AI ten la Aria. Phan tich va tra loi cau hoi phuc tap bang tieng Viet."
         }
       },
-      "id": "37a25152-a747-41e5-a21c-96205f7f0d91",
+      "id": "6426a05d-56a5-447d-81aa-04753e2431e4",
       "name": "AI Chuyen Gia Qwen 8B",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        672,
-        592
+        512,
+        720
       ]
     },
     {
@@ -279,13 +279,13 @@
         "model": "qwen3:8b",
         "options": {}
       },
-      "id": "91d57dcd-06c2-4ac9-b829-df1e3e0ba3a8",
+      "id": "6508ad4b-d2ae-4500-a629-6b6aff9866a0",
       "name": "Model Qwen 8B",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        576,
-        752
+        416,
+        880
       ],
       "credentials": {
         "ollamaApi": {
@@ -300,13 +300,13 @@
         "sessionKey": "={{ $('Execute Workflow Trigger').item.json.message.chat.id }}_8b",
         "contextWindowLength": 10
       },
-      "id": "0eed39b6-429f-4a00-a30e-d408cd035291",
+      "id": "94ab87d2-5b80-4517-9f98-041fc3ab32c9",
       "name": "Memory 8B",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.2,
       "position": [
-        768,
-        752
+        608,
+        880
       ]
     },
     {
@@ -328,13 +328,13 @@
         },
         "options": {}
       },
-      "id": "ebb652e5-88b8-47e5-ab8e-224c0ab5639e",
+      "id": "cdbef2c9-0470-4657-87cf-0dc31034e91c",
       "name": "Gui Tin Nhan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        928,
-        432
+        768,
+        560
       ]
     }
   ],
