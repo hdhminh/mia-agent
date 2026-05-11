@@ -1,0 +1,381 @@
+{
+  "name": "Short Link Redirect Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "shortlink/go",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "shortlink-go-webhook",
+      "name": "Webhook Redirect",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Webhook Redirect').item.json || {};\nconst query = source.query || {};\nconst id = String(query.id || source.params?.id || '').trim();\nif (!id) {\n  return [{ json: { ok: false, id: '', result: 'Short link id missing', responseCode: 400 } }];\n}\nif (!/^[a-z0-9]{8,12}$/i.test(id)) {\n  return [{ json: { ok: false, id, result: 'Invalid short link id', responseCode: 400 } }];\n}\nreturn [{ json: { ok: true, id, lookupSql: `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE id = '${id}' LIMIT 1;` } }];"
+      },
+      "id": "shortlink-go-prepare",
+      "name": "Prepare Redirect Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-go-valid-id",
+      "name": "ID Hop Le?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.lookupSql }}",
+        "options": {}
+      },
+      "id": "shortlink-go-find",
+      "name": "Find Link By ID",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -112
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Redirect Request').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.id);\nconst row = rows[0] || null;\nif (!row) {\n  return [{ json: { ok: false, id: source.id, result: 'Short URL not found', responseCode: 404 } }];\n}\nconst expired = Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());\nif (expired) {\n  return [{ json: { ok: false, id: row.id, result: 'Short URL expired', responseCode: 410 } }];\n}\nreturn [{ json: { ok: true, id: row.id, longUrl: row.long_url, updateSql: `UPDATE short_links SET clicks = clicks + 1, last_clicked_at = now(), updated_at = now() WHERE id = '${row.id}' RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;` } }];"
+      },
+      "id": "shortlink-go-inspect",
+      "name": "Inspect Redirect Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-go-found",
+      "name": "Link Con Song?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.responseCode === 410 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-go-expired",
+      "name": "Da Het Han?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.updateSql }}",
+        "options": {}
+      },
+      "id": "shortlink-go-update",
+      "name": "Update Clicks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.item.json || {};\nreturn [{ json: { redirectUrl: row.long_url || row.short_url || '' } }];"
+      },
+      "id": "shortlink-go-build-redirect",
+      "name": "Build Redirect URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "redirect",
+        "redirectURL": "={{ $json.redirectUrl }}",
+        "options": {
+          "responseCode": 302
+        }
+      },
+      "id": "shortlink-go-respond-redirect",
+      "name": "Respond Redirect",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1920,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.result }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "shortlink-go-respond-bad-request",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.result }}",
+        "options": {
+          "responseCode": 404,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "shortlink-go-respond-404",
+      "name": "Respond 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.result }}",
+        "options": {
+          "responseCode": 410,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "shortlink-go-respond-410",
+      "name": "Respond 410",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        112
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Redirect": {
+      "main": [
+        [
+          {
+            "node": "Prepare Redirect Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Redirect Request": {
+      "main": [
+        [
+          {
+            "node": "ID Hop Le?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ID Hop Le?": {
+      "main": [
+        [
+          {
+            "node": "Find Link By ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Link By ID": {
+      "main": [
+        [
+          {
+            "node": "Inspect Redirect Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inspect Redirect Result": {
+      "main": [
+        [
+          {
+            "node": "Link Con Song?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link Con Song?": {
+      "main": [
+        [
+          {
+            "node": "Update Clicks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Da Het Han?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Da Het Han?": {
+      "main": [
+        [
+          {
+            "node": "Respond 410",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 404",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Clicks": {
+      "main": [
+        [
+          {
+            "node": "Build Redirect URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Redirect URL": {
+      "main": [
+        [
+          {
+            "node": "Respond Redirect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

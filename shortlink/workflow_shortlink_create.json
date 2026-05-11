@@ -1,0 +1,299 @@
+{
+  "name": "Short Link Create API",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "shortlink/create",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "shortlink-create-webhook",
+      "name": "Webhook Create",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Webhook Create').item.json || {};\nconst query = source.query || {};\nconst rawUrl = String(query.url || source.body?.url || '').trim();\nconst rawTtl = String(query.ttl || source.body?.ttl || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction escapeSql(value = '') {\n  return String(value || '').replace(/'/g, \"''\");\n}\n\nfunction parseDuration(value) {\n  const text = normalize(value);\n  if (!text) return null;\n  if (/\\b(vinh vien|khong het han|forever)\\b/.test(text)) {\n    return { forever: true, ms: null, label: 'Vinh vien' };\n  }\n  const compact = text.match(/(\\d+)\\s*(h|d|w)\\b/);\n  if (compact) {\n    const amount = Number(compact[1]);\n    const unit = compact[2];\n    if (unit === 'h') return { forever: false, ms: amount * 3600 * 1000, label: `${amount}h` };\n    if (unit === 'd') return { forever: false, ms: amount * 24 * 3600 * 1000, label: `${amount}d` };\n    if (unit === 'w') return { forever: false, ms: amount * 7 * 24 * 3600 * 1000, label: `${amount}w` };\n  }\n  const verbose = text.match(/(\\d+)\\s*(gio|ngay|tuan|thang|hour|day|week|month)\\b/);\n  if (verbose) {\n    const amount = Number(verbose[1]);\n    const unit = verbose[2];\n    if (unit === 'gio' || unit === 'hour') return { forever: false, ms: amount * 3600 * 1000, label: `${amount} gio` };\n    if (unit === 'ngay' || unit === 'day') return { forever: false, ms: amount * 24 * 3600 * 1000, label: `${amount} ngay` };\n    if (unit === 'tuan' || unit === 'week') return { forever: false, ms: amount * 7 * 24 * 3600 * 1000, label: `${amount} tuan` };\n    if (unit === 'thang' || unit === 'month') return { forever: false, ms: amount * 30 * 24 * 3600 * 1000, label: `${amount} thang` };\n  }\n  return null;\n}\n\nfunction isPrivateHost(hostname) {\n  const host = String(hostname || '').toLowerCase();\n  if (!host) return true;\n  if (host === 'localhost' || host === '0.0.0.0' || host === '127.0.0.1' || host === '::1') return true;\n  if (host.endsWith('.local')) return true;\n  if (/^10\\./.test(host)) return true;\n  if (/^192\\.168\\./.test(host)) return true;\n  if (/^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host)) return true;\n  return false;\n}\n\nif (!rawUrl) {\n  return [{ json: { ok: false, error: 'Missing url parameter', example: '/webhook/shortlink/create?url=https%3A%2F%2Fexample.com&ttl=7d', responseCode: 400 } }];\n}\n\nlet parsedUrl;\ntry {\n  parsedUrl = new URL(rawUrl);\n} catch (error) {\n  return [{ json: { ok: false, error: 'Invalid URL', responseCode: 400 } }];\n}\n\nconst protocol = String(parsedUrl.protocol || '').toLowerCase();\nif (protocol !== 'http:' && protocol !== 'https:') {\n  return [{ json: { ok: false, error: 'Only http:// and https:// are allowed', responseCode: 400 } }];\n}\n\nconst allowLocal = String($env.SHORTLINK_ALLOW_LOCAL || 'false').toLowerCase() === 'true';\nif (!allowLocal && isPrivateHost(parsedUrl.hostname)) {\n  return [{ json: { ok: false, error: 'Local/internal hosts are blocked by default', responseCode: 400 } }];\n}\n\nconst publicBaseUrl = String($env.SHORTLINK_PUBLIC_BASE_URL || 'https://go.huynhminh.com').replace(/\\/+$/, '');\nconst defaultTtl = parseDuration($env.SHORTLINK_DEFAULT_TTL || '30d') || { forever: false, ms: 30 * 24 * 3600 * 1000, label: '30d' };\nconst requestedTtl = parseDuration(rawTtl);\nconst maxDays = Number($env.SHORTLINK_MAX_TTL_DAYS || 365) || 365;\nconst maxMs = maxDays * 24 * 3600 * 1000;\nlet ttl = requestedTtl || defaultTtl;\nlet clamped = false;\nif (!ttl.forever && ttl.ms > maxMs) {\n  ttl = { forever: false, ms: maxMs, label: `${maxDays} ngay` };\n  clamped = true;\n}\n\nconst expiresAt = ttl.forever ? null : new Date(Date.now() + ttl.ms);\nconst expiresAtIso = expiresAt ? expiresAt.toISOString() : null;\nconst crypto = require('crypto');\nconst hash = crypto.createHash('sha256').update(`${rawUrl}|${publicBaseUrl}`).digest('hex');\nconst candidateId8 = hash.slice(0, 8);\nconst candidateId10 = hash.slice(0, 10);\nconst candidateId12 = hash.slice(0, 12);\nconst lookupSql = `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE long_url = '${escapeSql(rawUrl)}' OR id IN ('${candidateId8}', '${candidateId10}', '${candidateId12}') ORDER BY created_at DESC;`;\n\nreturn [{ json: {\n  ok: true,\n  longUrl: rawUrl,\n  host: parsedUrl.host,\n  publicBaseUrl,\n  expiresAtIso,\n  expiresAtSql: expiresAtIso ? `'${expiresAtIso}'::timestamptz` : 'NULL',\n  requestedTtlLabel: requestedTtl ? requestedTtl.label : defaultTtl.label,\n  effectiveTtlLabel: ttl.forever ? 'Vinh vien' : ttl.label,\n  clamped,\n  responseCode: 200,\n  candidateId8,\n  candidateId10,\n  candidateId12,\n  lookupSql\n} }];"
+      },
+      "id": "shortlink-create-prepare",
+      "name": "Prepare Create Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-create-valid",
+      "name": "Request Hop Le?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.lookupSql }}",
+        "options": {}
+      },
+      "id": "shortlink-create-lookup",
+      "name": "Lookup Existing Links",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -96
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Create Request').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.id || row.long_url);\n\nfunction escapeSql(value = '') {\n  return String(value || '').replace(/'/g, \"''\");\n}\n\nfunction isExpired(row) {\n  return Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());\n}\n\nconst sameUrl = rows.find((row) => row.long_url === source.longUrl);\nconst byId = new Map(rows.filter((row) => row.id).map((row) => [row.id, row]));\nconst candidates = [source.candidateId8, source.candidateId10, source.candidateId12];\nlet persistSql = '';\n\nif (sameUrl) {\n  if (isExpired(sameUrl)) {\n    persistSql = `UPDATE short_links SET expires_at = ${source.expiresAtSql}, updated_at = now() WHERE id = '${escapeSql(sameUrl.id)}' RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;`;\n  } else {\n    persistSql = `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE id = '${escapeSql(sameUrl.id)}' LIMIT 1;`;\n  }\n} else {\n  const freeCandidate = candidates.find((id) => !byId.has(id));\n  if (!freeCandidate) {\n    return [{ json: { ok: false, error: 'ID collision across 8/10/12 chars', responseCode: 409 } }];\n  }\n  const shortUrl = `${source.publicBaseUrl}/${freeCandidate}`;\n  persistSql = `INSERT INTO short_links (id, long_url, short_url, host, expires_at, created_at, updated_at) VALUES ('${freeCandidate}', '${escapeSql(source.longUrl)}', '${escapeSql(shortUrl)}', '${escapeSql(source.host)}', ${source.expiresAtSql}, now(), now()) RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;`;\n}\n\nreturn [{ json: { ...source, ok: true, persistSql, responseCode: 200 } }];"
+      },
+      "id": "shortlink-create-decide",
+      "name": "Decide Create Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-create-can-persist",
+      "name": "Co Persist SQL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.persistSql }}",
+        "options": {}
+      },
+      "id": "shortlink-create-persist",
+      "name": "Persist Short Link",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Create Request').item.json || {};\nconst row = $input.item.json || {};\nconst expiresAt = row.expires_at || source.expiresAtIso || null;\nreturn [{ json: {\n  ok: true,\n  id: row.id,\n  shortUrl: row.short_url,\n  longUrl: row.long_url,\n  host: row.host,\n  clicks: row.clicks,\n  expiresAt,\n  requestedTtl: source.requestedTtlLabel,\n  effectiveTtl: source.effectiveTtlLabel,\n  clamped: Boolean(source.clamped)\n} }];"
+      },
+      "id": "shortlink-create-format",
+      "name": "Format Create Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "shortlink-create-respond-ok",
+      "name": "Respond JSON OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1920,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "shortlink-create-respond-error",
+      "name": "Respond JSON Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        128
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Create": {
+      "main": [
+        [
+          {
+            "node": "Prepare Create Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Create Request": {
+      "main": [
+        [
+          {
+            "node": "Request Hop Le?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Hop Le?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Existing Links",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond JSON Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Existing Links": {
+      "main": [
+        [
+          {
+            "node": "Decide Create Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Create Record": {
+      "main": [
+        [
+          {
+            "node": "Co Persist SQL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co Persist SQL?": {
+      "main": [
+        [
+          {
+            "node": "Persist Short Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond JSON Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Short Link": {
+      "main": [
+        [
+          {
+            "node": "Format Create Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Create Response": {
+      "main": [
+        [
+          {
+            "node": "Respond JSON OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
