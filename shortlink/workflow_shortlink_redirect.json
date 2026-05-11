@@ -1,5 +1,5 @@
 {
-  "name": "Short Link Redirect Webhook",
+  "name": "Public: Short Link Redirect",
   "nodes": [
     {
       "parameters": {
@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Webhook Redirect').item.json || {};\nconst query = source.query || {};\nconst id = String(query.id || source.params?.id || '').trim();\nif (!id) {\n  return [{ json: { ok: false, id: '', result: 'Short link id missing', responseCode: 400 } }];\n}\nif (!/^[a-z0-9]{8,12}$/i.test(id)) {\n  return [{ json: { ok: false, id, result: 'Invalid short link id', responseCode: 400 } }];\n}\nreturn [{ json: { ok: true, id, lookupSql: `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE id = '${id}' LIMIT 1;` } }];"
+        "jsCode": "const source = $('Webhook Redirect').item.json || {};\nconst query = source.query || {};\nconst id = String(query.id || source.params?.id || '').trim();\nif (!id) {\n  return [{ json: { ok: false, responseCode: 400, result: 'Short link id missing' } }];\n}\nif (!/^[a-z0-9]{8,12}$/i.test(id)) {\n  return [{ json: { ok: false, responseCode: 400, result: 'Invalid short link id' } }];\n}\nreturn [{ json: { ok: true, id, lookupSql: `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE id = '${id}' LIMIT 1;` } }];"
       },
       "id": "shortlink-go-prepare",
       "name": "Prepare Redirect Request",
@@ -62,7 +62,7 @@
       "typeVersion": 2,
       "position": [
         720,
-        -112
+        -120
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -74,15 +74,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Redirect Request').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.id);\nconst row = rows[0] || null;\nif (!row) {\n  return [{ json: { ok: false, id: source.id, result: 'Short URL not found', responseCode: 404 } }];\n}\nconst expired = Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());\nif (expired) {\n  return [{ json: { ok: false, id: row.id, result: 'Short URL expired', responseCode: 410 } }];\n}\nreturn [{ json: { ok: true, id: row.id, longUrl: row.long_url, updateSql: `UPDATE short_links SET clicks = clicks + 1, last_clicked_at = now(), updated_at = now() WHERE id = '${row.id}' RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;` } }];"
+        "jsCode": "const source = $('Prepare Redirect Request').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.id);\nconst row = rows[0] || null;\nif (!row) {\n  return [{ json: { ok: false, responseCode: 404, result: 'Short URL not found' } }];\n}\nconst expired = Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());\nif (expired) {\n  return [{ json: { ok: false, responseCode: 410, result: 'Short URL expired' } }];\n}\nreturn [{\n  json: {\n    ok: true,\n    id: row.id,\n    redirectUrl: row.long_url,\n    updateSql: `UPDATE short_links SET clicks = clicks + 1, last_clicked_at = now(), updated_at = now() WHERE id = '${row.id}' RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;`\n  }\n}];"
       },
-      "id": "shortlink-go-inspect",
-      "name": "Inspect Redirect Result",
+      "id": "shortlink-go-decide",
+      "name": "Decide Redirect Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
-        -112
+        -120
       ]
     },
     {
@@ -96,33 +96,13 @@
           ]
         }
       },
-      "id": "shortlink-go-found",
-      "name": "Link Con Song?",
+      "id": "shortlink-go-can-redirect",
+      "name": "Can Redirect?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
         1200,
-        -112
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{ $json.responseCode === 410 }}",
-              "value2": true
-            }
-          ]
-        }
-      },
-      "id": "shortlink-go-expired",
-      "name": "Da Het Han?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1440,
-        32
+        -120
       ]
     },
     {
@@ -148,10 +128,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.item.json || {};\nreturn [{ json: { redirectUrl: row.long_url || row.short_url || '' } }];"
+        "jsCode": "const source = $('Decide Redirect Result').item.json || {};\nconst row = $input.item.json || {};\nreturn [{ json: { redirectUrl: row.long_url || source.redirectUrl || '' } }];"
       },
       "id": "shortlink-go-build-redirect",
-      "name": "Build Redirect URL",
+      "name": "Build Redirect Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -178,6 +158,26 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.responseCode === 410 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-go-expired",
+      "name": "Expired?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        40
+      ]
+    },
+    {
+      "parameters": {
         "respondWith": "text",
         "responseBody": "={{ $json.result }}",
         "options": {
@@ -192,7 +192,7 @@
           }
         }
       },
-      "id": "shortlink-go-respond-bad-request",
+      "id": "shortlink-go-respond-400",
       "name": "Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
@@ -222,7 +222,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1440,
+        1680,
         0
       ]
     },
@@ -247,8 +247,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1440,
-        112
+        1680,
+        104
       ]
     }
   ],
@@ -297,25 +297,25 @@
       "main": [
         [
           {
-            "node": "Inspect Redirect Result",
+            "node": "Decide Redirect Result",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Inspect Redirect Result": {
+    "Decide Redirect Result": {
       "main": [
         [
           {
-            "node": "Link Con Song?",
+            "node": "Can Redirect?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Link Con Song?": {
+    "Can Redirect?": {
       "main": [
         [
           {
@@ -326,14 +326,36 @@
         ],
         [
           {
-            "node": "Da Het Han?",
+            "node": "Expired?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Da Het Han?": {
+    "Update Clicks": {
+      "main": [
+        [
+          {
+            "node": "Build Redirect Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Redirect Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Redirect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expired?": {
       "main": [
         [
           {
@@ -345,28 +367,6 @@
         [
           {
             "node": "Respond 404",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Clicks": {
-      "main": [
-        [
-          {
-            "node": "Build Redirect URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Redirect URL": {
-      "main": [
-        [
-          {
-            "node": "Respond Redirect",
             "type": "main",
             "index": 0
           }

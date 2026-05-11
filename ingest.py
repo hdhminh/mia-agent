@@ -65,7 +65,13 @@ intents = [
     ("google sheets", "tool"), ("sheets help", "tool"), ("tao sheet Chi tieu", "tool"),
     ("doc sheet Chi tieu", "tool"), ("them dong vao sheet Chi tieu: cafe,30000,an uong", "tool"),
     ("cap nhat sheet Chi tieu o B2 thanh 35000", "tool"), ("tim sheet Chi tieu", "tool"),
-    ("xoa sheet Chi tieu", "tool")
+    ("xoa sheet Chi tieu", "tool"),
+    ("rut gon link https://example.com", "tool"),
+    ("rut gon link https://example.com trong 7 ngay", "tool"),
+    ("short link https://example.com 24h", "tool"),
+    ("tao link ngan https://example.com het han sau 30 ngay", "tool"),
+    ("tao link ngan https://example.com vinh vien", "tool"),
+    ("shortlink help", "tool")
 ]
 
 def pg_exec(sql):

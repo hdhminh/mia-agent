@@ -33,7 +33,17 @@
 ## Lệnh test gợi ý
 
 ```bash
-curl "https://n8n.huynhminh.com/webhook/shortlink/create?url=https%3A%2F%2Fexample.com&ttl=7d"
 curl -i "https://n8n.huynhminh.com/webhook/shortlink/go?id=<id>"
 curl -i "https://go.huynhminh.com/<id>"
 ```
+
+## Cách tạo link để test redirect
+
+- Cách 1: route từ Telegram qua `Sub-workflow: Short Link Create`
+- Cách 2: trong n8n, mở workflow `Sub-workflow: Short Link Create` và chạy manual execution với payload có:
+  - `chatId`
+  - `rawText`
+  - hoặc `text`
+  - hoặc `message.text`
+  - hoặc `message.caption`
+  - hoặc `payload.text`

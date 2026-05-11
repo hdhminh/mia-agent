@@ -15,7 +15,7 @@ const workflowMap = {
   drive:     'Sub-workflow: Google Drive Master',
   docs:      'Sub-workflow: Google Docs Master',
   sheets:    'Sub-workflow: Google Sheets Master',
-  shortlink: 'Sub-workflow: Short Link Service'
+  shortlink: 'Sub-workflow: Short Link Create'
 };
 ```
 
@@ -58,5 +58,5 @@ Project hiện tại đã giữ phần lớn context này. Chỉ cần chắc r�
 Workflow service dùng cho router:
 
 ```text
-Sub-workflow: Short Link Service
+Sub-workflow: Short Link Create
 ```

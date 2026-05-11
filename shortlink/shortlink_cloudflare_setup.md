@@ -12,6 +12,13 @@ Backend n8n:
 https://n8n.huynhminh.com/webhook/shortlink/go?id=<id>
 ```
 
+Trong scope hiện tại chỉ có:
+
+- `Sub-workflow: Short Link Create` cho Telegram/router nội bộ
+- `Public: Short Link Redirect` cho redirect public
+
+Không có create webhook public riêng.
+
 ## Phương án A
 
 Thêm Public Hostname trực tiếp vào Cloudflare Tunnel:
@@ -80,3 +87,4 @@ curl -i "https://go.huynhminh.com/test1234"
 - Worker reject ID rỗng hoặc format bất thường.
 - Nên dùng `redirect: 'manual'` để giữ nguyên response của backend.
 - Public URL trả cho Telegram luôn phải là `https://go.huynhminh.com/<id>`, không đưa URL webhook dài ra ngoài.
+- Link ngắn được tạo qua Telegram flow hoặc qua router gọi `Sub-workflow: Short Link Create`.

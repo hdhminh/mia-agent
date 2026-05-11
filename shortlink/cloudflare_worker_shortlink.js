@@ -7,8 +7,8 @@ export default {
       return new Response('Short link id missing', { status: 400 });
     }
 
-    if (!/^[a-zA-Z0-9_-]{4,32}$/.test(id)) {
-      return new Response('Invalid short link id', { status: 400 });
+    if (!/^[a-z0-9]{8,12}$/i.test(id)) {
+      return new Response('Invalid short link id', { status: 400 });ActiveXObject
     }
 
     const backendBase =
