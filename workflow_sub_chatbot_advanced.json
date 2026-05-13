@@ -276,7 +276,7 @@
     },
     {
       "parameters": {
-        "model": "qwen3:8b",
+        "model": "qwen2.5:3b",
         "options": {}
       },
       "id": "6508ad4b-d2ae-4500-a629-6b6aff9866a0",
