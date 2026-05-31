@@ -128,7 +128,7 @@
         "promptType": "define",
         "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Bạn là Mia, một trợ lý AI trẻ trung, thân thiện và thấu hiểu. Nhiệm vụ của bạn là trò chuyện, tâm sự và mang lại niềm vui cho người dùng. Hãy luôn xưng là 'Mia' và gọi người dùng là 'bạn' hoặc 'anh/chị'. Trả lời ngắn gọn, tự nhiên, vui vẻ bằng tiếng Việt. Không được để lộ quá trình suy nghĩ ra ngoài, chỉ trả lời phần kết quả."
+          "systemMessage": "Bạn là Mia, trợ lý AI thân thiện và tinh tế. Hãy trả lời ngắn gọn, tự nhiên bằng tiếng Việt, xưng 'Mia' và gọi người dùng là 'bạn'. Nếu không chắc, hãy hỏi lại một câu ngắn. Không lộ quá trình suy nghĩ. Không bao giờ in ra thẻ <think>."
         }
       },
       "id": "fc82f4b8-f316-4894-a9f0-8f5648bb3487",
@@ -163,11 +163,12 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id }}",
-        "tableName": "n8n_chat_memory"
+        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':chat:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
+        "tableName": "n8n_chat_memory",
+        "contextWindowLength": 12
       },
       "id": "1f2e2356-b3fb-46d9-9c46-50822f8e9509",
-      "name": "Mia's Postgres Memory",
+      "name": "Mia Chat Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
@@ -186,8 +187,8 @@
         "promptType": "define",
         "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp. Khi dùng các công cụ (Tool):\n\nQUY TẮC BẮT BUỘC KHI GỌI TOOL:\n1. Mỗi tool trong workflow này trả kết quả chính ở field `text`.\n2. Sau khi gọi tool, bạn PHẢI đọc kết quả từ field `text` mà tool trả về.\n3. Nếu field `text` đã là ĐOẠN VĂN HOÀN CHỈNH cho người dùng (đã có emoji, HTML), bạn PHẢI trả lại nguyên văn 100%, KHÔNG thêm bớt gì.\n4. Nếu tool trả dữ liệu thô, hãy tóm tắt ngắn gọn, tự nhiên bằng tiếng Việt.\n5. Không được để output rỗng. Sau khi gọi tool luôn phải có final answer cho người dùng.\n6. Nếu tool thất bại hoặc field `text` trống, hãy báo lỗi lịch sự.\n7. Luôn xưng 'Mia', gọi 'bạn'. Không lộ quá trình suy nghĩ.",
-          "maxIterations": 6
+          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nQUY TẮC KHI DÙNG TOOL:\n1. Hãy dùng tool khi tool phù hợp hơn so với tự trả lời.\n2. Mỗi tool trong workflow này sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n3. Sau khi tool chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n4. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool vừa gửi.\n5. Nếu không có tool phù hợp hoặc tool không cần thiết, bạn được phép tự trả lời trực tiếp cho người dùng bằng tiếng Việt.\n6. Nếu tool thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n7. Luôn xưng 'Mia', gọi người dùng là 'bạn'. Không lộ quá trình suy nghĩ. Không in ra <think>.",
+          "maxIterations": 4
         }
       },
       "id": "a6dd5e55-c42c-4024-a70e-1013fd7b0374",
@@ -201,7 +202,11 @@
     },
     {
       "parameters": {
-        "options": {}
+        "options": {
+          "temperature": 0,
+          "responseFormat": "text",
+          "maxTokens": 300
+        }
       },
       "id": "14ca5b6c-ddf9-4d8e-9121-997d79f22480",
       "name": "OpenRouter Chat Model",
@@ -231,7 +236,7 @@
             },
             {
               "name": "text",
-              "value": "={{ (($json.output || $json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim()) || 'Xin lỗi, Mia đang bận suy nghĩ mà quên trả lời! Bạn hỏi lại nhé 😊' }}"
+              "value": "={{ (() => { const raw = String($json.output || $json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim(); if (!raw || raw === '[TOOL_DELIVERED]') return 'Xin lỗi, Mia chưa gửi được phản hồi. Bạn thử lại nhé 😊'; return raw; })() }}"
             },
             {
               "name": "parse_mode",
@@ -413,6 +418,41 @@
         -2300,
         1904
       ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':tool:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
+        "tableName": "n8n_chat_memory",
+        "contextWindowLength": 6
+      },
+      "id": "501036f5-2799-48f7-bde5-4bdc94f3918a",
+      "name": "Mia Tool Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -2900,
+        1552
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = String($json.output || '').trim();\nif (output === '[TOOL_DELIVERED]') { return []; }\nreturn [{ json: $json }];"
+      },
+      "id": "0f5f38f1-7b80-4b84-8bbb-68deec594e95",
+      "name": "Tool Output Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2800,
+        1552
+      ]
     }
   ],
   "connections": {
@@ -529,7 +569,7 @@
       "main": [
         [
           {
-            "node": "Gui Tin Nhan Telegram",
+            "node": "Tool Output Guard",
             "type": "main",
             "index": 0
           }
@@ -543,21 +583,10 @@
             "node": "OpenRouter Tool Agent (Làm việc)",
             "type": "ai_languageModel",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Mia's Postgres Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "Groq Chat Agent (Tán gẫu)",
-            "type": "ai_memory",
-            "index": 0
           },
           {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_memory",
+            "node": "DeepSeek Tool Finalizer",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -673,17 +702,34 @@
         ]
       ]
     },
-    "OpenRouter Chat Model": {
-      "ai_languageModel": [
+    "Mia Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Groq Chat Agent (Tán gẫu)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mia Tool Memory": {
+      "ai_memory": [
         [
           {
             "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_languageModel",
+            "type": "ai_memory",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Tool Output Guard": {
+      "main": [
+        [
           {
-            "node": "DeepSeek Tool Finalizer",
-            "type": "ai_languageModel",
+            "node": "Gui Tin Nhan Telegram",
+            "type": "main",
             "index": 0
           }
         ]
