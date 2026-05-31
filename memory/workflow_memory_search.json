@@ -1,0 +1,187 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "memory-search-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst chatId = String(payload.chatId || payload.message?.chat?.id || '').trim();\nconst query = String(payload.query || payload.rawText || payload.text || '').trim();\nconst limit = Math.max(1, Math.min(8, Number(payload.limit || 5) || 5));\nconst threshold = Math.max(0, Math.min(1, Number(payload.threshold || 0.45) || 0.45));\nconst memoryType = String(payload.memory_type || payload.memoryType || '').trim();\nif (!chatId) {\n  throw new Error('Missing chatId for memory_search');\n}\nif (!query) {\n  return [{ json: { chatId, query: '', skip: true, responseText: 'MEMORY_SEARCH_RESULTS\\nnone' } }];\n}\nreturn [{ json: { chatId, query, limit, threshold, memoryType, skip: false } }];"
+      },
+      "id": "memory-search-prepare",
+      "name": "Prepare Memory Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE EXTENSION IF NOT EXISTS vector;\nCREATE EXTENSION IF NOT EXISTS pg_trgm;\nCREATE TABLE IF NOT EXISTS mia_memory_items (\n  id BIGSERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  fingerprint TEXT NOT NULL UNIQUE,\n  memory_type TEXT NOT NULL DEFAULT 'general',\n  title TEXT NOT NULL DEFAULT '',\n  content TEXT NOT NULL,\n  source_text TEXT NOT NULL DEFAULT '',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  importance INTEGER NOT NULL DEFAULT 3,\n  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,\n  is_active BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE TABLE IF NOT EXISTS mia_memory_chunks (\n  id BIGSERIAL PRIMARY KEY,\n  item_id BIGINT NOT NULL REFERENCES mia_memory_items(id) ON DELETE CASCADE,\n  chat_id TEXT NOT NULL,\n  chunk_index INTEGER NOT NULL,\n  chunk_text TEXT NOT NULL,\n  embedding VECTOR(384) NOT NULL,\n  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_updated ON mia_memory_items (chat_id, updated_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_type ON mia_memory_items (chat_id, memory_type, updated_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_tags ON mia_memory_items USING GIN (tags);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_chat_created ON mia_memory_chunks (chat_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_text_trgm ON mia_memory_chunks USING GIN (chunk_text gin_trgm_ops);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_embedding_hnsw ON mia_memory_chunks USING HNSW (embedding vector_cosine_ops);",
+        "options": {}
+      },
+      "id": "memory-search-ensure",
+      "name": "Ensure RAG Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://memory-embedder:8000/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { texts: [ $('Prepare Memory Search').item.json.query ], input_type: 'query' } }}",
+        "options": {}
+      },
+      "id": "memory-search-embed",
+      "name": "Embed Search Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Memory Search').item.json || {};\nif (prepared.skip) {\n  return [{ json: { skip: true, responseText: prepared.responseText, chatId: prepared.chatId || '' } }];\n}\nconst response = $('Embed Search Query').item.json || {};\nconst vector = Array.isArray(response.embeddings) && response.embeddings[0] ? response.embeddings[0] : null;\nif (!vector) {\n  throw new Error('No embedding returned for memory_search query');\n}\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nconst vectorLiteral = `[${vector.map((value) => Number(value).toFixed(8)).join(',')}]`;\nconst q = escapeSql(prepared.query);\nconst filterType = prepared.memoryType ? ` AND i.memory_type = '${escapeSql(prepared.memoryType)}'` : '';\nconst sql = `WITH semantic AS ( SELECT c.chunk_text, c.chunk_index, i.memory_type, i.title, i.tags, i.importance, i.created_at, 1 - (c.embedding <=> '${vectorLiteral}'::vector) AS semantic_score, (CASE WHEN c.chunk_text ILIKE '%${q}%' THEN 0.12 ELSE 0 END + CASE WHEN i.title ILIKE '%${q}%' THEN 0.08 ELSE 0 END + CASE WHEN array_to_string(i.tags, ' ') ILIKE '%${q}%' THEN 0.05 ELSE 0 END) AS keyword_bonus FROM mia_memory_chunks c JOIN mia_memory_items i ON i.id = c.item_id WHERE c.chat_id = '${escapeSql(prepared.chatId)}' AND i.is_active = true${filterType} ORDER BY c.embedding <=> '${vectorLiteral}'::vector LIMIT ${Math.max(prepared.limit * 4, 8)} ) SELECT chunk_text, chunk_index, memory_type, title, tags, importance, created_at, semantic_score, keyword_bonus, semantic_score + keyword_bonus AS final_score FROM semantic WHERE semantic_score >= ${prepared.threshold} OR keyword_bonus > 0 ORDER BY final_score DESC, importance DESC, created_at DESC LIMIT ${prepared.limit};`;\nreturn [{ json: { chatId: prepared.chatId, query: prepared.query, sql } }];"
+      },
+      "id": "memory-search-build-sql",
+      "name": "Build Memory Search SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Build Memory Search SQL').item.json.sql }}",
+        "options": {}
+      },
+      "id": "memory-search-query",
+      "name": "Search Memory Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Memory Search').item.json || {};\nif (prepared.skip) {\n  return [{ json: { text: prepared.responseText, chatId: prepared.chatId || '' } }];\n}\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.chunk_text);\nif (rows.length === 0) {\n  return [{ json: { text: `MEMORY_SEARCH_RESULTS\\nquery: ${prepared.query}\\nnone`, chatId: prepared.chatId || '' } }];\n}\nconst lines = ['MEMORY_SEARCH_RESULTS', `query: ${prepared.query}`];\nrows.forEach((row, index) => {\n  const score = Number(row.final_score || row.semantic_score || 0).toFixed(4);\n  const title = row.title ? ` | title=${row.title}` : '';\n  const tags = Array.isArray(row.tags) && row.tags.length ? ` | tags=${row.tags.join(', ')}` : '';\n  lines.push(`${index + 1}. [${row.memory_type || 'general'}] score=${score}${title}${tags}`);\n  lines.push(`content: ${row.chunk_text}`);\n});\nreturn [{ json: { text: lines.join('\\n'), chatId: prepared.chatId || '' } }];"
+      },
+      "id": "memory-search-format",
+      "name": "Format Memory Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Memory Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Memory Search": {
+      "main": [
+        [
+          {
+            "node": "Ensure RAG Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure RAG Tables": {
+      "main": [
+        [
+          {
+            "node": "Embed Search Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Search Query": {
+      "main": [
+        [
+          {
+            "node": "Build Memory Search SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Memory Search SQL": {
+      "main": [
+        [
+          {
+            "node": "Search Memory Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Memory Chunks": {
+      "main": [
+        [
+          {
+            "node": "Format Memory Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

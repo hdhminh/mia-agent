@@ -1,0 +1,219 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "memory-write-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst chatId = String(payload.chatId || payload.message?.chat?.id || '').trim();\nconst content = String(payload.content || payload.memory_text || payload.summary || payload.rawText || payload.text || '').trim();\nconst memoryType = String(payload.memory_type || payload.memoryType || 'general').trim() || 'general';\nconst title = String(payload.title || '').trim();\nconst sourceText = String(payload.rawText || payload.text || content || '').trim();\nconst importance = Math.max(1, Math.min(5, Number(payload.importance || 3) || 3));\nconst tags = Array.isArray(payload.tags)\n  ? payload.tags.map((tag) => String(tag || '').trim()).filter(Boolean)\n  : String(payload.tags || '')\n      .split(',')\n      .map((tag) => tag.trim())\n      .filter(Boolean);\nconst metadata = {\n  memory_type: memoryType,\n  tags,\n  title,\n  source: 'agent_tool',\n  source_text: sourceText,\n  importance,\n};\n\nconst normalizeWhitespace = (value = '') => String(value || '').replace(/\\s+/g, ' ').trim();\nconst normalizedContent = normalizeWhitespace(content);\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nconst normalize = (value = '') => String(value || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd')\n  .trim();\nconst hashHex = (input) => {\n  let h1 = 0xdeadbeef ^ input.length;\n  let h2 = 0x41c6ce57 ^ input.length;\n  for (let index = 0; index < input.length; index += 1) {\n    const codePoint = input.charCodeAt(index);\n    h1 = Math.imul(h1 ^ codePoint, 2654435761);\n    h2 = Math.imul(h2 ^ codePoint, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return `${(h2 >>> 0).toString(16).padStart(8, '0')}${(h1 >>> 0).toString(16).padStart(8, '0')}`;\n};\nconst chunkText = (text, maxLength = 350, overlap = 60) => {\n  const compact = normalizeWhitespace(text);\n  if (!compact) return [];\n  if (compact.length <= maxLength) return [compact];\n  const segments = compact.split(/(?<=[.!?\\n])\\s+/).filter(Boolean);\n  const chunks = [];\n  let current = '';\n  for (const segment of segments) {\n    if (!current) {\n      current = segment;\n      continue;\n    }\n    if (`${current} ${segment}`.length <= maxLength) {\n      current = `${current} ${segment}`;\n      continue;\n    }\n    chunks.push(current);\n    const carry = current.slice(Math.max(0, current.length - overlap)).trim();\n    current = carry ? `${carry} ${segment}`.slice(0, maxLength) : segment;\n  }\n  if (current) chunks.push(current);\n  const fixed = [];\n  for (const chunk of chunks) {\n    if (chunk.length <= maxLength) {\n      fixed.push(chunk);\n      continue;\n    }\n    for (let start = 0; start < chunk.length; start += maxLength - overlap) {\n      fixed.push(chunk.slice(start, start + maxLength).trim());\n    }\n  }\n  return fixed.filter(Boolean);\n};\n\nif (!chatId) {\n  throw new Error('Missing chatId for memory_write');\n}\nif (!normalizedContent) {\n  return [{\n    json: {\n      chatId,\n      skip: true,\n      responseText: 'MEMORY_WRITE_SKIPPED\\nreason: empty content',\n    },\n  }];\n}\n\nconst chunks = chunkText(normalizedContent);\nconst fingerprint = hashHex(`${chatId}|${normalize(memoryType)}|${normalize(normalizedContent)}`);\nconst tagsSql = `ARRAY[${tags.map((tag) => `'${escapeSql(tag)}'`).join(', ')}]::text[]`;\nconst metadataSql = `'${escapeSql(JSON.stringify(metadata))}'::jsonb`;\nconst itemUpsertSql = `INSERT INTO mia_memory_items (chat_id, fingerprint, memory_type, title, content, source_text, tags, importance, metadata, is_active, created_at, updated_at) VALUES ('${escapeSql(chatId)}', '${fingerprint}', '${escapeSql(memoryType)}', '${escapeSql(title)}', '${escapeSql(normalizedContent)}', '${escapeSql(sourceText)}', ${tags.length ? tagsSql : 'ARRAY[]::text[]'}, ${importance}, ${metadataSql}, true, now(), now()) ON CONFLICT (fingerprint) DO UPDATE SET memory_type = EXCLUDED.memory_type, title = EXCLUDED.title, content = EXCLUDED.content, source_text = EXCLUDED.source_text, tags = EXCLUDED.tags, importance = EXCLUDED.importance, metadata = EXCLUDED.metadata, is_active = true, updated_at = now() RETURNING id, chat_id, memory_type, title, tags, importance;`;\n\nreturn [{\n  json: {\n    chatId,\n    skip: false,\n    content: normalizedContent,\n    title,\n    sourceText,\n    memoryType,\n    importance,\n    tags,\n    metadata,\n    chunks,\n    chunkCount: chunks.length,\n    itemUpsertSql,\n  },\n}];"
+      },
+      "id": "memory-write-prepare",
+      "name": "Prepare Memory Write",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE EXTENSION IF NOT EXISTS vector;\nCREATE EXTENSION IF NOT EXISTS pg_trgm;\nCREATE TABLE IF NOT EXISTS mia_memory_items (\n  id BIGSERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  fingerprint TEXT NOT NULL UNIQUE,\n  memory_type TEXT NOT NULL DEFAULT 'general',\n  title TEXT NOT NULL DEFAULT '',\n  content TEXT NOT NULL,\n  source_text TEXT NOT NULL DEFAULT '',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  importance INTEGER NOT NULL DEFAULT 3,\n  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,\n  is_active BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE TABLE IF NOT EXISTS mia_memory_chunks (\n  id BIGSERIAL PRIMARY KEY,\n  item_id BIGINT NOT NULL REFERENCES mia_memory_items(id) ON DELETE CASCADE,\n  chat_id TEXT NOT NULL,\n  chunk_index INTEGER NOT NULL,\n  chunk_text TEXT NOT NULL,\n  embedding VECTOR(384) NOT NULL,\n  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_updated ON mia_memory_items (chat_id, updated_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_type ON mia_memory_items (chat_id, memory_type, updated_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_items_tags ON mia_memory_items USING GIN (tags);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_chat_created ON mia_memory_chunks (chat_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_text_trgm ON mia_memory_chunks USING GIN (chunk_text gin_trgm_ops);\nCREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_embedding_hnsw ON mia_memory_chunks USING HNSW (embedding vector_cosine_ops);",
+        "options": {}
+      },
+      "id": "memory-write-ensure",
+      "name": "Ensure RAG Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://memory-embedder:8000/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { texts: $('Prepare Memory Write').item.json.chunks, input_type: 'passage' } }}",
+        "options": {}
+      },
+      "id": "memory-write-embed",
+      "name": "Embed Memory Chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Prepare Memory Write').item.json.itemUpsertSql }}",
+        "options": {}
+      },
+      "id": "memory-write-upsert-item",
+      "name": "Upsert Memory Item",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Memory Write').item.json || {};\nif (prepared.skip) {\n  return [{ json: { skip: true, responseText: prepared.responseText, chatId: prepared.chatId || '' } }];\n}\nconst item = $('Upsert Memory Item').item.json || {};\nconst embedResponse = $('Embed Memory Chunks').item.json || {};\nconst embeddings = Array.isArray(embedResponse.embeddings) ? embedResponse.embeddings : [];\nconst chunks = Array.isArray(prepared.chunks) ? prepared.chunks : [];\nif (!item.id) {\n  throw new Error('Missing item id after memory item upsert');\n}\nif (embeddings.length !== chunks.length) {\n  throw new Error(`Embedding count mismatch: expected ${chunks.length}, got ${embeddings.length}`);\n}\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nconst vectorLiteral = (values) => `[${values.map((value) => Number(value).toFixed(8)).join(',')}]`;\nconst metadata = prepared.metadata || {};\nconst metadataSql = `'${escapeSql(JSON.stringify(metadata))}'::jsonb`;\nconst rows = chunks.map((chunk, index) => `(${Number(item.id)}, '${escapeSql(prepared.chatId)}', ${index}, '${escapeSql(chunk)}', '${vectorLiteral(embeddings[index] || [])}'::vector, ${metadataSql}, now())`);\nconst replaceSql = `DELETE FROM mia_memory_chunks WHERE item_id = ${Number(item.id)}; INSERT INTO mia_memory_chunks (item_id, chat_id, chunk_index, chunk_text, embedding, metadata, created_at) VALUES ${rows.join(', ')} RETURNING item_id;`;\nreturn [{ json: { itemId: Number(item.id), chatId: prepared.chatId, chunkCount: chunks.length, replaceSql } }];"
+      },
+      "id": "memory-write-build-sql",
+      "name": "Build Chunk Replace SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Build Chunk Replace SQL').item.json.replaceSql }}",
+        "options": {}
+      },
+      "id": "memory-write-replace-chunks",
+      "name": "Replace Memory Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        160,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Memory Write').item.json || {};\nif (prepared.skip) {\n  return [{ json: { text: prepared.responseText, chatId: prepared.chatId || '' } }];\n}\nconst item = $('Upsert Memory Item').item.json || {};\nconst chunkInfo = $('Build Chunk Replace SQL').item.json || {};\nconst tags = Array.isArray(item.tags) && item.tags.length ? `tags: ${item.tags.join(', ')}` : '';\nconst lines = [\n  'MEMORY_WRITE_OK',\n  `memory_type: ${item.memory_type || prepared.memoryType || 'general'}`,\n  `title: ${item.title || prepared.title || '(none)'}`,\n  `chunks: ${chunkInfo.chunkCount || prepared.chunkCount || 0}`,\n  `importance: ${item.importance || prepared.importance || 3}`,\n  `content: ${prepared.content || ''}`\n];\nif (tags) lines.push(tags);\nreturn [{ json: { text: lines.join('\\n'), chatId: item.chat_id || prepared.chatId || '' } }];"
+      },
+      "id": "memory-write-format",
+      "name": "Format Memory Write Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Memory Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Memory Write": {
+      "main": [
+        [
+          {
+            "node": "Ensure RAG Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure RAG Tables": {
+      "main": [
+        [
+          {
+            "node": "Embed Memory Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Memory Chunks": {
+      "main": [
+        [
+          {
+            "node": "Upsert Memory Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Memory Item": {
+      "main": [
+        [
+          {
+            "node": "Build Chunk Replace SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chunk Replace SQL": {
+      "main": [
+        [
+          {
+            "node": "Replace Memory Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Memory Chunks": {
+      "main": [
+        [
+          {
+            "node": "Format Memory Write Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

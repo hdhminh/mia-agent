@@ -28,7 +28,7 @@
         "promptType": "define",
         "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nNHIỆM VỤ:\n- Bạn dùng cùng một mô hình để vừa trò chuyện vừa quyết định có cần tool hay không.\n- Nếu không cần tool, hãy tự trả lời trực tiếp, ngắn gọn, tự nhiên bằng tiếng Việt.\n- Nếu cần tool, hãy gọi đúng tool phù hợp.\n\nPHÂN LOẠI TOOL:\n- Tool ngoài: weather, gold, news, search, calendar, gmail, drive, docs, sheets, shortlink. Các tool này tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n- Tool memory nội bộ: memory_save_fact, memory_recall_facts, memory_save_episode, memory_recall_episodes. Các tool này KHÔNG gửi Telegram, chỉ giúp bạn nhớ và truy xuất ngữ cảnh lâu dài.\n\nQUY TẮC DÙNG MEMORY:\n1. Dùng memory_recall_facts khi cần nhớ thông tin bền vững như tên, sở thích, mục tiêu, preference, người liên quan, thông tin cá nhân ổn định.\n2. Dùng memory_recall_episodes khi người dùng hỏi kiểu hồi trước, tuần trước, gần đây, mình từng nói gì, mình đang theo đuổi gì, đã quyết định gì.\n3. Dùng memory_save_fact khi người dùng nói một thông tin có ích lâu dài và đủ rõ ràng để ghi nhớ.\n4. Dùng memory_save_episode khi vừa hình thành một kết luận, kế hoạch, quyết định, hoặc bối cảnh quan trọng nên nhớ về sau.\n5. Không gọi memory tool vô ích. Nếu working memory hiện tại đã đủ rõ thì trả lời luôn.\n6. Không được bịa. Nếu memory recall không có kết quả, hãy nói là Mia chưa nhớ được thông tin đó.\n\nQUY TẮC KHI DÙNG TOOL NGOÀI:\n1. Mỗi tool ngoài sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n2. Sau khi tool ngoài chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n3. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool ngoài vừa gửi.\n4. Nếu tool ngoài thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n\nQUY TẮC CHUNG:\n1. Nếu chỉ dùng memory tool, bạn vẫn phải tự trả lời người dùng bằng tiếng Việt tự nhiên.\n2. Bạn có thể dùng memory tool trước rồi mới quyết định có cần tool ngoài hay không.\n3. Luôn xưng 'Mia', gọi người dùng là 'bạn'.\n4. Không lộ quá trình suy nghĩ. Không in ra <think>.",
+          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nNHIỆM VỤ:\n- Bạn dùng cùng một mô hình để vừa trò chuyện vừa quyết định có cần tool hay không.\n- Nếu không cần tool, hãy tự trả lời trực tiếp, ngắn gọn, tự nhiên bằng tiếng Việt.\n- Nếu cần tool, hãy gọi đúng tool phù hợp.\n\nPHÂN LOẠI TOOL:\n- Tool ngoài: weather, gold, news, search, calendar, gmail, drive, docs, sheets, shortlink. Các tool này tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n- Tool memory nội bộ: memory_write, memory_search. Hai tool này KHÔNG gửi Telegram. Chúng chỉ giúp bạn ghi và truy hồi long-term memory theo kiểu RAG.\n\nQUY TẮC DÙNG MEMORY RAG:\n1. Dùng memory_search khi câu hỏi cần nhớ sở thích, mục tiêu, preference, các sự kiện, quyết định, kế hoạch, hoặc bối cảnh lâu dài vượt ra ngoài working memory hiện tại.\n2. Dùng memory_write khi người dùng nói thông tin đáng nhớ lâu dài, hoặc khi vừa hình thành kết luận/quyết định/kế hoạch mà Mia nên nhớ cho những lần sau.\n3. Nếu người dùng nói rõ kiểu 'hãy nhớ', 'ghi nhớ', 'nhớ giúp mình', ưu tiên gọi memory_write.\n4. Sau khi dùng memory_search, hãy dựa vào kết quả được truy hồi để trả lời tự nhiên. Nếu không có kết quả, hãy nói là Mia chưa nhớ được thông tin đó.\n5. Không được bịa memory. Không được khẳng định điều gì nếu memory_search không trả về bằng chứng phù hợp.\n6. Không gọi memory tool vô ích. Nếu working memory hiện tại đã đủ, hãy trả lời luôn.\n\nQUY TẮC KHI DÙNG TOOL NGOÀI:\n1. Mỗi tool ngoài sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n2. Sau khi tool ngoài chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n3. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool ngoài vừa gửi.\n4. Nếu tool ngoài thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n\nQUY TẮC CHUNG:\n1. Nếu chỉ dùng memory tool, bạn vẫn phải tự trả lời người dùng bằng tiếng Việt tự nhiên.\n2. Bạn có thể dùng memory_search trước rồi mới quyết định có cần tool ngoài hay không.\n3. Luôn xưng 'Mia', gọi người dùng là 'bạn'.\n4. Không lộ quá trình suy nghĩ. Không in ra <think>.",
           "maxIterations": 6
         }
       },
@@ -587,9 +587,9 @@
     },
     {
       "parameters": {
-        "name": "memory_save_fact",
-        "description": "Lưu một sự thật bền vững về người dùng hoặc bối cảnh lâu dài. Dùng khi người dùng nói thông tin nên nhớ lâu như sở thích, mục tiêu, định danh, mối quan hệ, cách muốn Mia trả lời. Tool này chỉ ghi memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "mYZn76GaoyUiHonv",
+        "name": "memory_write",
+        "description": "Ghi một memory dài hạn vào kho RAG của Mia. Dùng khi người dùng yêu cầu nhớ, hoặc khi có thông tin bền vững/quan trọng như sở thích, mục tiêu, preference, quyết định, kế hoạch, hoặc bối cảnh cần nhớ lâu. Tool này chỉ ghi memory nội bộ, KHÔNG gửi Telegram.",
+        "workflowId": "xmQmS2qjFIex9fsA",
         "responsePropertyName": "text",
         "fields": {
           "values": [
@@ -622,22 +622,22 @@
         },
         "specifyInputSchema": true,
         "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"fact_text\": {\"type\": \"string\", \"description\": \"Thông tin bền vững cần ghi nhớ, viết thành một câu rõ nghĩa.\"}, \"category\": {\"type\": \"string\", \"description\": \"Nhóm fact ngắn: identity, preference, goal, relationship, work, study, schedule, health, other.\"}, \"tags\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"description\": \"Từ khóa ngắn để tìm lại fact sau này.\"}, \"confidence\": {\"type\": \"number\", \"description\": \"Độ chắc chắn từ 0 đến 1. Chỉ lưu cao khi người dùng nói rõ ràng.\"}}, \"required\": [\"fact_text\"], \"additionalProperties\": false}"
+        "inputSchema": "{\"type\": \"object\", \"properties\": {\"content\": {\"type\": \"string\", \"description\": \"Nội dung memory cần lưu, viết thành một hoặc vài câu rõ nghĩa.\"}, \"memory_type\": {\"type\": \"string\", \"description\": \"Loại memory: profile, preference, goal, relationship, event, decision, plan, note, general.\"}, \"title\": {\"type\": \"string\", \"description\": \"Tiêu đề ngắn gọn cho memory nếu có.\"}, \"tags\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"description\": \"Từ khóa ngắn để truy hồi lại memory.\"}, \"importance\": {\"type\": \"integer\", \"description\": \"Mức quan trọng từ 1 đến 5.\"}}, \"required\": [\"content\"], \"additionalProperties\": false}"
       },
-      "id": "b58b2b1f-b866-4777-911f-f3290be6000f",
-      "name": "Call Workflow: memory_save_fact",
+      "id": "903da0f4-0250-4f3b-8dcd-3041d2096a39",
+      "name": "Call Workflow: memory_write",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
         -2000,
-        1600
+        1680
       ]
     },
     {
       "parameters": {
-        "name": "memory_recall_facts",
-        "description": "Tìm lại fact bền vững đã lưu về người dùng. Dùng khi câu hỏi cần nhớ tên, sở thích, mục tiêu, preference, người liên quan, hoặc các thông tin cá nhân ổn định. Tool này chỉ đọc memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "Q6OnzGZsrP2SSBAw",
+        "name": "memory_search",
+        "description": "Tìm memory liên quan trong kho RAG của Mia. Dùng khi câu hỏi cần nhớ chuyện cũ, sở thích, mục tiêu, các quyết định, hoặc bất kỳ ngữ cảnh lâu dài nào vượt ra ngoài vài tin nhắn gần nhất. Tool này chỉ đọc memory nội bộ, KHÔNG gửi Telegram.",
+        "workflowId": "Z09ldJUYnJZ0CT3f",
         "responsePropertyName": "text",
         "fields": {
           "values": [
@@ -670,111 +670,15 @@
         },
         "specifyInputSchema": true,
         "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"query\": {\"type\": \"string\", \"description\": \"Cụm tìm kiếm ngắn gọn mô tả fact cần nhớ lại.\"}, \"limit\": {\"type\": \"integer\", \"description\": \"Số kết quả tối đa, từ 1 đến 5.\"}}, \"required\": [\"query\"], \"additionalProperties\": false}"
+        "inputSchema": "{\"type\": \"object\", \"properties\": {\"query\": {\"type\": \"string\", \"description\": \"Câu tìm kiếm ngắn gọn mô tả điều cần nhớ lại.\"}, \"memory_type\": {\"type\": \"string\", \"description\": \"Lọc theo loại memory nếu cần: profile, preference, goal, relationship, event, decision, plan, note, general.\"}, \"limit\": {\"type\": \"integer\", \"description\": \"Số kết quả tối đa từ 1 đến 8.\"}, \"threshold\": {\"type\": \"number\", \"description\": \"Ngưỡng semantic similarity từ 0 đến 1. Để trống nếu không chắc.\"}}, \"required\": [\"query\"], \"additionalProperties\": false}"
       },
-      "id": "5ef3fd14-7e77-4346-ad13-e42ad6c67bfa",
-      "name": "Call Workflow: memory_recall_facts",
+      "id": "37bb3bde-0d87-40e4-a8e4-689b33a74816",
+      "name": "Call Workflow: memory_search",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
         -2000,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "memory_save_episode",
-        "description": "Lưu một episode hoặc kết luận quan trọng của cuộc trò chuyện, ví dụ quyết định, kế hoạch, việc đang theo đuổi, hoặc kết quả của một phiên dài. Tool này chỉ ghi memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "DBautBe4Lld1jkSV",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        },
-        "specifyInputSchema": true,
-        "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"summary\": {\"type\": \"string\", \"description\": \"Tóm tắt ngắn gọn nhưng đủ nghĩa về sự kiện, quyết định hoặc bối cảnh cần nhớ.\"}, \"topic\": {\"type\": \"string\", \"description\": \"Chủ đề ngắn như ai, work, study, project, purchase, planning, relationship, other.\"}, \"tags\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"description\": \"Từ khóa ngắn để tìm lại episode.\"}, \"importance\": {\"type\": \"integer\", \"description\": \"Mức quan trọng từ 1 đến 5.\"}}, \"required\": [\"summary\"], \"additionalProperties\": false}"
-      },
-      "id": "ad57c03c-2c1e-4e3c-aafe-0f9611f97070",
-      "name": "Call Workflow: memory_save_episode",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2000,
-        1920
-      ]
-    },
-    {
-      "parameters": {
-        "name": "memory_recall_episodes",
-        "description": "Tìm lại episode hoặc tóm tắt những gì đã xảy ra trước đây. Dùng khi người dùng hỏi kiểu hồi trước, tuần trước, gần đây, mình từng nói gì, đang theo đuổi gì, đã quyết định gì. Tool này chỉ đọc memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "gHneE6TIyslnSFx7",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        },
-        "specifyInputSchema": true,
-        "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"query\": {\"type\": \"string\", \"description\": \"Cụm tìm kiếm ngắn gọn mô tả việc hoặc câu chuyện muốn nhớ lại.\"}, \"limit\": {\"type\": \"integer\", \"description\": \"Số episode tối đa, từ 1 đến 5.\"}}, \"required\": [\"query\"], \"additionalProperties\": false}"
-      },
-      "id": "a8247f39-c6d4-4ff6-93f8-0f00f932a7df",
-      "name": "Call Workflow: memory_recall_episodes",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2000,
-        2080
+        1840
       ]
     }
   ],
@@ -944,7 +848,7 @@
         ]
       ]
     },
-    "Call Workflow: memory_save_fact": {
+    "Call Workflow: memory_write": {
       "ai_tool": [
         [
           {
@@ -955,29 +859,7 @@
         ]
       ]
     },
-    "Call Workflow: memory_recall_facts": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: memory_save_episode": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: memory_recall_episodes": {
+    "Call Workflow: memory_search": {
       "ai_tool": [
         [
           {

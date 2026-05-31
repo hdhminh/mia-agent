@@ -58,10 +58,26 @@ services:
     networks:
       - n8n-net
 
+  memory-embedder:
+    build:
+      context: ./memory/embedder
+    container_name: memory-embedder
+    restart: unless-stopped
+    environment:
+      - EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "127.0.0.1:8010:8000"
+    volumes:
+      - memory_models:/models
+    networks:
+      - n8n-net
+
 volumes:
   n8n_data:
   ollama_data:
   pg_data:
+  memory_models:
 
 networks:
   n8n-net:
