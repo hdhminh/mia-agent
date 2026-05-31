@@ -1,0 +1,138 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0c2ebf6d-f8fc-4dcb-8ff5-f5618b64d758",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst chatId = String(payload.chatId || payload.message?.chat?.id || '').trim();\nconst factText = String(payload.fact_text || payload.factText || '').trim();\nconst category = String(payload.category || 'general').trim() || 'general';\nconst sourceText = String(payload.rawText || payload.text || factText || '').trim();\nconst tags = Array.isArray(payload.tags)\n  ? payload.tags.map((tag) => String(tag || '').trim()).filter(Boolean)\n  : String(payload.tags || '')\n      .split(',')\n      .map((tag) => tag.trim())\n      .filter(Boolean);\nconst confidence = Math.max(0, Math.min(1, Number(payload.confidence || 0.85) || 0.85));\n\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nconst normalize = (value = '') => String(value || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd')\n  .trim();\nconst hashHex = (input) => {\n  let h1 = 0xdeadbeef ^ input.length;\n  let h2 = 0x41c6ce57 ^ input.length;\n  for (let index = 0; index < input.length; index += 1) {\n    const codePoint = input.charCodeAt(index);\n    h1 = Math.imul(h1 ^ codePoint, 2654435761);\n    h2 = Math.imul(h2 ^ codePoint, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return `${(h2 >>> 0).toString(16).padStart(8, '0')}${(h1 >>> 0).toString(16).padStart(8, '0')}`;\n};\n\nif (!chatId) {\n  throw new Error('Missing chatId for memory_save_fact');\n}\n\nif (!factText) {\n  return [{\n    json: {\n      chatId,\n      skip: true,\n      responseText: 'MEMORY_SAVE_FACT_SKIPPED\\nreason: empty fact'\n    }\n  }];\n}\n\nconst fingerprint = hashHex(`${chatId}|${normalize(category)}|${normalize(factText)}`);\nconst tagsSql = `ARRAY[${tags.map((tag) => `'${escapeSql(tag)}'`).join(', ')}]::text[]`;\nconst upsertSql = `INSERT INTO mia_facts (chat_id, fingerprint, fact_text, category, tags, source_text, confidence, is_active, created_at, updated_at) VALUES ('${escapeSql(chatId)}', '${fingerprint}', '${escapeSql(factText)}', '${escapeSql(category)}', ${tags.length ? tagsSql : 'ARRAY[]::text[]'}, '${escapeSql(sourceText)}', ${confidence.toFixed(2)}, true, now(), now()) ON CONFLICT (fingerprint) DO UPDATE SET fact_text = EXCLUDED.fact_text, category = EXCLUDED.category, tags = EXCLUDED.tags, source_text = EXCLUDED.source_text, confidence = EXCLUDED.confidence, is_active = true, updated_at = now() RETURNING chat_id, fact_text, category, tags, confidence, updated_at;`;\n\nreturn [{\n  json: {\n    chatId,\n    skip: false,\n    factText,\n    category,\n    tags,\n    confidence,\n    upsertSql\n  }\n}];"
+      },
+      "id": "f74f95c6-0927-4490-8d0b-c2c1a9c9e81f",
+      "name": "Prepare Fact Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS mia_facts (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  fingerprint TEXT NOT NULL UNIQUE,\n  fact_text TEXT NOT NULL,\n  category TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  confidence NUMERIC(3,2) NOT NULL DEFAULT 0.80,\n  is_active BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_facts_chat_id_updated ON mia_facts (chat_id, updated_at DESC);\nCREATE TABLE IF NOT EXISTS mia_episodes (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  episode_summary TEXT NOT NULL,\n  topic TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  episode_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  importance INTEGER NOT NULL DEFAULT 3,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_episodes_chat_id_updated ON mia_episodes (chat_id, updated_at DESC);",
+        "options": {}
+      },
+      "id": "5d04fb71-290e-45ca-b814-ece75ebfbeef",
+      "name": "Ensure Memory Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Prepare Fact Input').item.json.upsertSql }}",
+        "options": {}
+      },
+      "id": "1a8e8aab-7341-4e6d-8042-82d22b28657d",
+      "name": "Save Fact",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Fact Input').item.json || {};\nif (source.skip) {\n  return [{ json: { text: source.responseText, chatId: source.chatId || '' } }];\n}\nconst row = $json || {};\nconst tags = Array.isArray(row.tags) ? row.tags.filter(Boolean).join(', ') : '';\nconst parts = [\n  'MEMORY_SAVE_FACT_OK',\n  `category: ${row.category || source.category || 'general'}`,\n  `fact: ${row.fact_text || source.factText || ''}`,\n  `confidence: ${row.confidence || source.confidence || 0.85}`\n];\nif (tags) parts.push(`tags: ${tags}`);\nreturn [{ json: { text: parts.join('\\n'), chatId: row.chat_id || source.chatId || '' } }];"
+      },
+      "id": "82d58a85-8e46-4a41-b7b7-2c912ef90d20",
+      "name": "Format Save Fact Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Fact Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Fact Input": {
+      "main": [
+        [
+          {
+            "node": "Ensure Memory Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Memory Tables": {
+      "main": [
+        [
+          {
+            "node": "Save Fact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Fact": {
+      "main": [
+        [
+          {
+            "node": "Format Save Fact Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Save Fact Result": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

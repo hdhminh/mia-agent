@@ -1,0 +1,139 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "19b2ecf2-b83b-4453-b2aa-45d37a6f3597",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst chatId = String(payload.chatId || payload.message?.chat?.id || '').trim();\nconst query = String(payload.query || payload.text || payload.rawText || '').trim();\nconst limit = Math.max(1, Math.min(5, Number(payload.limit || 5) || 5));\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nif (!chatId) {\n  throw new Error('Missing chatId for memory_recall_facts');\n}\nif (!query) {\n  return [{ json: { chatId, query: '', skip: true, responseText: 'MEMORY_FACT_RESULTS\\nnone' } }];\n}\nconst q = escapeSql(query);\nconst searchSql = `SELECT fact_text, category, tags, confidence, updated_at FROM mia_facts WHERE chat_id = '${escapeSql(chatId)}' AND is_active = true AND (fact_text ILIKE '%${q}%' OR category ILIKE '%${q}%' OR array_to_string(tags, ' ') ILIKE '%${q}%') ORDER BY CASE WHEN fact_text ILIKE '${q}%' THEN 0 ELSE 1 END, updated_at DESC LIMIT ${limit};`;\nreturn [{ json: { chatId, query, skip: false, searchSql } }];"
+      },
+      "id": "6cb9c22f-c57b-412c-9fa6-2b3c41bcf539",
+      "name": "Prepare Recall Facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS mia_facts (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  fingerprint TEXT NOT NULL UNIQUE,\n  fact_text TEXT NOT NULL,\n  category TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  confidence NUMERIC(3,2) NOT NULL DEFAULT 0.80,\n  is_active BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_facts_chat_id_updated ON mia_facts (chat_id, updated_at DESC);\nCREATE TABLE IF NOT EXISTS mia_episodes (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  episode_summary TEXT NOT NULL,\n  topic TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  episode_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  importance INTEGER NOT NULL DEFAULT 3,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_episodes_chat_id_updated ON mia_episodes (chat_id, updated_at DESC);",
+        "options": {}
+      },
+      "id": "52271cef-38cb-4bfa-8494-1ac660d24548",
+      "name": "Ensure Memory Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Prepare Recall Facts').item.json.searchSql }}",
+        "options": {}
+      },
+      "id": "28c3a222-5743-4ef4-a36b-abf3acd6c737",
+      "name": "Recall Facts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        240
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Recall Facts').item.json || {};\nif (source.skip) {\n  return [{ json: { text: source.responseText, chatId: source.chatId || '' } }];\n}\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.fact_text);\nif (rows.length === 0) {\n  return [{ json: { text: `MEMORY_FACT_RESULTS\\nquery: ${source.query}\\nnone`, chatId: source.chatId || '' } }];\n}\nconst lines = ['MEMORY_FACT_RESULTS', `query: ${source.query}`];\nrows.forEach((row, index) => {\n  const tags = Array.isArray(row.tags) && row.tags.length ? ` | tags=${row.tags.join(', ')}` : '';\n  lines.push(`${index + 1}. [${row.category || 'general'}] ${row.fact_text}${tags}`);\n});\nreturn [{ json: { text: lines.join('\\n'), chatId: source.chatId || '' } }];"
+      },
+      "id": "2a695861-4b6e-45a7-ad64-f6536c974db9",
+      "name": "Format Recall Facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Recall Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Recall Facts": {
+      "main": [
+        [
+          {
+            "node": "Ensure Memory Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Memory Tables": {
+      "main": [
+        [
+          {
+            "node": "Recall Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recall Facts": {
+      "main": [
+        [
+          {
+            "node": "Format Recall Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Recall Facts": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

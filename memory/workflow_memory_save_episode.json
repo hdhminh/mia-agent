@@ -1,0 +1,138 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4f0e7df2-e504-4a96-a163-8bb02c863389",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst chatId = String(payload.chatId || payload.message?.chat?.id || '').trim();\nconst summary = String(payload.summary || payload.episode_summary || payload.episodeSummary || '').trim();\nconst topic = String(payload.topic || 'general').trim() || 'general';\nconst sourceText = String(payload.rawText || payload.text || summary || '').trim();\nconst importance = Math.max(1, Math.min(5, Number(payload.importance || 3) || 3));\nconst tags = Array.isArray(payload.tags)\n  ? payload.tags.map((tag) => String(tag || '').trim()).filter(Boolean)\n  : String(payload.tags || '')\n      .split(',')\n      .map((tag) => tag.trim())\n      .filter(Boolean);\nconst escapeSql = (value = '') => String(value || '').replace(/'/g, \"''\");\nif (!chatId) {\n  throw new Error('Missing chatId for memory_save_episode');\n}\nif (!summary) {\n  return [{ json: { chatId, skip: true, responseText: 'MEMORY_SAVE_EPISODE_SKIPPED\\nreason: empty summary' } }];\n}\nconst tagsSql = `ARRAY[${tags.map((tag) => `'${escapeSql(tag)}'`).join(', ')}]::text[]`;\nconst insertSql = `INSERT INTO mia_episodes (chat_id, episode_summary, topic, tags, source_text, episode_date, importance, created_at, updated_at) VALUES ('${escapeSql(chatId)}', '${escapeSql(summary)}', '${escapeSql(topic)}', ${tags.length ? tagsSql : 'ARRAY[]::text[]'}, '${escapeSql(sourceText)}', CURRENT_DATE, ${importance}, now(), now()) RETURNING chat_id, episode_summary, topic, tags, importance, updated_at;`;\nreturn [{ json: { chatId, skip: false, summary, topic, tags, importance, insertSql } }];"
+      },
+      "id": "59a0f9ca-4c57-4977-9a16-b5870dddc126",
+      "name": "Prepare Episode Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS mia_facts (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  fingerprint TEXT NOT NULL UNIQUE,\n  fact_text TEXT NOT NULL,\n  category TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  confidence NUMERIC(3,2) NOT NULL DEFAULT 0.80,\n  is_active BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_facts_chat_id_updated ON mia_facts (chat_id, updated_at DESC);\nCREATE TABLE IF NOT EXISTS mia_episodes (\n  id SERIAL PRIMARY KEY,\n  chat_id TEXT NOT NULL,\n  episode_summary TEXT NOT NULL,\n  topic TEXT NOT NULL DEFAULT 'general',\n  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],\n  source_text TEXT NOT NULL DEFAULT '',\n  episode_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  importance INTEGER NOT NULL DEFAULT 3,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE INDEX IF NOT EXISTS idx_mia_episodes_chat_id_updated ON mia_episodes (chat_id, updated_at DESC);",
+        "options": {}
+      },
+      "id": "e18be597-8af7-4fa1-8b8f-a1d326b1a2d5",
+      "name": "Ensure Memory Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Prepare Episode Input').item.json.insertSql }}",
+        "options": {}
+      },
+      "id": "e1fe17f2-0b58-4bdb-952b-7fd59f925c9b",
+      "name": "Save Episode",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Episode Input').item.json || {};\nif (source.skip) {\n  return [{ json: { text: source.responseText, chatId: source.chatId || '' } }];\n}\nconst row = $json || {};\nconst tags = Array.isArray(row.tags) ? row.tags.filter(Boolean).join(', ') : '';\nconst parts = [\n  'MEMORY_SAVE_EPISODE_OK',\n  `topic: ${row.topic || source.topic || 'general'}`,\n  `summary: ${row.episode_summary || source.summary || ''}`,\n  `importance: ${row.importance || source.importance || 3}`\n];\nif (tags) parts.push(`tags: ${tags}`);\nreturn [{ json: { text: parts.join('\\n'), chatId: row.chat_id || source.chatId || '' } }];"
+      },
+      "id": "1d1d7e69-b2ba-4d93-80d9-b5444260f6dd",
+      "name": "Format Save Episode Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Episode Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Episode Input": {
+      "main": [
+        [
+          {
+            "node": "Ensure Memory Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Memory Tables": {
+      "main": [
+        [
+          {
+            "node": "Save Episode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Episode": {
+      "main": [
+        [
+          {
+            "node": "Format Save Episode Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Save Episode Result": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
