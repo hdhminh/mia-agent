@@ -308,34 +308,6 @@
         608,
         880
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $('Execute Workflow Trigger').item.json.chatId || $('Execute Workflow Trigger').item.json.message?.chat?.id || $('Execute Workflow Trigger').item.json.payload?.message?.chat?.id }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.output ?? $json.response }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "cdbef2c9-0470-4657-87cf-0dc31034e91c",
-      "name": "Gui Tin Nhan",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        768,
-        560
-      ]
     }
   ],
   "connections": {
@@ -414,13 +386,7 @@
     },
     "AI Chat Qwen 3B": {
       "main": [
-        [
-          {
-            "node": "Gui Tin Nhan",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Model Qwen 3B": {
@@ -465,13 +431,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Tin Nhan",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [],
         [
           {
             "node": "AI Chuyen Gia Qwen 8B",
@@ -505,13 +465,7 @@
     },
     "AI Chuyen Gia Qwen 8B": {
       "main": [
-        [
-          {
-            "node": "Gui Tin Nhan",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Model Qwen 8B": {

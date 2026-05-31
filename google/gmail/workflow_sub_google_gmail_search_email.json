@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Chuan Bi Tim Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Du Du Lieu Tim?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -48,7 +57,10 @@
       "name": "Gmail Search",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [736, -80],
+      "position": [
+        736,
+        -80
+      ],
       "alwaysOutputData": true,
       "webhookId": "bd759b5f-077c-4515-abae-abc46a3cddb1",
       "credentials": {
@@ -66,48 +78,62 @@
       "name": "Format Tim Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "chat_id", "value": "={{ $json.chatId }}" },
-            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
-            { "name": "parse_mode", "value": "HTML" },
-            { "name": "disable_web_page_preview", "value": "true" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gmail-search-send",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1200, 0]
+      "position": [
+        960,
+        -80
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Chuan Bi Tim Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Tim Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chuan Bi Tim Email": {
-      "main": [[{ "node": "Du Du Lieu Tim?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Tim?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Du Du Lieu Tim?": {
       "main": [
-        [{ "node": "Gmail Search", "type": "main", "index": 0 }],
-        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gmail Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Gmail Search": {
-      "main": [[{ "node": "Format Tim Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Tim Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Tim Email": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     }
   },
   "settings": {

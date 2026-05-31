@@ -254,42 +254,6 @@
         944,
         -112
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "57919ab9-8f4f-4d2b-a3a1-6230165be4d8",
-      "name": "Gui Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1424,
-        -240
-      ]
     }
   ],
   "connections": {
@@ -324,13 +288,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co File ID?": {
@@ -382,13 +340,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Drive Get Metadata": {
@@ -444,24 +396,12 @@
     },
     "Format With Content": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Format Metadata Only": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

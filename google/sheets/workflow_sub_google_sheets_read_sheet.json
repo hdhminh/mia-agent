@@ -167,42 +167,6 @@
         928,
         -128
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "d02ee5a5-6425-4536-bd01-b138d9b84c4f",
-      "name": "Gui Sheets",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1184,
-        -128
-      ]
     }
   ],
   "connections": {
@@ -237,13 +201,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co Spreadsheet ID?": {
@@ -295,13 +253,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Sheets Get Values": {
@@ -317,13 +269,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

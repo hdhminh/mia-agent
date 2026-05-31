@@ -87,42 +87,6 @@
         240,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "243610f2-0010-4f6f-b9bd-4a200c3aaadf",
-      "name": "Gui Calendar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        480,
-        64
-      ]
     }
   ],
   "connections": {
@@ -157,13 +121,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Google Calendar Create": {
@@ -179,13 +137,7 @@
     },
     "Format Ket Qua Tao": {
       "main": [
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   }

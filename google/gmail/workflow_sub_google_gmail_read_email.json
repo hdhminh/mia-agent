@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Chuan Bi Doc Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Du Du Lieu Doc?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -48,7 +57,10 @@
       "name": "Gmail Search Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, -96],
+      "position": [
+        720,
+        -96
+      ],
       "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d86",
       "alwaysOutputData": true,
       "credentials": {
@@ -66,48 +78,62 @@
       "name": "Format Noi Dung Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "chat_id", "value": "={{ $json.chatId }}" },
-            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
-            { "name": "parse_mode", "value": "HTML" },
-            { "name": "disable_web_page_preview", "value": "true" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gmail-read-send",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1200, 0]
+      "position": [
+        960,
+        -80
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Chuan Bi Doc Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Doc Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chuan Bi Doc Email": {
-      "main": [[{ "node": "Du Du Lieu Doc?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Du Du Lieu Doc?": {
       "main": [
-        [{ "node": "Gmail Search Read", "type": "main", "index": 0 }],
-        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gmail Search Read",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Gmail Search Read": {
-      "main": [[{ "node": "Format Noi Dung Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Noi Dung Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Noi Dung Email": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     }
   },
   "settings": {

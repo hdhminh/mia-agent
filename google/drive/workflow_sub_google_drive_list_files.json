@@ -68,42 +68,6 @@
         800,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "43e7929f-c8b1-4f40-bf25-805c0e7718bd",
-      "name": "Gui Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1040,
-        0
-      ]
     }
   ],
   "connections": {
@@ -142,13 +106,7 @@
     },
     "Format Danh Sach File": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

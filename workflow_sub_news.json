@@ -7,17 +7,30 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [ 200, 400 ]
+      "position": [
+        200,
+        400
+      ]
     },
     {
       "parameters": {
-        "rule": { "interval": [ { "field": "cronExpression", "expression": "0 6,12,18 * * *" } ] }
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,12,18 * * *"
+            }
+          ]
+        }
       },
       "id": "trigger-schedule-news",
       "name": "Lịch Tin (6,12,18)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [ 200, 200 ]
+      "position": [
+        200,
+        200
+      ]
     },
     {
       "parameters": {
@@ -27,28 +40,44 @@
       "name": "Chuẩn bị URL News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 450, 300 ]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
         "url": "={{ $json.url }}",
         "options": {
-          "response": { "response": { "responseFormat": "text", "responsePropertyName": "data" } }
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "responsePropertyName": "data"
+            }
+          }
         }
       },
       "id": "fetch-news-rss",
       "name": "Tải XML RSS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [ 650, 300 ]
+      "position": [
+        650,
+        300
+      ]
     },
     {
-      "parameters": { "options": {} },
+      "parameters": {
+        "options": {}
+      },
       "id": "xml-to-json-news",
       "name": "XML to JSON",
       "type": "n8n-nodes-base.xml",
       "typeVersion": 1,
-      "position": [ 850, 300 ]
+      "position": [
+        850,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,57 +87,72 @@
       "name": "Format Tin Tức",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 1050, 300 ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "keypair",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "send-news-tg",
-      "name": "Gửi Tin Tức",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [ 1250, 300 ]
+      "position": [
+        1050,
+        300
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [ [ { "node": "Chuẩn bị URL News", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị URL News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Lịch Tin (6,12,18)": {
-      "main": [ [ { "node": "Chuẩn bị URL News", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị URL News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chuẩn bị URL News": {
-      "main": [ [ { "node": "Tải XML RSS", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Tải XML RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Tải XML RSS": {
-      "main": [ [ { "node": "XML to JSON", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "XML to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "XML to JSON": {
-      "main": [ [ { "node": "Format Tin Tức", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Format Tin Tức",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Tin Tức": {
-      "main": [ [ { "node": "Gửi Tin Tức", "type": "main", "index": 0 } ] ]
+      "main": [
+        []
+      ]
     }
   }
 }

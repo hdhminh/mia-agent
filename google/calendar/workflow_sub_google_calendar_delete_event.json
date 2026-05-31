@@ -128,42 +128,6 @@
         240,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "8e540993-31f7-4771-a931-96e6ff6f256e",
-      "name": "Gui Calendar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        480,
-        48
-      ]
     }
   ],
   "connections": {
@@ -220,13 +184,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Google Calendar Delete": {
@@ -242,13 +200,7 @@
     },
     "Format Ket Qua Xoa": {
       "main": [
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   }

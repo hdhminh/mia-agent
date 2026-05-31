@@ -92,42 +92,6 @@
         224,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "f2f0008c-2f2f-4648-8c67-80af9f890196",
-      "name": "Gui Docs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        464,
-        80
-      ]
     }
   ],
   "connections": {
@@ -162,13 +126,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Drive Search Docs": {
@@ -184,13 +142,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

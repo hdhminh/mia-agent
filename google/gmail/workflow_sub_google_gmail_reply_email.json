@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Parse Tra Loi Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Du Du Lieu Reply?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -48,7 +57,10 @@
       "name": "Gmail Find For Respond",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [752, -80],
+      "position": [
+        752,
+        -80
+      ],
       "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d86",
       "alwaysOutputData": true,
       "credentials": {
@@ -66,7 +78,10 @@
       "name": "Chon Email Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
+      "position": [
+        960,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -83,7 +98,10 @@
       "name": "Tim Thay Email?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1200, -80]
+      "position": [
+        1200,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -96,7 +114,10 @@
       "name": "Gmail Reply",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1440, -160],
+      "position": [
+        1440,
+        -160
+      ],
       "webhookId": "45eaac3c-c3c2-4a62-a2b1-73da3770b10d",
       "credentials": {
         "gmailOAuth2": {
@@ -113,60 +134,96 @@
       "name": "Format Ket Qua Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1680, -160]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "chat_id", "value": "={{ $json.chatId }}" },
-            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
-            { "name": "parse_mode", "value": "HTML" },
-            { "name": "disable_web_page_preview", "value": "true" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gmail-reply-send",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1440, 80]
+      "position": [
+        1680,
+        -160
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Parse Tra Loi Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Tra Loi Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Tra Loi Email": {
-      "main": [[{ "node": "Du Du Lieu Reply?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Du Du Lieu Reply?": {
       "main": [
-        [{ "node": "Gmail Find For Respond", "type": "main", "index": 0 }],
-        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gmail Find For Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Gmail Find For Respond": {
-      "main": [[{ "node": "Chon Email Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Chon Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chon Email Reply": {
-      "main": [[{ "node": "Tim Thay Email?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Tim Thay Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Tim Thay Email?": {
       "main": [
-        [{ "node": "Gmail Reply", "type": "main", "index": 0 }],
-        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gmail Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Gmail Reply": {
-      "main": [[{ "node": "Format Ket Qua Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Ket Qua Reply": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     }
   },
   "settings": {

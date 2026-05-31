@@ -110,34 +110,6 @@
         0,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.response }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "bbb81b84-fb3f-4ea9-90d5-f150aeb5ae56",
-      "name": "Gui Loi Lookup Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        0,
-        192
-      ]
     }
   ],
   "connections": {
@@ -205,13 +177,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Loi Lookup Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

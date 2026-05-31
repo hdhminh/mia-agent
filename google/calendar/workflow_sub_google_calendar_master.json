@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nconst calendarId = payload.calendarId || 'kuminhuynhdoan@gmail.com';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(calendar help|lich help|huong dan calendar|huong dan lich|google calendar help|help calendar)\\b/.test(text)) {\n  action = 'help';\n} else if (/\\b(xoa lich|huy lich|delete event|cancel event)\\b/.test(text)) {\n  action = 'delete_event';\n} else if (/\\b(kiem tra lich ranh|check lich ranh|co ranh|freebusy|availability|ranh luc)\\b/.test(text)) {\n  action = 'check_availability';\n} else if (/\\b(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\b/.test(text)) {\n  action = 'create_event';\n} else if (/\\b(lich ngay mai|ngay mai toi co gi|mai toi co gi|list tomorrow|tomorrow schedule)\\b/.test(text)) {\n  action = 'list_tomorrow';\n} else if (/\\b(lich hom nay|hom nay toi co gi|xem lich hom nay|today schedule|list today)\\b/.test(text)) {\n  action = 'list_today';\n} else if (/\\b(lich|su kien|meeting|hop|calendar|tuan sau|cuoi tuan nay|thu [2-7]|chu nhat)\\b/.test(text)) {\n  action = 'find_event';\n}\n\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action, calendarId } }];"
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '' || payload.query || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nconst calendarId = payload.calendarId || 'kuminhuynhdoan@gmail.com';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(calendar help|lich help|huong dan calendar|huong dan lich|google calendar help|help calendar)\\b/.test(text)) {\n  action = 'help';\n} else if (/\\b(xoa lich|huy lich|delete event|cancel event)\\b/.test(text)) {\n  action = 'delete_event';\n} else if (/\\b(kiem tra lich ranh|check lich ranh|co ranh|freebusy|availability|ranh luc)\\b/.test(text)) {\n  action = 'check_availability';\n} else if (/\\b(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\b/.test(text)) {\n  action = 'create_event';\n} else if (/\\b(lich ngay mai|ngay mai toi co gi|mai toi co gi|list tomorrow|tomorrow schedule)\\b/.test(text)) {\n  action = 'list_tomorrow';\n} else if (/\\b(lich hom nay|hom nay toi co gi|xem lich hom nay|today schedule|list today)\\b/.test(text)) {\n  action = 'list_today';\n} else if (/\\b(lich|su kien|meeting|hop|calendar|tuan sau|cuoi tuan nay|thu [2-7]|chu nhat)\\b/.test(text)) {\n  action = 'find_event';\n}\n\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action, calendarId } }];"
       },
       "id": "eddc550f-0464-46d8-9811-5ccc5a34bfa5",
       "name": "Chuan Bi Calendar",
@@ -110,34 +110,6 @@
         -2832,
         560
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.response }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "72a453aa-b955-40e9-92a0-a046eb8e72f4",
-      "name": "Gui Loi Lookup Calendar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        -2832,
-        752
-      ]
     }
   ],
   "connections": {
@@ -205,13 +177,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Loi Lookup Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

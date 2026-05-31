@@ -137,42 +137,6 @@
         240,
         80
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "c466a827-361e-4184-a9b8-871cd74e6118",
-      "name": "Gui Docs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        496,
-        160
-      ]
     }
   ],
   "connections": {
@@ -207,13 +171,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Docs Create File": {
@@ -258,13 +216,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

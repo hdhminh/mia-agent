@@ -244,44 +244,6 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "caption",
-              "value": "={{ $json.caption }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "parameterType": "formBinaryData",
-              "name": "document",
-              "inputDataFieldName": "data"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "cf6a45ca-326c-4987-a863-4ee1dbbdd0f2",
-      "name": "Gui File Telegram",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        880,
-        -240
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n\nconst item = $input.item.json || {};\nlet text = '⚠️ <b>Không thể export/download file</b>\\n\\n';\nif (item.fileName) text += `📄 <b>${escapeHtml(item.fileName)}</b>\\n`;\nif (item.mimeType) text += `MIME: <code>${escapeHtml(item.mimeType)}</code>\\n`;\nif (item.requestedFormat) text += `Định dạng yêu cầu: <code>.${escapeHtml(item.requestedFormat)}</code>\\n`;\ntext += '\\n' + escapeHtml(item.errorMessage || 'Không xác định được cách export/download file này.');\nif (item.webViewLink) text += `\\n🔗 <a href=\"${escapeHtml(item.webViewLink)}\">Mở file gốc</a>`;\nreturn [{ json: { chatId: item.chatId, text: text.trim() } }];"
       },
       "id": "469459d4-0ac1-45ac-81f9-6c496b887122",
@@ -290,42 +252,6 @@
       "typeVersion": 2,
       "position": [
         432,
-        16
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "d0d58a94-2288-4f5c-bbea-f28ac8142adb",
-      "name": "Gui Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        880,
         16
       ]
     }
@@ -362,13 +288,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co File ID?": {
@@ -420,13 +340,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Drive Get Metadata": {
@@ -482,24 +396,12 @@
     },
     "Prepare Telegram Document": {
       "main": [
-        [
-          {
-            "node": "Gui File Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Format Error": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

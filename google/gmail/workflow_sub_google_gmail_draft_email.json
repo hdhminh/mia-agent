@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Parse Draft Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Du Du Lieu Draft?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -51,7 +60,10 @@
       "name": "Gmail Draft",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, -80],
+      "position": [
+        720,
+        -80
+      ],
       "webhookId": "6bc94748-a1df-48ab-a41b-d4874ac3b6c5",
       "credentials": {
         "gmailOAuth2": {
@@ -68,40 +80,10 @@
       "name": "Format Ket Qua Draft",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gmail-draft-telegram",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1200, 0]
+      "position": [
+        960,
+        -80
+      ]
     }
   ],
   "connections": {
@@ -136,13 +118,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Gmail",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Gmail Draft": {
@@ -158,13 +134,7 @@
     },
     "Format Ket Qua Draft": {
       "main": [
-        [
-          {
-            "node": "Gui Gmail",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

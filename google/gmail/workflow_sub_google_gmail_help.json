@@ -23,42 +23,6 @@
         256,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "383be530-aeae-48b3-87d4-65b7ab5c6d07",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        528,
-        0
-      ]
     }
   ],
   "connections": {
@@ -75,13 +39,7 @@
     },
     "Huong Dan Gmail": {
       "main": [
-        [
-          {
-            "node": "Gui Gmail",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

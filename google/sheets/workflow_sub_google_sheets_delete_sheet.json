@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['xoa sheet', 'delete sheet', 'xoa bang tinh'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst spreadsheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nconst sheetName = cleanName(source.sheetName || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    spreadsheetId,\n    sheetName,\n    hasTarget: Boolean(spreadsheetId || sheetName),\n    response: (spreadsheetId || sheetName) ? '' : '🗑️ <b>Xoa Google Sheet</b>\\n\\nVi du: <code>xoa sheet Chi tieu</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['xoa sheet', 'delete sheet', 'xoa bang tinh'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst spreadsheetId = source.spreadsheetId || source.sheetId || source.fileId || source.targetId || '';\nconst sheetName = cleanName(source.sheetName || source.fileName || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    spreadsheetId,\n    sheetName,\n    hasTarget: Boolean(spreadsheetId || sheetName),\n    response: (spreadsheetId || sheetName) ? '' : '🗑️ <b>Xoa Google Sheet</b>\\n\\nVi du: <code>xoa sheet Chi tieu</code>'\n  }\n}];"
       },
       "id": "75f43338-0c15-4737-88b6-1d5d3d913058",
       "name": "Prepare Action",
@@ -184,42 +184,6 @@
         960,
         144
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "fe39d8bc-86a3-4935-9403-b067e4095db2",
-      "name": "Gui Sheets",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1200,
-        224
-      ]
     }
   ],
   "connections": {
@@ -254,13 +218,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co Spreadsheet ID?": {
@@ -312,13 +270,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Drive Trash Sheet": {
@@ -334,13 +286,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

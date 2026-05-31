@@ -57,7 +57,7 @@
             },
             {
               "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
+              "value": "={{ ($json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim() }}"
             },
             {
               "name": "parse_mode",
@@ -92,6 +92,43 @@
         0,
         240
       ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "id": "groq-error-model",
+      "name": "Groq Error Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        320
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "3CkYamGQweOejFET",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=🚨 <b>N8N WORKFLOW ERROR ALARM</b> 🚨\\n\\nHệ thống vừa văng lỗi! Dữ liệu gốc:\\n- Workflow: {{$json.workflowName}} (ID: {{$json.workflowId}})\\n- Execution URL: {{$json.executionUrl}}\\n- Node lỗi: {{$json.lastNode}}\\n- Lỗi (Message): {{$json.errorMessage}}\\n- Mô tả (Description): {{$json.errorDescription}}\\n- Stack Trace: {{$json.stack}}\\n\\n---\\nBạn là một Senior Developer theo dõi hệ thống n8n. Dựa vào thông tin trên, hãy phân tích nguyên nhân lỗi và đề xuất cách sửa.\\n\\nYêu cầu:\\n1. Trình bày bằng tiếng Việt, thân thiện, dễ hiểu, định dạng HTML chuẩn cho Telegram (dùng <b>, <i>, <code>, <pre>, <a>).\\n2. Giữ nguyên đường link Execution URL ở dạng thẻ <a> để người dùng bấm vào xem được.\\n3. Không được để lộ quá trình suy nghĩ (các thẻ <think>...).",
+        "options": {
+          "systemMessage": "Bạn là chuyên gia về n8n và lập trình. Bạn có nhiệm vụ giải thích lỗi cho người dùng một cách trực quan, chính xác nhất."
+        }
+      },
+      "id": "llm-chain-error",
+      "name": "Phân Tích Lỗi (Groq AI)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        -50
+      ]
     }
   ],
   "connections": {
@@ -121,7 +158,7 @@
       "main": [
         [
           {
-            "node": "Gui Loi Telegram",
+            "node": "Phân Tích Lỗi (Groq AI)",
             "type": "main",
             "index": 0
           }
@@ -130,6 +167,28 @@
           {
             "node": "Skip Notify",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phân Tích Lỗi (Groq AI)": {
+      "main": [
+        [
+          {
+            "node": "Gui Loi Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Error Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Phân Tích Lỗi (Groq AI)",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]

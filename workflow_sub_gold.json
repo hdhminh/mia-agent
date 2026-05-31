@@ -7,17 +7,30 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [ 200, 400 ]
+      "position": [
+        200,
+        400
+      ]
     },
     {
       "parameters": {
-        "rule": { "interval": [ { "field": "cronExpression", "expression": "0 6,18 * * *" } ] }
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,18 * * *"
+            }
+          ]
+        }
       },
       "id": "trigger-schedule",
       "name": "Lịch Vàng (6,18)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [ 200, 200 ]
+      "position": [
+        200,
+        200
+      ]
     },
     {
       "parameters": {
@@ -27,7 +40,10 @@
       "name": "Chuẩn bị ChatID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 450, 300 ]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -38,36 +54,50 @@
       "name": "Lấy Giá Vàng SJC",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [ 650, 300 ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"{{ $('Chuẩn bị ChatID').item.json.chatId }}\",\n  \"text\": \"🌟 *Giá vàng SJC (1L, 10L, 1KG)* lúc {{$today.format('HH:mm')}}\\n\\n🪙 Mua vào: *{{($json.buy).toLocaleString('vi-VN')}}* VND\\n💰 Bán ra: *{{($json.sell).toLocaleString('vi-VN')}}* VND\",\n  \"parse_mode\": \"Markdown\"\n}",
-        "options": {}
-      },
-      "id": "send-gold",
-      "name": "Gửi Telegram",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [ 850, 300 ]
+      "position": [
+        650,
+        300
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [ [ { "node": "Chuẩn bị ChatID", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị ChatID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Lịch Vàng (6,18)": {
-      "main": [ [ { "node": "Chuẩn bị ChatID", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị ChatID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chuẩn bị ChatID": {
-      "main": [ [ { "node": "Lấy Giá Vàng SJC", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          {
+            "node": "Lấy Giá Vàng SJC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Lấy Giá Vàng SJC": {
-      "main": [ [ { "node": "Gửi Telegram", "type": "main", "index": 0 } ] ]
+      "main": [
+        []
+      ]
     }
   }
 }

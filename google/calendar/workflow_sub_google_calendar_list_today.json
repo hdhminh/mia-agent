@@ -67,42 +67,6 @@
         1040,
         384
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "f6579a6c-3438-4d16-a213-5cf27c8ac086",
-      "name": "Gui Calendar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1296,
-        384
-      ]
     }
   ],
   "connections": {
@@ -141,13 +105,7 @@
     },
     "Format Danh Sach Lich": {
       "main": [
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   }

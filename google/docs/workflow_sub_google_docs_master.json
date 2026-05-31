@@ -111,34 +111,6 @@
         0,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.response }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "docs-master-send-error",
-      "name": "Gui Loi Lookup Docs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        0,
-        192
-      ]
     }
   ],
   "connections": {
@@ -206,13 +178,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Loi Lookup Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

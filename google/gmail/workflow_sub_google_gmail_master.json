@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(gmail help|mail help|email help|huong dan gmail|huong dan mail|huong dan email|google gmail help|help gmail)\\b/.test(text)) {\n  action = 'help';\n\n} else if (/\\b(gui nhap|gui email nhap|gui mail nhap|send draft|gui mail|gui email|send mail|send email)\\b/.test(text)) {\n  action = 'send_email';\n\n} else if (/\\b(soan mail|soan email|viet nhap mail|viet nhap email|tao nhap mail|tao nhap email|draft mail|draft email)\\b/.test(text)) {\n  action = 'draft_email';\n\n} else if (/\\b(tra loi mail|tra loi email|reply mail|reply email)\\b/.test(text)) {\n  action = 'reply_email';\n\n} else if (/\\b(doc mail|doc email|read mail|read email|noi dung mail|noi dung email|open mail|open email|chi tiet mail|chi tiet email)\\b/.test(text)) {\n  action = 'read_email';\n\n} else if (/\\b(tim mail|tim email|search mail|search email|tim kiem mail|tim kiem email)\\b/.test(text)) {\n  action = 'search_email';\n\n} else if (/\\b(xem mail|xem email|inbox|hop thu|hop thu den|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email)\\b/.test(text)) {\n  action = 'list_inbox';\n\n} else if (text === 'gmail' || text === 'mail' || text === 'email') {\n  action = 'help';\n\n} else if (/\\b(gmail|mail|email)\\b/.test(text)) {\n  action = 'list_inbox';\n}\n\nreturn [{\n  json: {\n    payload,\n    message: msg,\n    chatId,\n    rawText,\n    text,\n    action,\n  },\n}];"
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '' || payload.query || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(gmail help|mail help|email help|huong dan gmail|huong dan mail|huong dan email|google gmail help|help gmail)\\b/.test(text)) {\n  action = 'help';\n\n} else if (/\\b(gui nhap|gui email nhap|gui mail nhap|send draft|gui mail|gui email|send mail|send email)\\b/.test(text)) {\n  action = 'send_email';\n\n} else if (/\\b(soan mail|soan email|viet nhap mail|viet nhap email|tao nhap mail|tao nhap email|draft mail|draft email)\\b/.test(text)) {\n  action = 'draft_email';\n\n} else if (/\\b(tra loi mail|tra loi email|reply mail|reply email)\\b/.test(text)) {\n  action = 'reply_email';\n\n} else if (/\\b(doc mail|doc email|read mail|read email|noi dung mail|noi dung email|open mail|open email|chi tiet mail|chi tiet email)\\b/.test(text)) {\n  action = 'read_email';\n\n} else if (/\\b(tim mail|tim email|search mail|search email|tim kiem mail|tim kiem email)\\b/.test(text)) {\n  action = 'search_email';\n\n} else if (/\\b(xem mail|xem email|inbox|hop thu|hop thu den|mail moi|email moi|check mail|check email|kiem tra mail|kiem tra email)\\b/.test(text)) {\n  action = 'list_inbox';\n\n} else if (text === 'gmail' || text === 'mail' || text === 'email') {\n  action = 'help';\n\n} else if (/\\b(gmail|mail|email)\\b/.test(text)) {\n  action = 'list_inbox';\n}\n\nreturn [{\n  json: {\n    payload,\n    message: msg,\n    chatId,\n    rawText,\n    text,\n    action,\n  },\n}];"
       },
       "id": "955aef33-cd18-4b80-b512-71036fa28dd1",
       "name": "Chuan Bi Gmail",
@@ -110,34 +110,6 @@
         -7024,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.response }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "76dff838-9de7-4026-a121-9b9337d89623",
-      "name": "Gui Loi Lookup Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        -7024,
-        192
-      ]
     }
   ],
   "connections": {
@@ -205,13 +177,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Loi Lookup Gmail",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['them vao doc', 'append doc', 'ghi them vao tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet docId = source.docId || source.fileId || source.targetId || '';\nlet docName = cleanName(source.docName || source.fileName || '');\nlet content = String(source.content || '').trim();\n\nif ((!docName || !content) && body) {\n  const separator = body.indexOf(':');\n  if (separator !== -1) {\n    docName = docName || cleanName(body.slice(0, separator));\n    content = content || body.slice(separator + 1).trim();\n  } else {\n    const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n    if (markerMatch) {\n      const idx = markerMatch.index || 0;\n      docName = docName || cleanName(body.slice(0, idx));\n      content = content || body.slice(idx + markerMatch[0].length).trim();\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    docId,\n    docName,\n    content,\n    hasTarget: Boolean(docId || docName),\n    hasContent: Boolean(content),\n    response: (docId || docName) && content ? '' : '📝 <b>Append Google Doc</b>\\n\\nVi du: <code>them vao doc Project Plan: dong moi</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['them vao doc', 'append doc', 'ghi them vao tai lieu'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet docId = source.docId || source.fileId || source.targetId || '';\nlet docName = cleanName(source.docName || source.fileName || '');\nlet content = String(source.content || '').trim();\n\nif ((!docName || !content) && body) {\n  const separator = body.indexOf(':');\n  if (separator !== -1) {\n    docName = docName || cleanName(body.slice(0, separator));\n    content = content || body.slice(separator + 1).trim();\n  } else {\n    const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n    if (markerMatch) {\n      const idx = markerMatch.index || 0;\n      docName = docName || cleanName(body.slice(0, idx));\n      content = content || body.slice(idx + markerMatch[0].length).trim();\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    docId,\n    docName,\n    content,\n    hasTarget: Boolean(docId || docName),\n    hasContent: Boolean(content),\n    response: (docId || docName) && content ? '' : '📝 <b>Append Google Doc</b>\\n\\nVi du: <code>them vao doc Project Plan: dong moi</code>'\n  }\n}];"
       },
       "id": "ac38ab5d-b4c3-4e37-97ce-510e3297bf2e",
       "name": "Prepare Action",
@@ -206,42 +206,6 @@
         1440,
         144
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "681781d0-5a76-420e-b60c-9a9a93773d50",
-      "name": "Gui Docs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1680,
-        224
-      ]
     }
   ],
   "connections": {
@@ -276,13 +240,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co Doc ID?": {
@@ -334,13 +292,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Docs Get Document": {
@@ -378,13 +330,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

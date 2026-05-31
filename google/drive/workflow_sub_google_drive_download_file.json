@@ -241,80 +241,6 @@
         1296,
         16
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "caption",
-              "value": "={{ $json.caption }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "parameterType": "formBinaryData",
-              "name": "document",
-              "inputDataFieldName": "data"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "8b981e9d-345d-4d62-bfe7-2a1e711ba710",
-      "name": "Gui File Telegram",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1520,
-        16
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "4a631e3a-7261-4ecb-8ed4-d4826e6a8630",
-      "name": "Gui Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1088,
-        -224
-      ]
     }
   ],
   "connections": {
@@ -349,13 +275,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Co File ID?": {
@@ -407,13 +327,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Drive Get Metadata": {
@@ -440,13 +354,7 @@
     },
     "La Google Workspace?": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [],
         [
           {
             "node": "Drive Download Binary",
@@ -469,13 +377,7 @@
     },
     "Attach Telegram Payload": {
       "main": [
-        [
-          {
-            "node": "Gui File Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

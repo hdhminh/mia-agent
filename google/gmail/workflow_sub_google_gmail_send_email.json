@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Parse Gui Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +40,10 @@
       "name": "Du Du Lieu Gui?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -51,7 +60,10 @@
       "name": "La Gui Draft?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [720, -80]
+      "position": [
+        720,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -68,7 +80,10 @@
       "name": "Gmail Create And Send Draft",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [960, -200],
+      "position": [
+        960,
+        -200
+      ],
       "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d87",
       "credentials": {
         "gmailOAuth2": {
@@ -85,7 +100,10 @@
       "name": "Format Ket Qua Gui Draft",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, -200]
+      "position": [
+        1200,
+        -200
+      ]
     },
     {
       "parameters": {
@@ -98,7 +116,10 @@
       "name": "Gmail Send",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [960, 40],
+      "position": [
+        960,
+        40
+      ],
       "webhookId": "f6c3c1bd-f0aa-4f5a-8395-5ca8ccae4d86",
       "credentials": {
         "gmailOAuth2": {
@@ -115,60 +136,96 @@
       "name": "Format Ket Qua Gui",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 40]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "chat_id", "value": "={{ $json.chatId }}" },
-            { "name": "text", "value": "={{ $json.text ?? $json.response }}" },
-            { "name": "parse_mode", "value": "HTML" },
-            { "name": "disable_web_page_preview", "value": "true" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gmail-send-telegram",
-      "name": "Gui Gmail",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1440, 0]
+      "position": [
+        1200,
+        40
+      ]
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Parse Gui Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Gui Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Gui Email": {
-      "main": [[{ "node": "Du Du Lieu Gui?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Du Du Lieu Gui?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Du Du Lieu Gui?": {
       "main": [
-        [{ "node": "La Gui Draft?", "type": "main", "index": 0 }],
-        [{ "node": "Gui Gmail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "La Gui Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "La Gui Draft?": {
       "main": [
-        [{ "node": "Gmail Create And Send Draft", "type": "main", "index": 0 }],
-        [{ "node": "Gmail Send", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gmail Create And Send Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gmail Create And Send Draft": {
-      "main": [[{ "node": "Format Ket Qua Gui Draft", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Gui Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Ket Qua Gui Draft": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     },
     "Gmail Send": {
-      "main": [[{ "node": "Format Ket Qua Gui", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Gui",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Ket Qua Gui": {
-      "main": [[{ "node": "Gui Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     }
   },
   "settings": {

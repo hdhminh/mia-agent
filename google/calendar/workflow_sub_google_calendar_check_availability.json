@@ -85,42 +85,6 @@
         -1184,
         -64
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b12c3082-693e-4c01-89b2-d63a92b8b71e",
-      "name": "Gui Calendar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        -928,
-        80
-      ]
     }
   ],
   "connections": {
@@ -155,13 +119,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Google Calendar Busy Check": {
@@ -177,13 +135,7 @@
     },
     "Format Kiem Tra Ranh": {
       "main": [
-        [
-          {
-            "node": "Gui Calendar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   }

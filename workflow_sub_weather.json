@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Chuẩn Bị Địa Điểm",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [430, 300]
+      "position": [
+        430,
+        300
+      ]
     },
     {
       "parameters": {
@@ -37,7 +43,10 @@
       "name": "Lấy Dữ Liệu Thời Tiết",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [680, 300],
+      "position": [
+        680,
+        300
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -48,41 +57,10 @@
       "name": "Tổng Hợp Thời Tiết",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [930, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "keypair",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "send-weather-tg",
-      "name": "Gửi Thời Tiết",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1170, 300]
+      "position": [
+        930,
+        300
+      ]
     }
   ],
   "connections": {
@@ -121,13 +99,7 @@
     },
     "Tổng Hợp Thời Tiết": {
       "main": [
-        [
-          {
-            "node": "Gửi Thời Tiết",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   }

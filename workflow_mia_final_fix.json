@@ -157,7 +157,7 @@
         "promptType": "define",
         "text": "={{ $('Lệnh Telegram').item.json.message.text }}",
         "options": {
-          "systemMessage": "Bạn là Mia, một trợ lý AI chuyên nghiệp có khả năng xử lý các công việc phức tạp. Bạn được cung cấp các công cụ (Tool) để tra cứu thông tin thực tế. Khi có yêu cầu, hãy suy nghĩ cẩn thận, chọn Tool phù hợp để lấy dữ liệu, sau đó tổng hợp lại và báo cáo cho người dùng. Vẫn giữ thái độ thân thiện và luôn xưng là 'Mia'. Không được để lộ quá trình suy nghĩ ra ngoài, chỉ trả lời phần kết quả."
+          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp. Khi dùng các công cụ (Tool):\n\nQUY TẮC BẮT BUỘC KHI GỌI TOOL:\n1. Nếu Tool trả về ĐOẠN VĂN BẢN HOÀN CHỈNH (đã có sẵn emoji, định dạng HTML), bạn PHẢI copy và trả về y nguyên 100% nội dung đó cho người dùng. KHÔNG ĐƯỢC tóm tắt, KHÔNG ĐƯỢC thêm bớt chữ nào (như 'Dưới đây là...', 'Mia gửi bạn...').\n2. Nếu Tool trả về dữ liệu thô (ví dụ: chuỗi JSON, object), hãy tự tóm tắt thành đoạn văn ngắn gọn, thân thiện bằng tiếng Việt.\n3. Nếu Tool thất bại, thông báo lịch sự.\n4. Luôn xưng 'Mia', gọi 'bạn'. Không lộ quá trình suy nghĩ."
         }
       },
       "id": "a6dd5e55-c42c-4024-a70e-1013fd7b0374",
@@ -196,6 +196,14 @@
             {
               "name": "text",
               "value": "={{ ($json.output || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim() || 'Xin lỗi, Mia đang bận suy nghĩ mà quên trả lời! Bạn hỏi lại nhé 😊' }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
             }
           ]
         },

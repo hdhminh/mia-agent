@@ -46,29 +46,6 @@
     },
     {
       "parameters": {
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/getFile' }}",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "file_id",
-              "value": "={{ $json.telegramFileId }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "738683b7-72f1-489c-bee1-86982ba9d110",
-      "name": "Telegram Get File",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        0,
-        0
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $input.item.json?.result || {};\nconst filePath = result.file_path || '';\nif (!filePath) {\n  return [{ json: { ...source, response: 'Không lấy được file_path từ Telegram getFile.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    telegramFilePath: filePath,\n    telegramDownloadUrl: `https://api.telegram.org/file/bot${$env.TELEGRAM_BOT_TOKEN}/${filePath}`\n  }\n}];"
       },
       "id": "cb7a40ca-a11b-4488-8cd1-82c69e45df4c",
@@ -144,42 +121,6 @@
         960,
         0
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $json.chatId }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.text ?? $json.response }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
-              "name": "disable_web_page_preview",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "acbdfb95-6783-4954-887e-2c22734e4f20",
-      "name": "Gui Drive",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1200,
-        128
-      ]
     }
   ],
   "connections": {
@@ -207,31 +148,8 @@
     },
     "Co File Telegram?": {
       "main": [
-        [
-          {
-            "node": "Telegram Get File",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Telegram Get File": {
-      "main": [
-        [
-          {
-            "node": "Build Telegram Download URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [],
+        []
       ]
     },
     "Build Telegram Download URL": {
@@ -269,13 +187,7 @@
     },
     "Format Action": {
       "main": [
-        [
-          {
-            "node": "Gui Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },
