@@ -1,27 +1,17 @@
 {
   "nodes": [
     {
-      "parameters": {},
-      "id": "trigger",
-      "name": "Execute Workflow Trigger",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
-      "position": [
-        -800,
-        300
-      ]
-    },
-    {
       "parameters": {
-        "text": "Bạn là công cụ phân loại văn bản tự động. Hãy đọc tin nhắn của người dùng và phân loại thành 2 nhóm:\n- Nếu tin nhắn là chào hỏi, cảm xúc, tán gẫu, khen chê bâng quơ -> Phân loại là: CHAT\n- Nếu tin nhắn yêu cầu tính toán, tra cứu thời tiết, tra cứu giá vàng, đọc báo, hoặc hỏi kiến thức phức tạp -> Phân loại là: TOOL\n\nTuyệt đối chỉ in ra đúng 1 từ duy nhất là CHAT hoặc TOOL. Không được giải thích thêm.\n\n--- Các ví dụ ---\nNgười dùng: Xin chào buổi sáng!\nAI: CHAT\n\nNgười dùng: Vàng SJC nay giảm hay tăng thế?\nAI: TOOL\n\nNgười dùng: Bạn ơi mình buồn quá.\nAI: CHAT\n\nNgười dùng: Thời tiết Hà Nội hôm nay sao?\nAI: TOOL\n\n--- Lượt của bạn ---\nNgười dùng: {{ $('Execute Workflow Trigger').item.json.text || $('Execute Workflow Trigger').item.json.message?.text }}\nAI:"
+        "promptType": "define",
+        "text": "=Bạn là công cụ phân loại văn bản tự động. Hãy đọc tin nhắn của người dùng và phân loại thành 2 nhóm:\n- Nếu tin nhắn là chào hỏi, cảm xúc, tán gẫu, khen chê bâng quơ -> Phân loại là: CHAT\n- Nếu tin nhắn yêu cầu tính toán, tra cứu thời tiết, tra cứu giá vàng, đọc báo, hoặc hỏi kiến thức phức tạp -> Phân loại là: TOOL\n\nTuyệt đối chỉ in ra đúng 1 từ duy nhất là CHAT hoặc TOOL. Không được giải thích thêm.\n\n--- Lượt của bạn ---\nNgười dùng: {{$json.message.text}}\nAI:"
       },
-      "id": "gatekeeper",
+      "id": "14ae4b03-57ab-45b1-acaa-2f7a8cb0bd6c",
       "name": "3B Gatekeeper (Phân loại)",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        -500,
-        300
+        -3936,
+        1360
       ]
     },
     {
@@ -31,13 +21,13 @@
           "temperature": 0
         }
       },
-      "id": "ollama-model-3b",
+      "id": "a6aba541-d218-4cff-acf9-9180e004646f",
       "name": "Ollama Qwen 3B",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        -500,
-        500
+        -3936,
+        1552
       ],
       "credentials": {
         "ollamaApi": {
@@ -61,60 +51,45 @@
         },
         "fallbackOutput": 0
       },
-      "id": "switch",
+      "id": "027eef99-6863-4255-bdad-805c70bd07fa",
       "name": "Safe Router Switch",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        -200,
-        300
+        -3632,
+        1360
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Execute Workflow Trigger').item.json.text || $('Execute Workflow Trigger').item.json.message?.text }}",
+        "text": "={{ $('Lệnh Telegram').item.json.message.text }}",
         "options": {
           "systemMessage": "Bạn là Mia, một trợ lý AI trẻ trung, thân thiện và thấu hiểu. Nhiệm vụ của bạn là trò chuyện, tâm sự và mang lại niềm vui cho người dùng. Hãy luôn xưng hô là 'Mia' và gọi người dùng là 'bạn' hoặc 'anh/chị'. Trả lời ngắn gọn, tự nhiên, vui vẻ bằng tiếng Việt."
         }
       },
-      "id": "chat-agent",
+      "id": "fc82f4b8-f316-4894-a9f0-8f5648bb3487",
       "name": "Groq Chat Agent (Tán gẫu)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        100,
-        100
+        -3328,
+        1152
       ]
     },
     {
       "parameters": {
-        "model": "llama-3.1-8b-instant",
-        "options": {
-          "baseURL": "https://api.groq.com/openai/v1"
-        }
-      },
-      "id": "groq-model",
-      "name": "Groq API",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
-      "position": [
-        100,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "sessionId": "={{ $('Execute Workflow Trigger').item.json.message?.chat?.id || $('Execute Workflow Trigger').item.json.chatId || 'default' }}",
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id }}",
         "tableName": "n8n_chat_memory"
       },
-      "id": "memory-chat",
+      "id": "1f2e2356-b3fb-46d9-9c46-50822f8e9509",
       "name": "Mia's Postgres Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        -80,
-        500
+        -3232,
+        1328
       ],
       "credentials": {
         "postgres": {
@@ -126,34 +101,18 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Execute Workflow Trigger').item.json.text || $('Execute Workflow Trigger').item.json.message?.text }}",
+        "text": "={{ $('Lệnh Telegram').item.json.message.text }}",
         "options": {
           "systemMessage": "Bạn là Mia, một trợ lý AI chuyên nghiệp có khả năng xử lý các công việc phức tạp. Bạn được cung cấp các công cụ (Tool) để tra cứu thông tin thực tế. Khi có yêu cầu, hãy suy nghĩ cẩn thận, chọn Tool phù hợp để lấy dữ liệu, sau đó tổng hợp lại và báo cáo cho người dùng. Vẫn giữ thái độ thân thiện và luôn xưng là 'Mia'."
         }
       },
-      "id": "tool-agent",
+      "id": "a6dd5e55-c42c-4024-a70e-1013fd7b0374",
       "name": "OpenRouter Tool Agent (Làm việc)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        100,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "model": "deepseek/deepseek-v4-flash",
-        "options": {
-          "baseURL": "https://openrouter.ai/api/v1"
-        }
-      },
-      "id": "openrouter-model",
-      "name": "OpenRouter API",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
-      "position": [
-        0,
-        700
+        -3328,
+        1552
       ]
     },
     {
@@ -165,23 +124,23 @@
           "parameters": [
             {
               "name": "chat_id",
-              "value": "={{ $('Execute Workflow Trigger').item.json.chatId || $('Execute Workflow Trigger').item.json.message?.chat?.id }}"
+              "value": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
             },
             {
               "name": "text",
-              "value": "={{ $json.output }}"
+              "value": "={{ $json.output.replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim() }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "telegram-node",
+      "id": "35545409-4865-43d0-ab3a-c9031f797801",
       "name": "Gui Tin Nhan Telegram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        600,
-        300
+        -2832,
+        1360
       ]
     },
     {
@@ -194,13 +153,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-gold",
+      "id": "6ed0d784-bdd2-4b67-9f1f-b6977c0d2b5a",
       "name": "Call Workflow: gold",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        300,
-        700
+        -3136,
+        1760
       ]
     },
     {
@@ -213,13 +172,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-news",
+      "id": "992a2835-dd27-41f6-93f4-8e6b5bbe30c5",
       "name": "Call Workflow: news",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        450,
-        700
+        -2976,
+        1760
       ]
     },
     {
@@ -232,13 +191,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-search",
+      "id": "c35059c1-addf-4d02-90b0-5d932477f8b6",
       "name": "Call Workflow: search",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        600,
-        700
+        -2832,
+        1760
       ]
     },
     {
@@ -251,13 +210,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-weather",
+      "id": "c6840a2f-3b6d-4b98-b3f3-8ad4071ddc80",
       "name": "Call Workflow: weather",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        750,
-        700
+        -2672,
+        1760
       ]
     },
     {
@@ -270,13 +229,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-calendar",
+      "id": "de11f2a8-1856-4ec2-841d-841912a9f138",
       "name": "Call Workflow: calendar",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        900,
-        700
+        -2528,
+        1760
       ]
     },
     {
@@ -289,13 +248,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-gmail",
+      "id": "b40fa39e-cf35-4912-b7c8-011c9530bb66",
       "name": "Call Workflow: gmail",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        300,
-        850
+        -3136,
+        1904
       ]
     },
     {
@@ -308,13 +267,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-drive",
+      "id": "158b0c75-f172-4d13-9c9c-3bc44d7f73f1",
       "name": "Call Workflow: drive",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        450,
-        850
+        -2976,
+        1904
       ]
     },
     {
@@ -327,13 +286,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-docs",
+      "id": "0d80e13d-387a-47fd-8637-802f330f02cc",
       "name": "Call Workflow: docs",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        600,
-        850
+        -2832,
+        1904
       ]
     },
     {
@@ -346,13 +305,13 @@
           "mode": "id"
         }
       },
-      "id": "tool-sheets",
+      "id": "3ff8c66c-6497-439b-84e4-4b116df16527",
       "name": "Call Workflow: sheets",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        750,
-        850
+        -2672,
+        1904
       ]
     },
     {
@@ -365,18 +324,80 @@
           "mode": "id"
         }
       },
-      "id": "tool-shortlink",
+      "id": "4c8734ef-cd02-42e8-be68-3beaf02a05c7",
       "name": "Call Workflow: shortlink",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1.1,
       "position": [
-        900,
-        850
+        -2528,
+        1904
       ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "1579196d-ca8b-41c2-ba41-ebe150a35223",
+      "name": "Lệnh Telegram",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -4224,
+        1360
+      ],
+      "webhookId": "ca6994f8-0322-4ef4-8d4d-7337b3c8de10",
+      "credentials": {
+        "telegramApi": {
+          "id": "Iw1sMhOVNbp773Qu",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -3328,
+        1328
+      ],
+      "id": "61fb7444-d821-4a9a-bfec-ac17f311c74f",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "3CkYamGQweOejFET",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -3328,
+        1752
+      ],
+      "id": "14ca5b6c-ddf9-4d8e-9121-997d79f22480",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "placeholder",
+          "name": "OpenRouter account"
+        }
+      }
     }
   ],
   "connections": {
-    "Execute Workflow Trigger": {
+    "Lệnh Telegram": {
       "main": [
         [
           {
@@ -438,7 +459,7 @@
         ]
       ]
     },
-    "Groq API": {
+    "Groq Chat Model": {
       "ai_languageModel": [
         [
           {
@@ -460,7 +481,7 @@
         ]
       ]
     },
-    "OpenRouter API": {
+    "OpenRouter Chat Model": {
       "ai_languageModel": [
         [
           {
