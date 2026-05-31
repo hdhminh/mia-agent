@@ -58,6 +58,19 @@
         650,
         300
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst data = $json || {};\nconst chatId = source.chatId || '';\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst formatPrice = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount <= 0) return 'N/A';\n  return `${amount.toLocaleString('vi-VN')} đ/lượng`;\n};\n\nconst formatChange = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount === 0) return '0 đ';\n  const sign = amount > 0 ? '+' : '-';\n  return `${sign}${Math.abs(amount).toLocaleString('vi-VN')} đ`;\n};\n\nlet text = '⚠️ Không lấy được giá vàng lúc này. Bạn thử lại sau nhé.';\n\nif (data.success) {\n  const title = data.name || 'SJC 9999';\n  const dateLine = [data.date, data.time].filter(Boolean).join(' ');\n\n  text = `🥇 <b>Giá vàng ${escapeHtml(title)}</b>\\n`;\n  if (dateLine) text += `<i>${escapeHtml(dateLine)}</i>\\n\\n`;\n  text += `🛒 <b>Mua vào:</b> ${escapeHtml(formatPrice(data.buy))}\\n`;\n  text += `💰 <b>Bán ra:</b> ${escapeHtml(formatPrice(data.sell))}\\n`;\n  text += `📉 <b>Biến động mua:</b> ${escapeHtml(formatChange(data.change_buy))}\\n`;\n  text += `📈 <b>Biến động bán:</b> ${escapeHtml(formatChange(data.change_sell))}`;\n}\n\nreturn [{ json: { chatId, text: text.trim() } }];"
+      },
+      "id": "format-gold",
+      "name": "Tổng Hợp Giá Vàng",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
     }
   ],
   "connections": {
@@ -95,6 +108,17 @@
       ]
     },
     "Lấy Giá Vàng SJC": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Giá Vàng",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Giá Vàng": {
       "main": [
         []
       ]

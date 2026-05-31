@@ -25,7 +25,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// ============================================================\n// KEYWORD PRE-FILTER — Hỗ trợ 3B Gatekeeper\n// Nếu nhận ra keyword rõ ràng → short-circuit, bỏ qua 3B\n// Nếu mơ hồ → route UNKNOWN → 3B Gatekeeper xử lý như cũ\n// ============================================================\nconst message = $json.message || {};\nconst raw = String(message.text || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nconst text = normalize(raw);\n\n// HIGH-CONFIDENCE TOOL keywords\nconst hasTool =\n  /(vang|gold|sjc|9999|gia vang|xem vang)/.test(text) ||\n  /(tin tuc|doc bao|bao hom nay|news|vnexpress|bao moi|xem bao)/.test(text) ||\n  /(thoi tiet|weather|nhiet do|do am|du bao|forecast|mua khong|nang khong)/.test(text) ||\n  /\\b(calendar|xem lich|lich hom nay|tao lich|dat lich|su kien|meeting)\\b/.test(text) ||\n  /\\b(gmail|xem mail|doc mail|gui mail|check mail|inbox)\\b/.test(text) ||\n  /\\b(google drive|tim file|upload file|share file|tao folder)\\b/.test(text) ||\n  /\\b(google docs|tao doc|tao tai lieu|xem doc)\\b/.test(text) ||\n  /\\b(google sheets|tao sheet|tao bang tinh|cap nhat o)\\b/.test(text) ||\n  /\\b(shortlink|rut gon link|link ngan)\\b/.test(text) ||\n  /\\b(tim kiem|tra cuu|wikipedia|cho toi biet|thong tin ve|lich su|dinh nghia|la gi|ai la|o dau)\\b/.test(text);\n\n// HIGH-CONFIDENCE CHAT patterns\nconst hasChat =\n  /^(hi|hello|xin chao|chao|hey|yo|haha|hehe|ok|okay|oke|thanks|cam on|great|tuyet|buon|vui|mia oi|chao mia)/.test(text) ||\n  (text.length < 20 && !hasTool);\n\nif (hasTool) {\n  return [{ json: { ...$json, _route: 'TOOL' } }];\n} else if (hasChat) {\n  return [{ json: { ...$json, _route: 'CHAT' } }];\n} else {\n  // Không chắc → để 3B Gatekeeper phán\n  return [{ json: { ...$json, _route: 'UNKNOWN' } }];\n}"
+        "jsCode": "// ============================================================\n// KEYWORD PRE-FILTER — Hỗ trợ 3B Gatekeeper\n// Nếu nhận ra keyword rõ ràng → short-circuit, bỏ qua 3B\n// Nếu mơ hồ → route UNKNOWN → 3B Gatekeeper xử lý như cũ\n// ============================================================\nconst message = $json.message || {};\nconst raw = String(message.text || message.caption || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nconst text = normalize(raw);\n\n// HIGH-CONFIDENCE TOOL keywords\nconst hasTool =\n  /(vang|gold|sjc|9999|gia vang|xem vang)/.test(text) ||\n  /(tin tuc|doc bao|bao hom nay|news|vnexpress|bao moi|xem bao)/.test(text) ||\n  /(thoi tiet|weather|nhiet do|do am|du bao|forecast|mua khong|nang khong)/.test(text) ||\n  /\\b(calendar|xem lich|lich hom nay|tao lich|dat lich|su kien|meeting)\\b/.test(text) ||\n  /\\b(gmail|xem mail|doc mail|gui mail|check mail|inbox)\\b/.test(text) ||\n  /\\b(google drive|tim file|upload file|share file|tao folder)\\b/.test(text) ||\n  /\\b(google docs|tao doc|tao tai lieu|xem doc)\\b/.test(text) ||\n  /\\b(google sheets|tao sheet|tao bang tinh|cap nhat o)\\b/.test(text) ||\n  /\\b(shortlink|rut gon link|link ngan)\\b/.test(text) ||\n  /\\b(tim kiem|tra cuu|wikipedia|cho toi biet|thong tin ve|lich su|dinh nghia|la gi|ai la|o dau)\\b/.test(text);\n\n// HIGH-CONFIDENCE CHAT patterns\nconst hasChat =\n  /^(hi|hello|xin chao|chao|hey|yo|haha|hehe|ok|okay|oke|thanks|cam on|great|tuyet|buon|vui|mia oi|chao mia)/.test(text) ||\n  (text.length < 20 && !hasTool);\n\nif (hasTool) {\n  return [{ json: { ...$json, _route: 'TOOL' } }];\n} else if (hasChat) {\n  return [{ json: { ...$json, _route: 'CHAT' } }];\n} else {\n  // Không chắc → để 3B Gatekeeper phán\n  return [{ json: { ...$json, _route: 'UNKNOWN' } }];\n}"
       },
       "id": "keyword-prefilter",
       "name": "Keyword Pre-filter",
@@ -66,7 +66,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Bạn là công cụ phân loại văn bản tự động. Hãy đọc tin nhắn của người dùng và phân loại thành 2 nhóm:\n- Nếu tin nhắn là chào hỏi, cảm xúc, tán gẫu, khen chê bâng quơ -> Phân loại là: CHAT\n- Nếu tin nhắn yêu cầu tính toán, tra cứu thời tiết, tra cứu giá vàng, đọc báo, hoặc hỏi kiến thức phức tạp -> Phân loại là: TOOL\n\nTuyệt đối chỉ in ra đúng 1 từ duy nhất là CHAT hoặc TOOL. Không được giải thích thêm.\n\n--- VÍ DỤ ---\nNgười dùng: Xin chào buổi sáng!\nAI: CHAT\n\nNgười dùng: Xem dùm mình giá vàng hôm nay\nAI: TOOL\n\nNgười dùng: Bạn ơi mình buồn quá.\nAI: CHAT\n\nNgười dùng: Thời tiết Hà Nội hôm nay sao?\nAI: TOOL\n\nNgười dùng: Hôm nay mưa không?\nAI: TOOL\n\nNgười dùng: Cho tôi biết lịch sử Việt Nam.\nAI: TOOL\n\n--- LƯỢT CỦA BẠN ---\nNgười dùng: {{$json.message.text}}\nAI:"
+        "text": "=Bạn là công cụ phân loại văn bản tự động. Hãy đọc tin nhắn của người dùng và phân loại thành 2 nhóm:\n- Nếu tin nhắn là chào hỏi, cảm xúc, tán gẫu, khen chê bâng quơ -> Phân loại là: CHAT\n- Nếu tin nhắn yêu cầu tính toán, tra cứu thời tiết, tra cứu giá vàng, đọc báo, hoặc hỏi kiến thức phức tạp -> Phân loại là: TOOL\n\nTuyệt đối chỉ in ra đúng 1 từ duy nhất là CHAT hoặc TOOL. Không được giải thích thêm.\n\n--- VÍ DỤ ---\nNgười dùng: Xin chào buổi sáng!\nAI: CHAT\n\nNgười dùng: Xem dùm mình giá vàng hôm nay\nAI: TOOL\n\nNgười dùng: Bạn ơi mình buồn quá.\nAI: CHAT\n\nNgười dùng: Thời tiết Hà Nội hôm nay sao?\nAI: TOOL\n\nNgười dùng: Hôm nay mưa không?\nAI: TOOL\n\nNgười dùng: Cho tôi biết lịch sử Việt Nam.\nAI: TOOL\n\n--- LƯỢT CỦA BẠN ---\nNgười dùng: {{$json.message.text || $json.message.caption || ''}}\nAI:"
       },
       "id": "14ae4b03-57ab-45b1-acaa-2f7a8cb0bd6c",
       "name": "3B Gatekeeper (Phân loại)",
@@ -126,7 +126,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Lệnh Telegram').item.json.message.text }}",
+        "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
           "systemMessage": "Bạn là Mia, một trợ lý AI trẻ trung, thân thiện và thấu hiểu. Nhiệm vụ của bạn là trò chuyện, tâm sự và mang lại niềm vui cho người dùng. Hãy luôn xưng là 'Mia' và gọi người dùng là 'bạn' hoặc 'anh/chị'. Trả lời ngắn gọn, tự nhiên, vui vẻ bằng tiếng Việt. Không được để lộ quá trình suy nghĩ ra ngoài, chỉ trả lời phần kết quả."
         }
@@ -184,9 +184,10 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Lệnh Telegram').item.json.message.text }}",
+        "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp. Khi dùng các công cụ (Tool):\n\nQUY TẮC BẮT BUỘC KHI GỌI TOOL:\n1. Nếu Tool trả về ĐOẠN VĂN BẢN HOÀN CHỈNH (đã có sẵn emoji, định dạng HTML), bạn PHẢI copy và trả về y nguyên 100% nội dung đó cho người dùng. KHÔNG ĐƯỢC tóm tắt, KHÔNG ĐƯỢC thêm bớt chữ nào (như 'Dưới đây là...', 'Mia gửi bạn...').\n2. Nếu Tool trả về dữ liệu thô (ví dụ: chuỗi JSON, object), hãy tự tóm tắt thành đoạn văn ngắn gọn, thân thiện bằng tiếng Việt.\n3. Nếu Tool thất bại, thông báo lịch sự.\n4. Luôn xưng 'Mia', gọi 'bạn'. Không lộ quá trình suy nghĩ."
+          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp. Khi dùng các công cụ (Tool):\n\nQUY TẮC BẮT BUỘC KHI GỌI TOOL:\n1. Mỗi tool trong workflow này trả kết quả chính ở field `text`.\n2. Sau khi gọi tool, bạn PHẢI đọc kết quả từ field `text` mà tool trả về.\n3. Nếu field `text` đã là ĐOẠN VĂN HOÀN CHỈNH cho người dùng (đã có emoji, HTML), bạn PHẢI trả lại nguyên văn 100%, KHÔNG thêm bớt gì.\n4. Nếu tool trả dữ liệu thô, hãy tóm tắt ngắn gọn, tự nhiên bằng tiếng Việt.\n5. Không được để output rỗng. Sau khi gọi tool luôn phải có final answer cho người dùng.\n6. Nếu tool thất bại hoặc field `text` trống, hãy báo lỗi lịch sự.\n7. Luôn xưng 'Mia', gọi 'bạn'. Không lộ quá trình suy nghĩ.",
+          "maxIterations": 6
         }
       },
       "id": "a6dd5e55-c42c-4024-a70e-1013fd7b0374",
@@ -230,7 +231,7 @@
             },
             {
               "name": "text",
-              "value": "={{ ($json.output || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim() || 'Xin lỗi, Mia đang bận suy nghĩ mà quên trả lời! Bạn hỏi lại nhé 😊' }}"
+              "value": "={{ (($json.output || $json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim()) || 'Xin lỗi, Mia đang bận suy nghĩ mà quên trả lời! Bạn hỏi lại nhé 😊' }}"
             },
             {
               "name": "parse_mode",
@@ -257,7 +258,8 @@
       "parameters": {
         "name": "call_workflow_gold",
         "description": "Dùng tool này để lấy thông tin giá vàng SJC, vàng 9999 mới nhất hôm nay.",
-        "workflowId": "KRRETdOwKih9MNPh"
+        "workflowId": "KRRETdOwKih9MNPh",
+        "responsePropertyName": "text"
       },
       "id": "6ed0d784-bdd2-4b67-9f1f-b6977c0d2b5a",
       "name": "Call Workflow: gold",
@@ -272,7 +274,8 @@
       "parameters": {
         "name": "call_workflow_news",
         "description": "Dùng tool này để xem tin tức, đọc báo hôm nay.",
-        "workflowId": "dX9MXm49hdVAproP"
+        "workflowId": "dX9MXm49hdVAproP",
+        "responsePropertyName": "text"
       },
       "id": "992a2835-dd27-41f6-93f4-8e6b5bbe30c5",
       "name": "Call Workflow: news",
@@ -287,7 +290,8 @@
       "parameters": {
         "name": "call_workflow_search",
         "description": "Dùng tool này để tra cứu thông tin trên google, duckduckgo, wikipedia, thông tin chung.",
-        "workflowId": "72gE9VPYxBgxFn6h"
+        "workflowId": "72gE9VPYxBgxFn6h",
+        "responsePropertyName": "text"
       },
       "id": "c35059c1-addf-4d02-90b0-5d932477f8b6",
       "name": "Call Workflow: search",
@@ -302,7 +306,8 @@
       "parameters": {
         "name": "call_workflow_weather",
         "description": "Dùng tool này để xem dự báo thời tiết, nhiệt độ.",
-        "workflowId": "m1ip8fFcTkdBwtWh"
+        "workflowId": "m1ip8fFcTkdBwtWh",
+        "responsePropertyName": "text"
       },
       "id": "c6840a2f-3b6d-4b98-b3f3-8ad4071ddc80",
       "name": "Call Workflow: weather",
@@ -317,7 +322,8 @@
       "parameters": {
         "name": "call_workflow_calendar",
         "description": "Dùng tool này để thao tác với lịch: xem lịch, tạo lịch, lên lịch họp, kiểm tra lịch rảnh.",
-        "workflowId": "hEGn8N6rE17tMw5T"
+        "workflowId": "hEGn8N6rE17tMw5T",
+        "responsePropertyName": "text"
       },
       "id": "de11f2a8-1856-4ec2-841d-841912a9f138",
       "name": "Call Workflow: calendar",
@@ -332,7 +338,8 @@
       "parameters": {
         "name": "call_workflow_gmail",
         "description": "Dùng tool này để thao tác email: xem mail, đọc mail, gửi mail, soạn mail.",
-        "workflowId": "s5LDuZZpOCAYiQsf"
+        "workflowId": "s5LDuZZpOCAYiQsf",
+        "responsePropertyName": "text"
       },
       "id": "b40fa39e-cf35-4912-b7c8-011c9530bb66",
       "name": "Call Workflow: gmail",
@@ -347,7 +354,8 @@
       "parameters": {
         "name": "call_workflow_drive",
         "description": "Dùng tool này để thao tác Google Drive: tìm file, xem file, tải file lên, tạo thư mục, chia sẻ file, cấp quyền.",
-        "workflowId": "abTxYqrVCN4Qzz5U"
+        "workflowId": "abTxYqrVCN4Qzz5U",
+        "responsePropertyName": "text"
       },
       "id": "158b0c75-f172-4d13-9c9c-3bc44d7f73f1",
       "name": "Call Workflow: drive",
@@ -362,7 +370,8 @@
       "parameters": {
         "name": "call_workflow_docs",
         "description": "Dùng tool này để thao tác Google Docs: tạo tài liệu, xem tài liệu, ghi thêm vào tài liệu.",
-        "workflowId": "kO3D2tjgJmy3CvSg"
+        "workflowId": "kO3D2tjgJmy3CvSg",
+        "responsePropertyName": "text"
       },
       "id": "0d80e13d-387a-47fd-8637-802f330f02cc",
       "name": "Call Workflow: docs",
@@ -377,7 +386,8 @@
       "parameters": {
         "name": "call_workflow_sheets",
         "description": "Dùng tool này để thao tác Google Sheets: tạo bảng tính, đọc bảng tính, cập nhật ô, thêm dòng.",
-        "workflowId": "0cwoCCOYhAldS4Qj"
+        "workflowId": "0cwoCCOYhAldS4Qj",
+        "responsePropertyName": "text"
       },
       "id": "3ff8c66c-6497-439b-84e4-4b116df16527",
       "name": "Call Workflow: sheets",
@@ -392,7 +402,8 @@
       "parameters": {
         "name": "call_workflow_shortlink",
         "description": "Dùng tool này để rút gọn link, tạo shortlink.",
-        "workflowId": "D1cdbPhZef9glsNh"
+        "workflowId": "D1cdbPhZef9glsNh",
+        "responsePropertyName": "text"
       },
       "id": "4c8734ef-cd02-42e8-be68-3beaf02a05c7",
       "name": "Call Workflow: shortlink",
@@ -657,6 +668,22 @@
           {
             "node": "OpenRouter Tool Agent (Làm việc)",
             "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenRouter Tool Agent (Làm việc)",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "DeepSeek Tool Finalizer",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
