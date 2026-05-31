@@ -12,7 +12,7 @@
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.1,
       "position": [
-        -4400,
+        -3820,
         1360
       ],
       "webhookId": "ca6994f8-0322-4ef4-8d4d-7337b3c8de10",
@@ -25,169 +25,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// ============================================================\n// KEYWORD PRE-FILTER — Hỗ trợ 3B Gatekeeper\n// Nếu nhận ra keyword rõ ràng → short-circuit, bỏ qua 3B\n// Nếu mơ hồ → route UNKNOWN → 3B Gatekeeper xử lý như cũ\n// ============================================================\nconst message = $json.message || {};\nconst raw = String(message.text || message.caption || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nconst text = normalize(raw);\n\n// HIGH-CONFIDENCE TOOL keywords\nconst hasTool =\n  /(vang|gold|sjc|9999|gia vang|xem vang)/.test(text) ||\n  /(tin tuc|doc bao|bao hom nay|news|vnexpress|bao moi|xem bao)/.test(text) ||\n  /(thoi tiet|weather|nhiet do|do am|du bao|forecast|mua khong|nang khong)/.test(text) ||\n  /\\b(calendar|xem lich|lich hom nay|tao lich|dat lich|su kien|meeting)\\b/.test(text) ||\n  /\\b(gmail|xem mail|doc mail|gui mail|check mail|inbox)\\b/.test(text) ||\n  /\\b(google drive|tim file|upload file|share file|tao folder)\\b/.test(text) ||\n  /\\b(google docs|tao doc|tao tai lieu|xem doc)\\b/.test(text) ||\n  /\\b(google sheets|tao sheet|tao bang tinh|cap nhat o)\\b/.test(text) ||\n  /\\b(shortlink|rut gon link|link ngan)\\b/.test(text) ||\n  /\\b(tim kiem|tra cuu|wikipedia|cho toi biet|thong tin ve|lich su|dinh nghia|la gi|ai la|o dau)\\b/.test(text);\n\n// HIGH-CONFIDENCE CHAT patterns\nconst hasChat =\n  /^(hi|hello|xin chao|chao|hey|yo|haha|hehe|ok|okay|oke|thanks|cam on|great|tuyet|buon|vui|mia oi|chao mia)/.test(text) ||\n  (text.length < 20 && !hasTool);\n\nif (hasTool) {\n  return [{ json: { ...$json, _route: 'TOOL' } }];\n} else if (hasChat) {\n  return [{ json: { ...$json, _route: 'CHAT' } }];\n} else {\n  // Không chắc → để 3B Gatekeeper phán\n  return [{ json: { ...$json, _route: 'UNKNOWN' } }];\n}"
-      },
-      "id": "keyword-prefilter",
-      "name": "Keyword Pre-filter",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -4150,
-        1360
-      ]
-    },
-    {
-      "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json._route }}",
-        "rules": {
-          "rules": [
-            {
-              "value2": "TOOL",
-              "output": 1
-            },
-            {
-              "value2": "CHAT",
-              "output": 0
-            }
-          ]
-        },
-        "fallbackOutput": 2
-      },
-      "id": "prefilter-switch",
-      "name": "Pre-filter Switch",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [
-        -3900,
-        1360
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Bạn là công cụ phân loại văn bản tự động. Hãy đọc tin nhắn của người dùng và phân loại thành 2 nhóm:\n- Nếu tin nhắn là chào hỏi, cảm xúc, tán gẫu, khen chê bâng quơ -> Phân loại là: CHAT\n- Nếu tin nhắn yêu cầu tính toán, tra cứu thời tiết, tra cứu giá vàng, đọc báo, hoặc hỏi kiến thức phức tạp -> Phân loại là: TOOL\n\nTuyệt đối chỉ in ra đúng 1 từ duy nhất là CHAT hoặc TOOL. Không được giải thích thêm.\n\n--- VÍ DỤ ---\nNgười dùng: Xin chào buổi sáng!\nAI: CHAT\n\nNgười dùng: Xem dùm mình giá vàng hôm nay\nAI: TOOL\n\nNgười dùng: Bạn ơi mình buồn quá.\nAI: CHAT\n\nNgười dùng: Thời tiết Hà Nội hôm nay sao?\nAI: TOOL\n\nNgười dùng: Hôm nay mưa không?\nAI: TOOL\n\nNgười dùng: Cho tôi biết lịch sử Việt Nam.\nAI: TOOL\n\n--- LƯỢT CỦA BẠN ---\nNgười dùng: {{$json.message.text || $json.message.caption || ''}}\nAI:"
-      },
-      "id": "14ae4b03-57ab-45b1-acaa-2f7a8cb0bd6c",
-      "name": "3B Gatekeeper (Phân loại)",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.4,
-      "position": [
-        -3650,
-        1560
-      ]
-    },
-    {
-      "parameters": {
-        "model": "qwen2.5:3b",
-        "options": {
-          "temperature": 0
-        }
-      },
-      "id": "a6aba541-d218-4cff-acf9-9180e004646f",
-      "name": "Ollama Qwen 3B",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
-      "typeVersion": 1,
-      "position": [
-        -3650,
-        1752
-      ],
-      "credentials": {
-        "ollamaApi": {
-          "id": "pmqhUd4rRmQaVRW1",
-          "name": "Ollama account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json.text }}",
-        "rules": {
-          "rules": [
-            {
-              "operation": "contains",
-              "value2": "TOOL",
-              "output": 1
-            }
-          ]
-        },
-        "fallbackOutput": 0
-      },
-      "id": "027eef99-6863-4255-bdad-805c70bd07fa",
-      "name": "Safe Router Switch",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [
-        -3350,
-        1560
-      ]
-    },
-    {
-      "parameters": {
         "promptType": "define",
         "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI thân thiện và tinh tế. Hãy trả lời ngắn gọn, tự nhiên bằng tiếng Việt, xưng 'Mia' và gọi người dùng là 'bạn'. Nếu không chắc, hãy hỏi lại một câu ngắn. Không lộ quá trình suy nghĩ. Không bao giờ in ra thẻ <think>."
-        }
-      },
-      "id": "fc82f4b8-f316-4894-a9f0-8f5648bb3487",
-      "name": "Groq Chat Agent (Tán gẫu)",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.6,
-      "position": [
-        -3050,
-        1152
-      ]
-    },
-    {
-      "parameters": {
-        "model": "qwen/qwen3-32b",
-        "options": {}
-      },
-      "id": "61fb7444-d821-4a9a-bfec-ac17f311c74f",
-      "name": "Groq Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        -3050,
-        1328
-      ],
-      "credentials": {
-        "groqApi": {
-          "id": "3CkYamGQweOejFET",
-          "name": "Groq account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':chat:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
-        "tableName": "n8n_chat_memory",
-        "contextWindowLength": 12
-      },
-      "id": "1f2e2356-b3fb-46d9-9c46-50822f8e9509",
-      "name": "Mia Chat Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-      "typeVersion": 1.3,
-      "position": [
-        -2900,
-        1328
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "XIYO79FxACZ0XHMP",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
-        "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nQUY TẮC KHI DÙNG TOOL:\n1. Hãy dùng tool khi tool phù hợp hơn so với tự trả lời.\n2. Mỗi tool trong workflow này sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n3. Sau khi tool chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n4. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool vừa gửi.\n5. Nếu không có tool phù hợp hoặc tool không cần thiết, bạn được phép tự trả lời trực tiếp cho người dùng bằng tiếng Việt.\n6. Nếu tool thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n7. Luôn xưng 'Mia', gọi người dùng là 'bạn'. Không lộ quá trình suy nghĩ. Không in ra <think>.",
+          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nNHIỆM VỤ:\n- Bạn dùng cùng một mô hình để vừa trò chuyện vừa quyết định có cần tool hay không.\n- Nếu không cần tool, hãy tự trả lời trực tiếp, ngắn gọn, tự nhiên bằng tiếng Việt.\n- Nếu cần tool, hãy gọi đúng tool phù hợp.\n\nQUY TẮC KHI DÙNG TOOL:\n1. Mỗi tool sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n2. Sau khi tool chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n3. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool vừa gửi.\n4. Nếu tool thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n5. Luôn xưng 'Mia', gọi người dùng là 'bạn'.\n6. Không lộ quá trình suy nghĩ. Không in ra <think>.",
           "maxIterations": 4
         }
       },
@@ -196,8 +37,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        -3050,
-        1552
+        -3300,
+        1360
       ]
     },
     {
@@ -213,8 +54,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        -3050,
-        1728
+        -3300,
+        1544
       ],
       "credentials": {
         "openRouterApi": {
@@ -255,7 +96,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -2550,
+        -2780,
         1360
       ]
     },
@@ -264,7 +105,36 @@
         "name": "call_workflow_gold",
         "description": "Dùng tool này để lấy thông tin giá vàng SJC, vàng 9999 mới nhất hôm nay.",
         "workflowId": "KRRETdOwKih9MNPh",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "6ed0d784-bdd2-4b67-9f1f-b6977c0d2b5a",
       "name": "Call Workflow: gold",
@@ -280,7 +150,36 @@
         "name": "call_workflow_news",
         "description": "Dùng tool này để xem tin tức, đọc báo hôm nay.",
         "workflowId": "dX9MXm49hdVAproP",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "992a2835-dd27-41f6-93f4-8e6b5bbe30c5",
       "name": "Call Workflow: news",
@@ -296,7 +195,36 @@
         "name": "call_workflow_search",
         "description": "Dùng tool này để tra cứu thông tin trên google, duckduckgo, wikipedia, thông tin chung.",
         "workflowId": "72gE9VPYxBgxFn6h",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "c35059c1-addf-4d02-90b0-5d932477f8b6",
       "name": "Call Workflow: search",
@@ -312,7 +240,36 @@
         "name": "call_workflow_weather",
         "description": "Dùng tool này để xem dự báo thời tiết, nhiệt độ.",
         "workflowId": "m1ip8fFcTkdBwtWh",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "c6840a2f-3b6d-4b98-b3f3-8ad4071ddc80",
       "name": "Call Workflow: weather",
@@ -328,7 +285,36 @@
         "name": "call_workflow_calendar",
         "description": "Dùng tool này để thao tác với lịch: xem lịch, tạo lịch, lên lịch họp, kiểm tra lịch rảnh.",
         "workflowId": "hEGn8N6rE17tMw5T",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "de11f2a8-1856-4ec2-841d-841912a9f138",
       "name": "Call Workflow: calendar",
@@ -344,7 +330,36 @@
         "name": "call_workflow_gmail",
         "description": "Dùng tool này để thao tác email: xem mail, đọc mail, gửi mail, soạn mail.",
         "workflowId": "s5LDuZZpOCAYiQsf",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "b40fa39e-cf35-4912-b7c8-011c9530bb66",
       "name": "Call Workflow: gmail",
@@ -360,7 +375,36 @@
         "name": "call_workflow_drive",
         "description": "Dùng tool này để thao tác Google Drive: tìm file, xem file, tải file lên, tạo thư mục, chia sẻ file, cấp quyền.",
         "workflowId": "abTxYqrVCN4Qzz5U",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "158b0c75-f172-4d13-9c9c-3bc44d7f73f1",
       "name": "Call Workflow: drive",
@@ -376,7 +420,36 @@
         "name": "call_workflow_docs",
         "description": "Dùng tool này để thao tác Google Docs: tạo tài liệu, xem tài liệu, ghi thêm vào tài liệu.",
         "workflowId": "kO3D2tjgJmy3CvSg",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "0d80e13d-387a-47fd-8637-802f330f02cc",
       "name": "Call Workflow: docs",
@@ -392,7 +465,36 @@
         "name": "call_workflow_sheets",
         "description": "Dùng tool này để thao tác Google Sheets: tạo bảng tính, đọc bảng tính, cập nhật ô, thêm dòng.",
         "workflowId": "0cwoCCOYhAldS4Qj",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "3ff8c66c-6497-439b-84e4-4b116df16527",
       "name": "Call Workflow: sheets",
@@ -408,7 +510,36 @@
         "name": "call_workflow_shortlink",
         "description": "Dùng tool này để rút gọn link, tạo shortlink.",
         "workflowId": "D1cdbPhZef9glsNh",
-        "responsePropertyName": "text"
+        "responsePropertyName": "text",
+        "fields": {
+          "values": [
+            {
+              "name": "chatId",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+            },
+            {
+              "name": "rawText",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "text",
+              "type": "stringValue",
+              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
+            },
+            {
+              "name": "message",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
+            },
+            {
+              "name": "payload",
+              "type": "objectValue",
+              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
+            }
+          ]
+        }
       },
       "id": "4c8734ef-cd02-42e8-be68-3beaf02a05c7",
       "name": "Call Workflow: shortlink",
@@ -422,12 +553,12 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':tool:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
+        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':mia:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
         "tableName": "n8n_chat_memory",
-        "contextWindowLength": 6
+        "contextWindowLength": 10
       },
       "id": "501036f5-2799-48f7-bde5-4bdc94f3918a",
-      "name": "Mia Tool Memory",
+      "name": "Mia Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
@@ -450,8 +581,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2800,
-        1552
+        -3040,
+        1360
       ]
     }
   ],
@@ -460,106 +591,8 @@
       "main": [
         [
           {
-            "node": "Keyword Pre-filter",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Keyword Pre-filter": {
-      "main": [
-        [
-          {
-            "node": "Pre-filter Switch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pre-filter Switch": {
-      "main": [
-        [
-          {
-            "node": "Groq Chat Agent (Tán gẫu)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
             "node": "OpenRouter Tool Agent (Làm việc)",
             "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "3B Gatekeeper (Phân loại)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "3B Gatekeeper (Phân loại)": {
-      "main": [
-        [
-          {
-            "node": "Safe Router Switch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ollama Qwen 3B": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "3B Gatekeeper (Phân loại)",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Safe Router Switch": {
-      "main": [
-        [
-          {
-            "node": "Groq Chat Agent (Tán gẫu)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Groq Chat Agent (Tán gẫu)": {
-      "main": [
-        [
-          {
-            "node": "Gui Tin Nhan Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Groq Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Groq Chat Agent (Tán gẫu)",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -576,6 +609,17 @@
         ]
       ]
     },
+    "Tool Output Guard": {
+      "main": [
+        [
+          {
+            "node": "Gui Tin Nhan Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "OpenRouter Chat Model": {
       "ai_languageModel": [
         [
@@ -583,10 +627,16 @@
             "node": "OpenRouter Tool Agent (Làm việc)",
             "type": "ai_languageModel",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Mia Memory": {
+      "ai_memory": [
+        [
           {
-            "node": "DeepSeek Tool Finalizer",
-            "type": "ai_languageModel",
+            "node": "OpenRouter Tool Agent (Làm việc)",
+            "type": "ai_memory",
             "index": 0
           }
         ]
@@ -697,39 +747,6 @@
           {
             "node": "OpenRouter Tool Agent (Làm việc)",
             "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mia Chat Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "Groq Chat Agent (Tán gẫu)",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mia Tool Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tool Output Guard": {
-      "main": [
-        [
-          {
-            "node": "Gui Tin Nhan Telegram",
-            "type": "main",
             "index": 0
           }
         ]

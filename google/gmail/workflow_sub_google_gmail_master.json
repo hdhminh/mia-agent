@@ -172,6 +172,39 @@
         768,
         128
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ String($json.chatId || \"\").trim() }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "e7e5f7f1-d705-497b-a586-41094475b508",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        252,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "ac3d910c-10fe-4e1c-a589-5283c9e60791",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        352
+      ]
     }
   ],
   "connections": {
@@ -252,7 +285,7 @@
       "main": [
         [
           {
-            "node": "Gửi Telegram Trực Tiếp",
+            "node": "Có ChatId?",
             "type": "main",
             "index": 0
           }
@@ -263,7 +296,7 @@
       "main": [
         [
           {
-            "node": "Gửi Telegram Trực Tiếp",
+            "node": "Có ChatId?",
             "type": "main",
             "index": 0
           }
@@ -282,6 +315,29 @@
       ]
     },
     "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
       "main": [
         []
       ]
