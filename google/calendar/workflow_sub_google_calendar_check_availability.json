@@ -51,7 +51,7 @@
         "calendar": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.calendarId }}"
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'kuminhuynhdoan@gmail.com' }}"
         },
         "limit": 10,
         "options": {

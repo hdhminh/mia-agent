@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'primary';\nconst now = new Date();\nconst start = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T00:00:00+07:00`;\nconst end = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T23:59:59+07:00`;\nreturn [{ json: { ...source, payload, message, chatId, calendarId, after: start, before: end, heading: 'Lịch hôm nay' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || payload.calendarId || 'kuminhuynhdoan@gmail.com';\nconst now = new Date();\nconst start = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T00:00:00+07:00`;\nconst end = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T23:59:59+07:00`;\nreturn [{ json: { ...source, payload, message, chatId, calendarId, after: start, before: end, heading: 'Lịch hôm nay' } }];"
       },
       "id": "9cbe773e-b27e-4006-8dff-1cfeb34bed24",
       "name": "Chuan Bi Lich Hom Nay",
@@ -31,7 +31,7 @@
         "calendar": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'kuminhuynhdoan@gmail.com' }}"
         },
         "limit": 20,
         "options": {

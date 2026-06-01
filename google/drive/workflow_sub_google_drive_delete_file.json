@@ -100,7 +100,13 @@
         920,
         -120
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
@@ -140,7 +146,13 @@
       "position": [
         1140,
         120
-      ]
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {

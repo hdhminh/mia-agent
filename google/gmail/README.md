@@ -1,39 +1,47 @@
-# Google Gmail workflows
+# Google Gmail Domain
 
-## Muc tieu
+## Kiến trúc hiện tại
 
-Tach workflow Gmail thanh nhieu file nho de de import va quan ly trong n8n:
+Mia ưu tiên gọi Gmail theo action-level capability thay vì đi qua `Gmail Master` để đoán lại ý người dùng.
 
-- `workflow_sub_google_gmail_master.json`: sub-master router cho Gmail
-- `workflow_sub_google_gmail_list_inbox.json`: xem email moi nhat
-- `workflow_sub_google_gmail_read_email.json`: doc chi tiet email
-- `workflow_sub_google_gmail_send_email.json`: gui email moi
-- `workflow_sub_google_gmail_draft_email.json`: tao email nhap
-- `workflow_sub_google_gmail_search_email.json`: tim kiem email
-- `workflow_sub_google_gmail_reply_email.json`: tra loi email
-- `workflow_sub_google_gmail_help.json`: huong dan su dung
+Action hiện có:
 
-## Cach dung
+- `gmail.help`
+- `gmail.list_inbox`
+- `gmail.read_email`
+- `gmail.search_email`
+- `gmail.send_email`
+- `gmail.draft_email`
+- `gmail.reply_email`
 
-1. Import tung workflow con truoc.
-2. Import `workflow_sub_google_gmail_master.json` sau cung.
-3. Dat bien moi truong `N8N_API_KEY` de master co the lookup workflow id dong qua API.
-4. Cau hinh Gmail OAuth2 credential trong n8n.
+## File trong domain
 
-## Cac lenh ho tro
+- `workflow_sub_google_gmail_help.json`
+- `workflow_sub_google_gmail_list_inbox.json`
+- `workflow_sub_google_gmail_read_email.json`
+- `workflow_sub_google_gmail_search_email.json`
+- `workflow_sub_google_gmail_send_email.json`
+- `workflow_sub_google_gmail_draft_email.json`
+- `workflow_sub_google_gmail_reply_email.json`
+- `workflow_sub_google_gmail_master.json`
 
-- `xem mail` / `hộp thư` / `inbox` - Xem email mới nhất (kèm link)
-- `đọc mail ...` / `nội dung mail ...` - Đọc chi tiết email
-- `gửi mail ...` / `send email ...` - Gửi email mới (kèm link email đã gửi)
-- `gửi nháp ...` / `send draft ...` - Gửi email từ bản nháp (kèm link)
-- `soạn mail ...` / `draft email ...` - Tạo email nháp (kèm link bản nháp)
-- `tìm mail ...` / `search mail ...` - Tìm kiếm email
-- `trả lời mail ...` / `reply mail ...` - Trả lời email (kèm link cuộc trò chuyện)
-- `gmail help` - Hướng dẫn sử dụng
+## Vai trò của `master`
 
-## Ghi chu
+`workflow_sub_google_gmail_master.json` là lớp tương thích cũ:
 
-- Master moi khong can gan tay `workflowId` cho tung node con nua.
-- Moi workflow con tu gui tin nhan Telegram sau khi xu ly xong.
-- Send email, Draft email, Reply email deu hien thi link Gmail o dong cuoi.
-- Send email ho tro ca 2 che do: gui email moi va gui email nhap (draft).
+- vẫn hữu ích nếu có workflow khác còn bắn câu text tự nhiên vào Gmail domain
+- không còn là đường chạy ưu tiên của Mia core
+
+## Lệnh mẫu
+
+- `xem mail`
+- `đọc mail hóa đơn mới nhất`
+- `tìm mail openrouter`
+- `gửi mail cho a@b.com tiêu đề ...`
+- `soạn mail cho team nội dung ...`
+- `trả lời mail từ cô giáo rằng ...`
+
+## Ghi chú
+
+- `gmail.list_inbox` và `gmail.search_email` hiện đã giữ được link email khi Mia trả lời.
+- Các action có side effect mạnh như gửi/trả lời mail nên test cẩn thận bằng tài khoản thật.

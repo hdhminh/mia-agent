@@ -1,26 +1,47 @@
-# Google Calendar workflows
+# Google Calendar Domain
 
-## Muc tieu
+## Kiến trúc hiện tại
 
-Tach workflow Calendar thanh nhieu file nho de de import va quan ly trong n8n:
+Đường chính của Mia không còn phụ thuộc vào `Calendar Master` để parse text rồi lookup workflow ID động nữa.
 
-- `workflow_sub_google_calendar_master.json`: sub-master router cho Calendar
-- `workflow_sub_google_calendar_create_event.json`
+Mia hiện gọi action-level workflow qua `Mia: Tool Gateway`, ví dụ:
+
+- `calendar.help`
+- `calendar.list_today`
+- `calendar.list_tomorrow`
+- `calendar.find_event`
+- `calendar.create_event`
+- `calendar.delete_event`
+- `calendar.check_availability`
+
+## File trong domain
+
+- `workflow_sub_google_calendar_help.json`
 - `workflow_sub_google_calendar_list_today.json`
 - `workflow_sub_google_calendar_list_tomorrow.json`
 - `workflow_sub_google_calendar_find_event.json`
+- `workflow_sub_google_calendar_create_event.json`
 - `workflow_sub_google_calendar_delete_event.json`
 - `workflow_sub_google_calendar_check_availability.json`
-- `workflow_sub_google_calendar_help.json`
+- `workflow_sub_google_calendar_master.json`
 
-## Cach dung
+## Vai trò của `master`
 
-1. Import tung workflow con truoc.
-2. Import `workflow_sub_google_calendar_master.json` sau cung.
-3. Dat bien moi truong `N8N_API_KEY` de master co the lookup workflow id dong qua API.
-4. Sau khi test on dinh, moi chuyen tool/chuoi goi workflow chinh sang file master moi.
+`workflow_sub_google_calendar_master.json` hiện chỉ nên xem là lớp tương thích cũ:
 
-## Ghi chu
+- hữu ích nếu workflow khác trong n8n vẫn còn gọi kiểu text tự nhiên
+- không phải đường ưu tiên cho Mia nữa
 
-- Master moi khong can gan tay `workflowId` cho tung node con nua.
-- Moi workflow con tu gui tin nhan Telegram sau khi xu ly xong.
+## Lệnh mẫu
+
+- `lịch hôm nay`
+- `lịch ngày mai`
+- `tìm lịch tuần sau`
+- `tạo lịch họp team lúc 15h mai`
+- `xóa lịch demo chiều mai`
+- `kiểm tra lịch rảnh chiều thứ 4`
+
+## Ghi chú
+
+- Calendar leaf workflows trả `text` plain cho Mia đọc.
+- Nếu cần giữ compatibility với Telegram direct-send thì vẫn có thể truyền `chatId`.

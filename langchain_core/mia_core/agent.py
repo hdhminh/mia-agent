@@ -30,8 +30,11 @@ Quy tắc:
 - Sau khi tool trả kết quả, Mia phải đọc kết quả đó và tự trả lời lại cho người dùng.
 - Kết quả tool quan trọng hơn suy đoán.
 - Với câu hỏi lặp lại về dữ liệu hiện tại như thời tiết, giá vàng, tin tức, hãy trả lời như một câu mới. Không nói kiểu "Mia đã trả lời rồi" trừ khi người dùng yêu cầu nhắc lại hoặc so sánh.
+- Mặc định chỉ giải quyết yêu cầu mới nhất của người dùng trong lượt hiện tại.
+- Không được tự mang kết quả hay chủ đề của lượt trước sang lượt này trừ khi người dùng nói rõ là muốn tiếp tục, so sánh, nhắc lại, hoặc dựa trên câu trước.
 - Nếu tool lỗi, nói thật là tool lỗi và gợi ý bước tiếp theo nếu phù hợp.
 - Dùng memory_search khi cần nhớ thông tin từ trước.
+- Dùng memory_recent khi người dùng hỏi Mia còn nhớ gì, đã lưu gì gần đây, hoặc muốn xem nhanh memory gần đây.
 - Dùng memory_write khi người dùng muốn Mia ghi nhớ điều bền vững.
 """
 
@@ -103,11 +106,49 @@ def _tool_hint_for_request(text: str) -> str:
         ("weather_get", ("thoi tiet", "weather", "nhiet do", "du bao")),
         ("gold_get_price", ("gia vang", "sjc", "gold")),
         ("news_get", ("tin tuc", "doc bao", "bao hom nay", "news")),
-        ("calendar_assistant", ("calendar", "lich", "su kien", "hop")),
-        ("gmail_assistant", ("gmail", "mail", "email", "inbox", "hop thu")),
-        ("drive_assistant", ("drive", "file drive", "folder", "thu muc", "tai file", "upload")),
-        ("docs_assistant", ("docs", "doc ", "tai lieu", "google doc")),
-        ("sheets_assistant", ("sheet", "sheets", "bang tinh", "google sheet")),
+        ("memory_recent", ("ban con nho gi", "nho gi gan day", "memory gan day", "da luu gi")),
+        ("calendar_help", ("calendar help", "lich help", "huong dan calendar", "huong dan lich")),
+        ("calendar_list_tomorrow", ("lich ngay mai", "mai toi co gi", "ngay mai toi co gi")),
+        ("calendar_list_today", ("lich hom nay", "hom nay toi co gi", "xem lich hom nay")),
+        ("calendar_check_availability", ("lich ranh", "co ranh", "freebusy", "availability")),
+        ("calendar_create_event", ("tao lich", "dat lich", "tao su kien", "book lich")),
+        ("calendar_delete_event", ("xoa lich", "huy lich", "delete event", "cancel event")),
+        ("calendar_find_event", ("calendar", "lich", "su kien", "hop")),
+        ("gmail_help", ("gmail help", "mail help", "email help", "huong dan gmail", "huong dan mail")),
+        ("gmail_search_email", ("tim mail", "tim email", "search mail", "search email")),
+        ("gmail_read_email", ("doc mail", "doc email", "read mail", "read email", "chi tiet mail", "chi tiet email")),
+        ("gmail_send_email", ("gui mail", "gui email", "send mail", "send email")),
+        ("gmail_draft_email", ("soan mail", "soan email", "draft email", "draft mail")),
+        ("gmail_reply_email", ("tra loi mail", "tra loi email", "reply mail", "reply email")),
+        ("gmail_list_inbox", ("xem mail", "xem email", "inbox", "hop thu", "mail moi", "email moi")),
+        ("drive_help", ("drive help", "huong dan drive", "google drive help")),
+        ("drive_search_file", ("tim file", "search file", "tim trong drive", "tim tep", "search drive")),
+        ("drive_get_file_info", ("chi tiet file", "thong tin file")),
+        ("drive_create_folder", ("tao folder", "tao thu muc")),
+        ("drive_create_file", ("tao file drive", "create file drive")),
+        ("drive_upload_file", ("upload file", "tai len drive")),
+        ("drive_download_file", ("tai file", "download file")),
+        ("drive_share_file", ("share file", "chia se file")),
+        ("drive_move_file", ("move file", "di chuyen file")),
+        ("drive_rename_file", ("doi ten file", "rename file")),
+        ("drive_copy_file", ("copy file", "nhan ban file")),
+        ("drive_delete_folder", ("xoa folder", "xoa thu muc")),
+        ("drive_delete_file", ("xoa file drive", "delete file")),
+        ("drive_export_file", ("export file", "xuat file")),
+        ("drive_list_files", ("xem file drive", "liet ke file drive", "file drive gan day", "drive")),
+        ("docs_help", ("docs help", "doc help", "huong dan docs", "huong dan google docs")),
+        ("docs_search_doc", ("tim doc", "search doc", "tim tai lieu", "google doc")),
+        ("docs_read_doc", ("xem doc", "doc doc", "read doc", "noi dung doc")),
+        ("docs_create_doc", ("tao doc", "tao tai lieu", "create doc")),
+        ("docs_append_doc", ("them vao doc", "append doc", "ghi them vao tai lieu")),
+        ("docs_delete_doc", ("xoa doc", "delete doc", "xoa tai lieu")),
+        ("sheets_help", ("sheets help", "sheet help", "huong dan sheets")),
+        ("sheets_search_sheet", ("tim sheet", "search sheet", "tim bang tinh")),
+        ("sheets_read_sheet", ("xem sheet", "doc sheet", "read sheet")),
+        ("sheets_create_sheet", ("tao sheet", "tao bang tinh", "create sheet")),
+        ("sheets_append_row", ("them dong vao sheet", "append row")),
+        ("sheets_update_cell", ("cap nhat sheet", "cap nhat o", "update cell")),
+        ("sheets_delete_sheet", ("xoa sheet", "delete sheet", "xoa bang tinh")),
         ("shortlink_create", ("shortlink", "short link", "rut gon link", "tao link ngan")),
         ("search_web", ("tim ", "tim kiem", "search", "tra cuu", "cho toi biet", "thong tin ve")),
     ]
@@ -115,6 +156,26 @@ def _tool_hint_for_request(text: str) -> str:
         if any(keyword in normalized for keyword in keywords):
             return tool_name
     return ""
+
+
+def _fallback_memory_recent_text(memory_repo: MemoryRepository, chat_id: str, limit: int = 5) -> str:
+    rows = memory_repo.recent(chat_id=chat_id, limit=max(1, min(limit, 10)))
+    if not rows:
+        return "Mia chưa có memory nào đáng chú ý gần đây."
+
+    lines = ["Memory gần đây:"]
+    for index, row in enumerate(rows, start=1):
+        memory_type = str(row.get("memory_type") or "general").strip()
+        title = str(row.get("title") or "").strip()
+        content = str(row.get("content") or row.get("chunk_text") or "").strip()
+        snippet = content[:220].rstrip()
+        if len(content) > 220:
+            snippet += "..."
+        prefix = f"{index}. [{memory_type}]"
+        if title:
+            prefix += f" {title}:"
+        lines.append(f"{prefix} {snippet}".strip())
+    return "\n".join(lines)
 
 
 def _resolve_fallback_text(messages: list[Any]) -> str:
@@ -194,18 +255,25 @@ def _prefer_tool_truth(final_text: str, messages: list[Any], tools_called: list[
     if not _looks_like_not_found(final_text):
         return final_text
 
-    url_tools = {"docs_assistant", "search_web", "news_get", "drive_assistant"}
+    url_tools = {
+        "docs_search_doc",
+        "drive_search_file",
+        "drive_list_files",
+        "search_web",
+        "news_get",
+        "gmail_list_inbox",
+    }
     if not any(tool in url_tools for tool in tools_called):
         return final_text
 
     for tool_text in _all_tool_messages(messages):
-            if _extract_urls(tool_text):
-                return _sanitize_final_text(tool_text)
+        if _extract_urls(tool_text):
+            return _sanitize_final_text(tool_text)
     return final_text
 
 
 def _prefer_docs_search_output(request_text: str, final_text: str, messages: list[Any], tools_called: list[str]) -> str:
-    if "docs_assistant" not in tools_called:
+    if "docs_search_doc" not in tools_called:
         return final_text
 
     normalized = _normalize_query_text(request_text)
@@ -213,7 +281,7 @@ def _prefer_docs_search_output(request_text: str, final_text: str, messages: lis
     if not any(cue in normalized for cue in search_cues):
         return final_text
 
-    for tool_text in _tool_messages_by_name(messages, "docs_assistant"):
+    for tool_text in _tool_messages_by_name(messages, "docs_search_doc"):
         if _extract_urls(tool_text):
             return _sanitize_final_text(tool_text)
     return final_text
@@ -333,6 +401,15 @@ class MiaAgentService:
                     "content": f"Với yêu cầu này, ưu tiên dùng tool {hint_tool} trước nếu phù hợp.",
                 }
             )
+        messages_payload.append(
+            {
+                "role": "system",
+                "content": (
+                    "Chỉ xử lý yêu cầu mới nhất trong lượt này. "
+                    "Nếu không có chỉ dẫn tiếp tục rõ ràng, bỏ qua chủ đề và kết quả của lượt trước."
+                ),
+            }
+        )
         messages_payload.append({"role": "user", "content": request.text})
 
         result = self.agent.invoke(
@@ -348,6 +425,9 @@ class MiaAgentService:
         final_message = messages[-1] if messages else AIMessage(content="")
         final_text = _sanitize_final_text(_coerce_message_text(final_message.content))
         tools_called = _extract_tools_called(messages)
+        if not tools_called and hint_tool == "memory_recent":
+            final_text = _fallback_memory_recent_text(self.memory_repo, request.chat_id)
+            tools_called = ["memory_recent"]
         if (
             tools_called
             and final_text == "Xin lỗi, Mia chưa tạo được phản hồi rõ ràng. Bạn thử nói lại ngắn hơn giúp Mia nhé."
@@ -377,8 +457,32 @@ class MiaAgentService:
             final_text,
             messages,
             tools_called,
-            tool_name="docs_assistant",
+            tool_name="docs_search_doc",
             label="Link tài liệu:",
+            limit=5,
+        )
+        final_text = _ensure_tool_links(
+            final_text,
+            messages,
+            tools_called,
+            tool_name="drive_search_file",
+            label="Link file tham khảo:",
+            limit=5,
+        )
+        final_text = _ensure_tool_links(
+            final_text,
+            messages,
+            tools_called,
+            tool_name="drive_list_files",
+            label="Link file gần đây:",
+            limit=5,
+        )
+        final_text = _ensure_tool_links(
+            final_text,
+            messages,
+            tools_called,
+            tool_name="gmail_list_inbox",
+            label="Link email:",
             limit=5,
         )
         return MiaChatResponse(

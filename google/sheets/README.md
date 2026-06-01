@@ -1,37 +1,48 @@
-# Google Sheets workflows
+# Google Sheets Domain
 
-## Muc tieu
+## Kiến trúc hiện tại
 
-Tach Google Sheets thanh service rieng de xu ly bang tinh:
+Mia ưu tiên gọi Sheets theo action-level capability qua `Mia: Tool Gateway`.
 
-- `workflow_sub_google_sheets_master.json`
+Action chính:
+
+- `sheets.help`
+- `sheets.search_sheet`
+- `sheets.read_sheet`
+- `sheets.create_sheet`
+- `sheets.append_row`
+- `sheets.update_cell`
+- `sheets.delete_sheet`
+
+## File trong domain
+
 - `workflow_sub_google_sheets_help.json`
-- `workflow_sub_google_sheets_create_sheet.json`
+- `workflow_sub_google_sheets_search_sheet.json`
 - `workflow_sub_google_sheets_read_sheet.json`
+- `workflow_sub_google_sheets_create_sheet.json`
 - `workflow_sub_google_sheets_append_row.json`
 - `workflow_sub_google_sheets_update_cell.json`
-- `workflow_sub_google_sheets_search_sheet.json`
 - `workflow_sub_google_sheets_delete_sheet.json`
+- `workflow_sub_google_sheets_master.json`
 
-## Cach dung
+## Vai trò của `master`
 
-1. Import tung sub-workflow truoc.
-2. Import `workflow_sub_google_sheets_master.json` sau cung.
-3. Dat `N8N_API_KEY` de master lookup workflow id dong.
-4. Dung chung credential Google Drive OAuth2 de goi Drive API va Sheets API.
+`workflow_sub_google_sheets_master.json` hiện là lớp tương thích:
 
-## Lenh ho tro
+- vẫn dùng được cho workflow cũ còn gửi text tự nhiên
+- không còn là đường ưu tiên của Mia
+
+## Lệnh mẫu
 
 - `sheets help`
-- `tao sheet Chi tieu`
-- `doc sheet Chi tieu`
-- `them dong vao sheet Chi tieu: cafe,30000,an uong`
-- `cap nhat sheet Chi tieu o B2 thanh 35000`
-- `tim sheet Chi tieu`
-- `xoa sheet Chi tieu`
+- `tìm sheet test`
+- `xem sheet Chi tiêu`
+- `tạo sheet Test Mia`
+- `thêm dòng vào sheet Chi tiêu: cafe,30000,ăn uống`
+- `cập nhật sheet Chi tiêu ô B2 thành 35000`
+- `xóa sheet Test Mia`
 
-## Ghi chu
+## Ghi chú
 
-- Service nay tap trung vao noi dung bang tinh Google Sheets.
-- Export XLSX/CSV/PDF van dung flow Drive Export.
-- Delete chi dua bang tinh vao thung rac, khong xoa vinh vien.
+- `sheets.search_sheet` hiện đã giữ được link bảng tính khi Mia trả lời.
+- Nếu cần export CSV/XLSX/PDF thì vẫn nên đi qua Drive domain.

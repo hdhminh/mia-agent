@@ -1,10 +1,29 @@
-# Google Drive workflows
+# Google Drive Domain
 
-## Muc tieu
+## Kiến trúc hiện tại
 
-Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8n:
+Drive là domain lớn nhất phía Google, và Mia hiện gọi trực tiếp theo action-level capability qua `Mia: Tool Gateway`.
 
-- `workflow_sub_google_drive_master.json`
+Action chính:
+
+- `drive.help`
+- `drive.list_files`
+- `drive.search_file`
+- `drive.get_file_info`
+- `drive.create_folder`
+- `drive.create_file`
+- `drive.upload_file`
+- `drive.download_file`
+- `drive.share_file`
+- `drive.move_file`
+- `drive.rename_file`
+- `drive.copy_file`
+- `drive.delete_file`
+- `drive.delete_folder`
+- `drive.export_file`
+
+## File trong domain
+
 - `workflow_sub_google_drive_list_files.json`
 - `workflow_sub_google_drive_search_file.json`
 - `workflow_sub_google_drive_get_file_info.json`
@@ -12,49 +31,33 @@ Tach workflow Google Drive thanh nhieu file nho de de import va quan ly trong n8
 - `workflow_sub_google_drive_create_file.json`
 - `workflow_sub_google_drive_upload_file.json`
 - `workflow_sub_google_drive_download_file.json`
-- `workflow_sub_google_drive_copy_file.json`
-- `workflow_sub_google_drive_rename_file.json`
-- `workflow_sub_google_drive_move_file.json`
-- `workflow_sub_google_drive_delete_folder.json`
-- `workflow_sub_google_drive_delete_file.json`
 - `workflow_sub_google_drive_share_file.json`
+- `workflow_sub_google_drive_move_file.json`
+- `workflow_sub_google_drive_rename_file.json`
+- `workflow_sub_google_drive_copy_file.json`
+- `workflow_sub_google_drive_delete_file.json`
+- `workflow_sub_google_drive_delete_folder.json`
 - `workflow_sub_google_drive_export_file.json`
 - `workflow_sub_google_drive_help.json`
+- `workflow_sub_google_drive_master.json`
 
-## Cach dung
+## Vai trò của `master`
 
-1. Import tung workflow con truoc.
-2. Import `workflow_sub_google_drive_master.json` sau cung.
-3. Dat bien moi truong `N8N_API_KEY` de master co the lookup workflow id dong qua API.
-4. Cau hinh Google Drive OAuth2 credential trong n8n.
-5. Sau khi test on dinh, moi chuyen tool/chuoi goi workflow chinh sang file master moi.
+`workflow_sub_google_drive_master.json` còn giữ lại cho compatibility:
 
-## Cac lenh ho tro
+- dùng khi workflow cũ còn gọi theo text tự nhiên
+- không còn là đường chạy chính của Mia
+
+## Lệnh mẫu
 
 - `xem file drive`
-- `tim file hop dong`
-- `thong tin file bao cao`
-- `tao folder Khach hang`
-- `tao file ghi-chu.txt noi dung Xin chao`
-- `upload file nay vao drive`
-- `tai file bao cao`
-- `copy file mau hop dong thanh hop dong khach A`
-- `doi ten file A thanh B`
-- `di chuyen file A vao folder B`
+- `tìm file project`
+- `chi tiết file báo cáo`
+- `tạo folder Khách hàng`
 - `share file A cho email@example.com`
-- `xuat file A sang pdf`
-- `xoa folder Du an cu`
-- `xoa file A`
+- `xóa file A`
 
-## Ghi chu
+## Ghi chú
 
-- Master moi khong can gan tay workflowId cho tung node con nua.
-- Moi workflow con tu gui tin nhan Telegram sau khi xu ly xong.
-- Create file mac dinh tao file text, ho tro them noi dung truc tiep trong cau lenh.
-- Delete chi dua file vao thung rac, khong xoa vinh vien.
-- Delete folder chi dua folder vao thung rac, khong xoa vinh vien.
-- Drive phu trach quan ly file/folder, upload/download/export/share/move/rename/delete.
-- Google Docs service phu trach noi dung tai lieu Google Docs nhu tao/doc/them noi dung/tim/xoa.
-- Google Sheets service phu trach noi dung bang tinh Google Sheets nhu tao/doc/them dong/cap nhat o/tim/xoa.
-- Export dung cho Google Docs/Sheets/Slides va van di qua Drive service.
-- Download dung cho file thuong nhu PDF, anh, DOCX, ZIP.
+- `drive.search_file` và `drive.list_files` hiện đã giữ được link trong câu trả lời cuối của Mia.
+- Các workflow local cho `delete_file` và `share_file` đã được thêm credential để tránh lệch với live instance.

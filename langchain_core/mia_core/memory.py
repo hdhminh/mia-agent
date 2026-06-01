@@ -172,6 +172,35 @@ class MemoryRepository:
                 )
                 return list(cur.fetchall())
 
+    def recent(
+        self,
+        *,
+        chat_id: str,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        sql = """
+        SELECT
+          id,
+          chat_id,
+          memory_type,
+          title,
+          content,
+          tags,
+          importance,
+          created_at,
+          updated_at
+        FROM mia_memory_items
+        WHERE chat_id = %s
+          AND is_active = TRUE
+        ORDER BY updated_at DESC, importance DESC, created_at DESC
+        LIMIT %s;
+        """
+
+        with self.pool.connection() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (chat_id, max(1, limit)))
+                return list(cur.fetchall())
+
     def write(
         self,
         *,
