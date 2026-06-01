@@ -196,7 +196,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Build Append Request').item.json || $('Prepare Action').item.json || {};\nconst docId = source.docId || '';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst charCount = String(source.content || '').length;\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Docs append response.');\n}\n\nlet text = '✅ <b>Đã thêm nội dung vào Google Doc</b>\\n\\n';\ntext += `<b>${escapeHtml(source.docName || 'Không rõ tên')}</b>\\n`;\nif (docId) text += `ID: <code>${escapeHtml(docId)}</code>\\n`;\ntext += `Số ký tự đã thêm: ${charCount}\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở tài liệu</a>`;\n\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Build Append Request').item.json || $('Prepare Action').item.json || {};\nconst docId = source.docId || '';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst charCount = String(source.content || '').length;\nconst docName = source.docName || 'Không rõ tên';\n\nlet text = `Đã thêm nội dung vào Google Doc: ${docName}`;\nif (docId) text += `\\nID: ${docId}`;\ntext += `\\nSố ký tự đã thêm: ${charCount}`;\nif (link) text += `\\nMở tài liệu: ${link}`;\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
       },
       "id": "d087ee98-35e1-4e1a-a41b-69fdfbd78052",
       "name": "Format Action",

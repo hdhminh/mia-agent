@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst data = $json || {};\nconst chatId = source.chatId || '';\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst formatPrice = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount <= 0) return 'N/A';\n  return `${amount.toLocaleString('vi-VN')} đ/lượng`;\n};\n\nconst formatChange = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount === 0) return '0 đ';\n  const sign = amount > 0 ? '+' : '-';\n  return `${sign}${Math.abs(amount).toLocaleString('vi-VN')} đ`;\n};\n\nlet text = '⚠️ Không lấy được giá vàng lúc này. Bạn thử lại sau nhé.';\n\nif (data.success) {\n  const title = data.name || 'SJC 9999';\n  const dateLine = [data.date, data.time].filter(Boolean).join(' ');\n\n  text = `🥇 <b>Giá vàng ${escapeHtml(title)}</b>\\n`;\n  if (dateLine) text += `<i>${escapeHtml(dateLine)}</i>\\n\\n`;\n  text += `🛒 <b>Mua vào:</b> ${escapeHtml(formatPrice(data.buy))}\\n`;\n  text += `💰 <b>Bán ra:</b> ${escapeHtml(formatPrice(data.sell))}\\n`;\n}\n\nreturn [{ json: { chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst data = $json || {};\n\nconst formatPrice = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount <= 0) return 'N/A';\n  return `${amount.toLocaleString('vi-VN')} đ/lượng`;\n};\n\nlet text = 'Không lấy được giá vàng lúc này. Bạn thử lại sau nhé.';\nif (data.success) {\n  const title = data.name || 'SJC 9999';\n  const dateLine = [data.date, data.time].filter(Boolean).join(' ');\n  text = `Giá vàng ${title}`;\n  if (dateLine) text += `\\nCập nhật: ${dateLine}`;\n  text += `\\n- Mua vào: ${formatPrice(data.buy)}`;\n  text += `\\n- Bán ra: ${formatPrice(data.sell)}`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
       },
       "id": "format-gold",
       "name": "Tổng Hợp Giá Vàng",
@@ -85,10 +85,6 @@
             {
               "name": "text",
               "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
             },
             {
               "name": "disable_web_page_preview",
@@ -152,6 +148,19 @@
         560,
         160
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-wf",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
     }
   ],
   "connections": {
@@ -203,7 +212,7 @@
       "main": [
         [
           {
-            "node": "Có ChatId?",
+            "node": "Chuẩn Hóa Tool Text",
             "type": "main",
             "index": 0
           }
@@ -247,6 +256,17 @@
     "Giữ Text Khi Thiếu ChatId": {
       "main": [
         []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

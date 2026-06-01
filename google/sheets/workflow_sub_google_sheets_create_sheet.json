@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\\\"/g, '&quot;');\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst sheet = $input.item.json || {};\n\nconst spreadsheetId = sheet.spreadsheetId || '';\nconst title = sheet.properties?.title || source.title || 'Không rõ tên';\nconst link = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : '';\n\nif (!source.chatId) {\n  throw new Error('Missing chatId while formatting Google Sheets create response.');\n}\n\nlet text = '✅ <b>Đã tạo Google Sheet</b>\\n\\n';\ntext += `<b>${escapeHtml(title)}</b>\\n`;\n\nif (spreadsheetId) {\n  text += `ID: <code>${escapeHtml(spreadsheetId)}</code>\\n`;\n}\n\nif (link) {\n  text += `🔗 <a href=\"${escapeHtml(link)}\">Mở bảng tính</a>`;\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId,\n    text: text.trim(),\n  },\n}];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst sheet = $input.item.json || {};\nconst spreadsheetId = sheet.spreadsheetId || '';\nconst title = sheet.properties?.title || source.title || 'Không rõ tên';\nconst link = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : '';\n\nlet text = `Đã tạo Google Sheet: ${title}`;\nif (spreadsheetId) text += `\\nID: ${spreadsheetId}`;\nif (link) text += `\\nMở bảng tính: ${link}`;\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
       },
       "id": "0885a0f2-fa3e-49e5-b000-a1351ef952c4",
       "name": "Format Action",

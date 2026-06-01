@@ -11,17 +11,14 @@ def _format_memory_search(rows: list[dict]) -> str:
     if not rows:
         return "Mia không tìm thấy memory phù hợp."
 
-    lines = ["MEMORY_SEARCH_RESULTS"]
+    lines = ["Memory phù hợp:"]
     for index, row in enumerate(rows, start=1):
-        score = float(row.get("final_score") or row.get("semantic_score") or 0)
-        title = f" | title={row['title']}" if row.get("title") else ""
-        tags = row.get("tags") or []
-        tag_text = f" | tags={', '.join(tags)}" if tags else ""
-        lines.append(
-            f"{index}. [{row.get('memory_type', 'general')}] "
-            f"score={score:.4f}{title}{tag_text}"
-        )
-        lines.append(f"content: {row.get('chunk_text', '')}")
+        memory_type = row.get("memory_type", "general")
+        title = str(row.get("title") or "").strip()
+        prefix = f"{index}. [{memory_type}]"
+        if title:
+            prefix += f" {title}:"
+        lines.append(f"{prefix} {row.get('chunk_text', '')}".strip())
     return "\n".join(lines)
 
 
@@ -67,15 +64,12 @@ def build_tools(
             importance=max(1, min(importance, 5)),
             source_text=content,
         )
-        tags_text = ", ".join(saved["tags"]) if saved["tags"] else "(none)"
+        title = saved["title"] or "không có tiêu đề"
         return (
-            "MEMORY_WRITE_OK\n"
-            f"memory_type: {saved['memory_type']}\n"
-            f"title: {saved['title'] or '(none)'}\n"
-            f"importance: {saved['importance']}\n"
-            f"tags: {tags_text}\n"
-            f"chunks: {saved['chunk_count']}\n"
-            f"content: {saved['content']}"
+            "Đã lưu memory.\n"
+            f"Loại: {saved['memory_type']}\n"
+            f"Tiêu đề: {title}\n"
+            f"Nội dung: {saved['content']}"
         )
 
     @tool

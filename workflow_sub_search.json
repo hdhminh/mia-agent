@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "let chatId = '';\nlet rawText = '';\nlet query = '';\n\ntry {\n  const payload = $('Execute Workflow Trigger').item.json;\n  const msg = payload.message || payload.body?.message || payload;\n  chatId = msg?.chat?.id || payload.chatId || '';\n  rawText = String(msg?.text || payload.text || payload.query || '').trim();\n} catch (error) {}\n\nquery = rawText\n  .replace(/^(tim|tìm|tim kiem|tìm kiếm|timkiem|search|tra cuu|tra cứu|google|duckduckgo)\\s*/i, '')\n  .replace(/^(ve|về|thong tin ve|thông tin về|cho toi biet ve|cho tôi biết về|noi ve|nói về)\\s*/i, '')\n  .trim();\n\nif (!query) query = 'n8n automation';\n\nreturn [{\n  json: {\n    chatId,\n    query,\n    rawText\n  }\n}];"
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet query = String(args.query || '').trim();\nif (!query) {\n  query = rawText\n    .replace(/^(tim|tìm|tim kiem|tìm kiếm|timkiem|search|tra cuu|tra cứu|google|duckduckgo)\\s*/i, '')\n    .replace(/^(ve|về|thong tin ve|thông tin về|cho toi biet ve|cho tôi biết về|noi ve|nói về)\\s*/i, '')\n    .trim();\n}\n\nif (!query) query = 'n8n automation';\n\nreturn [{ json: { chatId, query, rawText } }];"
       },
       "id": "code-prepare-search",
       "name": "Chuẩn Bị Query",
@@ -58,7 +58,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn Bị Query').item.json;\nconst html = String($json.data || '');\nconst query = source.query;\nconst chatId = source.chatId;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst decodeHtml = (value = '') => String(value)\n  .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))\n  .replace(/&#(\\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))\n  .replace(/&amp;/g, '&')\n  .replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\")\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst cleanText = (value = '') => decodeHtml(String(value).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim());\n\nconst extractUrl = (href = '') => {\n  const normalized = decodeHtml(href);\n  const match = normalized.match(/[?&]uddg=([^&]+)/);\n  if (match) {\n    try {\n      return decodeURIComponent(match[1]);\n    } catch (error) {}\n  }\n  if (normalized.startsWith('//')) return `https:${normalized}`;\n  return normalized;\n};\n\nconst results = [];\nconst resultRegex = /<a[^>]*class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet match;\nwhile ((match = resultRegex.exec(html)) !== null && results.length < 5) {\n  const url = extractUrl(match[1]);\n  const title = cleanText(match[2]);\n  if (!url || !title) continue;\n  results.push({ url, title });\n}\n\nlet message = '🔎 <b>Kết quả tra cứu</b>\\n';\nmessage += `<i>${escapeHtml(query)}</i>\\n\\n`;\n\nif (results.length > 0) {\n  for (let i = 0; i < results.length; i++) {\n    const item = results[i];\n    message += `<b>${i + 1}. ${escapeHtml(item.title)}</b>\\n`;\n    message += `🔗 <a href=\"${escapeHtml(item.url)}\">Link</a>\\n\\n`;\n  }\n  message += '<i>Nguồn: DuckDuckGo</i>';\n} else {\n  message += '⚠️ Chưa tìm thấy kết quả rõ ràng. Bạn thử đổi từ khóa cụ thể hơn nhé.';\n}\n\nmessage = message.trim();\nreturn [{\n  json: {\n    chatId,\n    text: message\n  }\n}];"
+        "jsCode": "const source = $('Chuẩn Bị Query').item.json || {};\nconst html = String($json.data || '');\n\nconst decodeHtml = (value = '') => String(value)\n  .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))\n  .replace(/&#(\\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))\n  .replace(/&amp;/g, '&')\n  .replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\")\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst cleanText = (value = '') => decodeHtml(String(value).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim());\n\nconst extractUrl = (href = '') => {\n  const normalized = decodeHtml(href);\n  const match = normalized.match(/[?&]uddg=([^&]+)/);\n  if (match) {\n    try {\n      return decodeURIComponent(match[1]);\n    } catch (error) {}\n  }\n  if (normalized.startsWith('//')) return `https:${normalized}`;\n  return normalized;\n};\n\nconst results = [];\nconst resultRegex = /<a[^>]*class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet match;\nwhile ((match = resultRegex.exec(html)) !== null && results.length < 5) {\n  const url = extractUrl(match[1]);\n  const title = cleanText(match[2]);\n  if (!url || !title) continue;\n  results.push({ url, title });\n}\n\nlet text = `Kết quả tìm kiếm cho: ${source.query}`;\nif (results.length > 0) {\n  text += '\\n';\n  for (let i = 0; i < results.length; i += 1) {\n    const item = results[i];\n    text += `\\n${i + 1}. ${item.title}\\n${item.url}`;\n  }\n} else {\n  text += '\\nChưa tìm thấy kết quả rõ ràng. Bạn thử đổi từ khóa cụ thể hơn nhé.';\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
       },
       "id": "code-format-search",
       "name": "Tổng Hợp Kết Quả",
@@ -83,10 +83,6 @@
             {
               "name": "text",
               "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
             },
             {
               "name": "disable_web_page_preview",
@@ -150,6 +146,19 @@
         560,
         224
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Tìm Kiếm Web",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
     }
   ],
   "connections": {
@@ -190,7 +199,7 @@
       "main": [
         [
           {
-            "node": "Có ChatId?",
+            "node": "Chuẩn Hóa Tool Text",
             "type": "main",
             "index": 0
           }
@@ -234,6 +243,17 @@
     "Giữ Text Khi Thiếu ChatId": {
       "main": [
         []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   }

@@ -141,10 +141,6 @@
               "value": "={{ $json.text }}"
             },
             {
-              "name": "parse_mode",
-              "value": "HTML"
-            },
-            {
               "name": "disable_web_page_preview",
               "value": "true"
             }
@@ -205,6 +201,19 @@
       "position": [
         512,
         352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Google Sheets Master",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
       ]
     }
   ],
@@ -286,7 +295,7 @@
       "main": [
         [
           {
-            "node": "Có ChatId?",
+            "node": "Chuẩn Hóa Tool Text",
             "type": "main",
             "index": 0
           }
@@ -297,7 +306,7 @@
       "main": [
         [
           {
-            "node": "Có ChatId?",
+            "node": "Chuẩn Hóa Tool Text",
             "type": "main",
             "index": 0
           }
@@ -341,6 +350,17 @@
     "Giữ Text Khi Thiếu ChatId": {
       "main": [
         []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

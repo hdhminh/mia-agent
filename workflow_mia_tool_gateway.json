@@ -52,200 +52,15 @@
     },
     {
       "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json.workflowKey }}",
-        "rules": {
-          "rules": [
-            {
-              "value2": "weather"
-            },
-            {
-              "value2": "gold",
-              "output": 1
-            },
-            {
-              "value2": "news",
-              "output": 2
-            },
-            {
-              "value2": "search",
-              "output": 3
-            },
-            {
-              "value2": "calendar",
-              "output": 4
-            },
-            {
-              "value2": "gmail",
-              "output": 5
-            },
-            {
-              "value2": "drive",
-              "output": 6
-            },
-            {
-              "value2": "docs",
-              "output": 7
-            },
-            {
-              "value2": "sheets",
-              "output": 8
-            },
-            {
-              "value2": "shortlink",
-              "output": 9
-            }
-          ]
-        },
-        "fallbackOutput": 10
+        "jsCode": "const source = $('Prepare Tool Request').item.json || $json || {};\nconst workflowMap = {\n  weather: 'm1ip8fFcTkdBwtWh',\n  gold: 'KRRETdOwKih9MNPh',\n  news: 'dX9MXm49hdVAproP',\n  search: '72gE9VPYxBgxFn6h',\n  calendar: 'hEGn8N6rE17tMw5T',\n  gmail: 's5LDuZZpOCAYiQsf',\n  drive: 'abTxYqrVCN4Qzz5U',\n  docs: 'kO3D2tjgJmy3CvSg',\n  sheets: '0cwoCCOYhAldS4Qj',\n  shortlink: 'D1cdbPhZef9glsNh'\n};\nconst workflowId = workflowMap[source.workflowKey || ''];\nif (!workflowId) {\n  return [{ json: { ok: false, error: `Unsupported workflow key: ${source.workflowKey || '(empty)'}`, tool: source.tool || '', workflowKey: source.workflowKey || '', requestId: source.requestId || '' } }];\n}\nreturn [{ json: { ...source, workflowId } }];"
       },
       "id": "mia-tool-route",
       "name": "Route Tool",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         -704,
         320
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "m1ip8fFcTkdBwtWh",
-        "options": {}
-      },
-      "id": "mia-call-weather",
-      "name": "Call Weather Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        -224
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "KRRETdOwKih9MNPh",
-        "options": {}
-      },
-      "id": "mia-call-gold",
-      "name": "Call Gold Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        -96
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "dX9MXm49hdVAproP",
-        "options": {}
-      },
-      "id": "mia-call-news",
-      "name": "Call News Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        32
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "72gE9VPYxBgxFn6h",
-        "options": {}
-      },
-      "id": "mia-call-search",
-      "name": "Call Search Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        160
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "hEGn8N6rE17tMw5T",
-        "options": {}
-      },
-      "id": "mia-call-calendar",
-      "name": "Call Calendar Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        288
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "s5LDuZZpOCAYiQsf",
-        "options": {}
-      },
-      "id": "mia-call-gmail",
-      "name": "Call Gmail Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        416
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "abTxYqrVCN4Qzz5U",
-        "options": {}
-      },
-      "id": "mia-call-drive",
-      "name": "Call Drive Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        544
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "kO3D2tjgJmy3CvSg",
-        "options": {}
-      },
-      "id": "mia-call-docs",
-      "name": "Call Docs Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        672
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "0cwoCCOYhAldS4Qj",
-        "options": {}
-      },
-      "id": "mia-call-sheets",
-      "name": "Call Sheets Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        800
-      ]
-    },
-    {
-      "parameters": {
-        "workflowId": "D1cdbPhZef9glsNh",
-        "options": {}
-      },
-      "id": "mia-call-shortlink",
-      "name": "Call Shortlink Workflow",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        928
       ]
     },
     {
@@ -263,19 +78,6 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { ok: false, error: 'Unsupported workflowKey after routing.' } }];"
-      },
-      "id": "mia-tool-unsupported",
-      "name": "Unsupported Tool",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -384,
-        1072
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "return [{ json: $json }];"
       },
       "id": "mia-tool-return-error",
@@ -285,6 +87,24 @@
       "position": [
         -704,
         512
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "mia-tool-call-routed",
+      "name": "Call Routed Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        320
       ]
     }
   ],
@@ -333,84 +153,14 @@
       "main": [
         [
           {
-            "node": "Call Weather Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Gold Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call News Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Search Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Calendar Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Gmail Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Drive Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Docs Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Sheets Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call Shortlink Workflow",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Unsupported Tool",
+            "node": "Call Routed Workflow",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Call Weather Workflow": {
+    "Call Routed Workflow": {
       "main": [
         [
           {
@@ -419,110 +169,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "Call Gold Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call News Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Search Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Calendar Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Gmail Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Drive Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Docs Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Sheets Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Shortlink Workflow": {
-      "main": [
-        [
-          {
-            "node": "Normalize Tool Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Unsupported Tool": {
-      "main": [
-        []
       ]
     },
     "Normalize Tool Result": {

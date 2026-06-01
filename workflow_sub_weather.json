@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "let chatId = '';\nlet rawText = '';\nlet location = '';\n\ntry {\n  const payload = $('Execute Workflow Trigger').item.json;\n  const msg = payload.message || payload.body?.message || payload;\n  chatId = msg?.chat?.id || payload.chatId || '';\n  rawText = String(msg?.text || payload.text || payload.query || '').trim();\n} catch (error) {}\n\nlocation = rawText\n  .replace(/^(thoi tiet|thời tiết|weather|nhiet do|nhiệt độ|troi|trời|du bao thoi tiet|dự báo thời tiết)\\s*/i, '')\n  .replace(/^(tai|tại|o|ở|cho|cho toi|cho tôi|hom nay|hôm nay)\\s*/i, '')\n  .trim();\n\nif (!location) location = 'Ho Chi Minh City';\n\nreturn [{\n  json: {\n    chatId,\n    rawText,\n    location\n  }\n}];"
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet location = String(args.location || '').trim();\nif (!location) {\n  location = rawText\n    .replace(/^(thoi tiet|thời tiết|weather|nhiet do|nhiệt độ|troi|trời|du bao thoi tiet|dự báo thời tiết)\\s*/i, '')\n    .replace(/^(tai|tại|o|ở|cho|cho toi|cho tôi|hom nay|hôm nay)\\s*/i, '')\n    .trim();\n}\n\nif (!location) location = 'Ho Chi Minh City';\n\nreturn [{ json: { chatId, rawText, location } }];"
       },
       "id": "code-prepare-weather",
       "name": "Chuẩn Bị Địa Điểm",
@@ -51,7 +51,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn Bị Địa Điểm').item.json;\nconst raw = $json?.data ?? $json;\nconst data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});\nconst chatId = source.chatId;\nconst fallbackLocation = source.location;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst current = Array.isArray(data.current_condition) ? data.current_condition[0] || {} : {};\nconst today = Array.isArray(data.weather) ? data.weather[0] || {} : {};\nconst nearest = Array.isArray(data.nearest_area) ? data.nearest_area[0] || {} : {};\nconst request = Array.isArray(data.request) ? data.request[0] || {} : {};\nconst requestQuery = request.query || '';\nconst areaName = nearest.areaName?.[0]?.value || fallbackLocation;\nconst country = nearest.country?.[0]?.value || '';\nconst region = nearest.region?.[0]?.value || '';\nconst desc = current.weatherDesc?.[0]?.value || '';\nconst feelsLike = current.FeelsLikeC || '';\nconst tempC = current.temp_C || '';\nconst humidity = current.humidity || '';\nconst windKmph = current.windspeedKmph || '';\nconst rainMm = current.precipMM || '0';\nconst maxTemp = today.maxtempC || '';\nconst minTemp = today.mintempC || '';\nconst sunrise = today.astronomy?.[0]?.sunrise || '';\nconst sunset = today.astronomy?.[0]?.sunset || '';\n\nlet locationLine = requestQuery || areaName || fallbackLocation;\nif (region && !locationLine.includes(region)) locationLine += `, ${region}`;\nif (country && !locationLine.includes(country)) locationLine += `, ${country}`;\n\nlet message = '🌦 <b>Thời tiết hiện tại</b>\\n';\nmessage += `<i>${escapeHtml(locationLine)}</i>\\n\\n`;\n\nif (tempC !== '') {\n  message += `🌡 <b>Nhiệt độ:</b> ${escapeHtml(tempC)}°C`;\n  if (feelsLike !== '') message += ` • Cảm giác như ${escapeHtml(feelsLike)}°C`;\n  message += '\\n';\n}\n\nif (desc) message += `☁️ <b>Tình trạng:</b> ${escapeHtml(desc)}\\n`;\nif (humidity !== '') message += `💧 <b>Độ ẩm:</b> ${escapeHtml(humidity)}%\\n`;\nif (windKmph !== '') message += `💨 <b>Gió:</b> ${escapeHtml(windKmph)} km/h\\n`;\nif (rainMm !== '') message += `🌧 <b>Lượng mưa:</b> ${escapeHtml(rainMm)} mm\\n`;\nif (maxTemp !== '' || minTemp !== '') message += `📈 <b>Hôm nay:</b> ${escapeHtml(minTemp)}°C - ${escapeHtml(maxTemp)}°C\\n`;\nif (sunrise || sunset) message += `🌅 <b>Mặt trời:</b> ${escapeHtml(sunrise)} / ${escapeHtml(sunset)}\\n`;\n\nif (tempC === '' && !desc) {\n  message = `⚠️ Không lấy được dữ liệu thời tiết cho <b>${escapeHtml(fallbackLocation)}</b>. Bạn thử ghi rõ địa điểm hơn nhé.`;\n}\n\nmessage = message.trim();\nreturn [{ json: { chatId, text: message } }];"
+        "jsCode": "const source = $('Chuẩn Bị Địa Điểm').item.json || {};\nconst raw = $json?.data ?? $json;\nconst data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});\n\nconst current = Array.isArray(data.current_condition) ? data.current_condition[0] || {} : {};\nconst today = Array.isArray(data.weather) ? data.weather[0] || {} : {};\nconst nearest = Array.isArray(data.nearest_area) ? data.nearest_area[0] || {} : {};\nconst request = Array.isArray(data.request) ? data.request[0] || {} : {};\n\nconst areaName = nearest.areaName?.[0]?.value || source.location;\nconst region = nearest.region?.[0]?.value || '';\nconst country = nearest.country?.[0]?.value || '';\nconst desc = current.weatherDesc?.[0]?.value || '';\nconst tempC = current.temp_C || '';\nconst feelsLike = current.FeelsLikeC || '';\nconst humidity = current.humidity || '';\nconst windKmph = current.windspeedKmph || '';\nconst maxTemp = today.maxtempC || '';\nconst minTemp = today.mintempC || '';\nconst rainMm = current.precipMM || '';\nconst sunrise = today.astronomy?.[0]?.sunrise || '';\nconst sunset = today.astronomy?.[0]?.sunset || '';\n\nlet locationLine = request.query || areaName || source.location;\nif (region && !locationLine.includes(region)) locationLine += `, ${region}`;\nif (country && !locationLine.includes(country)) locationLine += `, ${country}`;\n\nconst parts = [];\nparts.push(`Thời tiết tại ${locationLine}:`);\n\nif (tempC !== '') {\n  let tempLine = `- Nhiệt độ: ${tempC}°C`;\n  if (feelsLike !== '') tempLine += `, cảm giác như ${feelsLike}°C`;\n  parts.push(tempLine);\n}\nif (desc) parts.push(`- Tình trạng: ${desc}`);\nif (humidity !== '') parts.push(`- Độ ẩm: ${humidity}%`);\nif (windKmph !== '') parts.push(`- Gió: ${windKmph} km/h`);\nif (rainMm !== '') parts.push(`- Lượng mưa: ${rainMm} mm`);\nif (minTemp !== '' || maxTemp !== '') parts.push(`- Nhiệt độ trong ngày: ${minTemp}°C đến ${maxTemp}°C`);\nif (sunrise || sunset) parts.push(`- Mặt trời: ${sunrise || '?'} / ${sunset || '?'}`);\n\nif (parts.length === 1) {\n  parts[0] = `Không lấy được dữ liệu thời tiết cho ${source.location}. Bạn thử ghi rõ địa điểm hơn nhé.`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: parts.join('\\n').trim() } }];"
       },
       "id": "code-format-weather",
       "name": "Tổng Hợp Thời Tiết",
@@ -76,10 +76,6 @@
             {
               "name": "text",
               "value": "={{ $json.text }}"
-            },
-            {
-              "name": "parse_mode",
-              "value": "HTML"
             },
             {
               "name": "disable_web_page_preview",
@@ -143,6 +139,19 @@
         560,
         224
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Thời Tiết",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
     }
   ],
   "connections": {
@@ -183,7 +192,7 @@
       "main": [
         [
           {
-            "node": "Có ChatId?",
+            "node": "Chuẩn Hóa Tool Text",
             "type": "main",
             "index": 0
           }
@@ -227,6 +236,17 @@
     "Giữ Text Khi Thiếu ChatId": {
       "main": [
         []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   }
