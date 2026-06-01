@@ -7,6 +7,18 @@ from mia_core.models import MiaContext
 from mia_core.n8n_client import N8nToolGatewayClient
 
 
+def _normalize_assistant_instruction(domain: str, instruction: str) -> str:
+    text = " ".join(str(instruction or "").strip().lower().split())
+    if not text:
+        return f"{domain} help"
+
+    help_cues = ("help", "hướng dẫn", "huong dan", "cách dùng", "cach dung")
+    if any(cue in text for cue in help_cues):
+        return f"{domain} help"
+
+    return instruction
+
+
 def _format_memory_search(rows: list[dict]) -> str:
     if not rows:
         return "Mia không tìm thấy memory phù hợp."
@@ -123,7 +135,7 @@ def build_tools(
         """Use Google Calendar through n8n for calendar tasks like checking schedule, creating events, deleting events, or checking availability."""
         return tool_gateway.run_tool(
             "calendar.assistant",
-            {"instruction": instruction},
+            {"instruction": _normalize_assistant_instruction("calendar", instruction)},
             runtime.context,
         ).text
 
@@ -135,7 +147,7 @@ def build_tools(
         """Use Gmail through n8n for inbox lookup, email search, drafting, replying, or sending email."""
         return tool_gateway.run_tool(
             "gmail.assistant",
-            {"instruction": instruction},
+            {"instruction": _normalize_assistant_instruction("gmail", instruction)},
             runtime.context,
         ).text
 
@@ -147,7 +159,7 @@ def build_tools(
         """Use Google Drive through n8n for file lookup, upload, download, move, share, or delete tasks."""
         return tool_gateway.run_tool(
             "drive.assistant",
-            {"instruction": instruction},
+            {"instruction": _normalize_assistant_instruction("drive", instruction)},
             runtime.context,
         ).text
 
@@ -159,7 +171,7 @@ def build_tools(
         """Use Google Docs through n8n for creating, reading, appending, searching, or deleting docs."""
         return tool_gateway.run_tool(
             "docs.assistant",
-            {"instruction": instruction},
+            {"instruction": _normalize_assistant_instruction("docs", instruction)},
             runtime.context,
         ).text
 
@@ -171,7 +183,7 @@ def build_tools(
         """Use Google Sheets through n8n for spreadsheet creation, reading, row append, cell update, search, or deletion."""
         return tool_gateway.run_tool(
             "sheets.assistant",
-            {"instruction": instruction},
+            {"instruction": _normalize_assistant_instruction("sheets", instruction)},
             runtime.context,
         ).text
 

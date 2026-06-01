@@ -283,18 +283,20 @@ const feedMap = {
   'khoa-hoc': 'https://vnexpress.net/rss/khoa-hoc.rss'
 };
 
-return [{
+return topics.map((topic) => ({
   json: {
     ...source,
     chatId,
     isAuto,
     text: rawText,
     rawText,
+    topic,
+    url: feedMap[topic] || feedMap['kinh-doanh'],
     topics,
     topicNames,
     feedMap
   }
-}];"""
+}));"""
 
 NEWS_FORMAT_CODE = """const staticData = $getWorkflowStaticData('global');
 staticData.sentUrls = staticData.sentUrls || [];
