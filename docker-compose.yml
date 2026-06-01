@@ -13,6 +13,8 @@ services:
       - N8N_API_KEY=${N8N_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - MIA_CORE_URL=${MIA_CORE_URL:-http://mia-core:8000/mia/chat}
+      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
     ports:
       - "127.0.0.1:5678:5678"
     volumes:
@@ -70,6 +72,35 @@ services:
       - "127.0.0.1:8010:8000"
     volumes:
       - memory_models:/models
+    networks:
+      - n8n-net
+
+  mia-core:
+    build:
+      context: ./langchain_core
+    container_name: mia-core
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - memory-embedder
+      - n8n
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_HTTP_REFERER=${OPENROUTER_HTTP_REFERER:-https://n8n.huynhminh.com}
+      - OPENROUTER_X_TITLE=${OPENROUTER_X_TITLE:-Mia LangChain Core}
+      - MIA_MODEL=${MIA_MODEL:-openai/gpt-4.1-mini}
+      - MIA_POSTGRES_URI=${MIA_POSTGRES_URI:-postgresql://n8n:n8n_password@postgres:5432/vectordb?sslmode=disable}
+      - MIA_MEMORY_EMBEDDER_URL=${MIA_MEMORY_EMBEDDER_URL:-http://memory-embedder:8000/embed}
+      - MIA_TOOL_GATEWAY_URL=${MIA_TOOL_GATEWAY_URL:-http://n8n:5678/webhook/mia-tool}
+      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
+      - MIA_TIMEZONE=${MIA_TIMEZONE:-Asia/Ho_Chi_Minh}
+      - MIA_MODEL_TEMPERATURE=${MIA_MODEL_TEMPERATURE:-0}
+      - MIA_MODEL_MAX_TOKENS=${MIA_MODEL_MAX_TOKENS:-900}
+      - MIA_RECURSION_LIMIT=${MIA_RECURSION_LIMIT:-12}
+      - MIA_REQUEST_TIMEOUT_SECONDS=${MIA_REQUEST_TIMEOUT_SECONDS:-60}
+    ports:
+      - "127.0.0.1:8000:8000"
     networks:
       - n8n-net
 

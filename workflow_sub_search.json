@@ -121,10 +121,10 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "boolean": [
             {
-              "value1": "={{ String($json.chatId || \"\").trim() }}",
-              "operation": "isNotEmpty"
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
             }
           ]
         }
@@ -217,14 +217,14 @@
       "main": [
         [
           {
-            "node": "Gửi Telegram Trực Tiếp",
+            "node": "Giữ Text Khi Thiếu ChatId",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Giữ Text Khi Thiếu ChatId",
+            "node": "Gửi Telegram Trực Tiếp",
             "type": "main",
             "index": 0
           }

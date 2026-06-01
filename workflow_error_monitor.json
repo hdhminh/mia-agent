@@ -53,7 +53,7 @@
           "parameters": [
             {
               "name": "chat_id",
-              "value": "=8048595238"
+              "value": "={{ $json.chatId || $env.TELEGRAM_ADMIN_CHAT_ID }}"
             },
             {
               "name": "text",

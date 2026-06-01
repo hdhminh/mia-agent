@@ -1,4 +1,5 @@
 {
+  "name": "Mia: Main Gateway",
   "nodes": [
     {
       "parameters": {
@@ -12,8 +13,8 @@
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.1,
       "position": [
-        -3820,
-        1360
+        -1120,
+        320
       ],
       "webhookId": "ca6994f8-0322-4ef4-8d4d-7337b3c8de10",
       "credentials": {
@@ -25,44 +26,47 @@
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}",
-        "options": {
-          "systemMessage": "Bạn là Mia, trợ lý AI chuyên nghiệp.\n\nNHIỆM VỤ:\n- Bạn dùng cùng một mô hình để vừa trò chuyện vừa quyết định có cần tool hay không.\n- Nếu không cần tool, hãy tự trả lời trực tiếp, ngắn gọn, tự nhiên bằng tiếng Việt.\n- Nếu cần tool, hãy gọi đúng tool phù hợp.\n\nPHÂN LOẠI TOOL:\n- Tool ngoài: weather, gold, news, search, calendar, gmail, drive, docs, sheets, shortlink. Các tool này tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n- Tool memory nội bộ: memory_write, memory_search. Hai tool này KHÔNG gửi Telegram. Chúng chỉ giúp bạn ghi và truy hồi long-term memory theo kiểu RAG.\n\nQUY TẮC DÙNG MEMORY RAG:\n1. Dùng memory_search khi câu hỏi cần nhớ sở thích, mục tiêu, preference, các sự kiện, quyết định, kế hoạch, hoặc bối cảnh lâu dài vượt ra ngoài working memory hiện tại.\n2. Dùng memory_write khi người dùng nói thông tin đáng nhớ lâu dài, hoặc khi vừa hình thành kết luận/quyết định/kế hoạch mà Mia nên nhớ cho những lần sau.\n3. Nếu người dùng nói rõ kiểu 'hãy nhớ', 'ghi nhớ', 'nhớ giúp mình', ưu tiên gọi memory_write.\n4. Sau khi dùng memory_search, hãy dựa vào kết quả được truy hồi để trả lời tự nhiên. Nếu không có kết quả, hãy nói là Mia chưa nhớ được thông tin đó.\n5. Không được bịa memory. Không được khẳng định điều gì nếu memory_search không trả về bằng chứng phù hợp.\n6. Không gọi memory tool vô ích. Nếu working memory hiện tại đã đủ, hãy trả lời luôn.\n\nQUY TẮC KHI DÙNG TOOL NGOÀI:\n1. Mỗi tool ngoài sẽ tự gửi kết quả cuối cùng cho người dùng qua Telegram.\n2. Sau khi tool ngoài chạy thành công, câu trả lời cuối cùng của bạn phải chính xác là [TOOL_DELIVERED].\n3. Không được lặp lại, tóm tắt lại, hay gửi lại nội dung mà tool ngoài vừa gửi.\n4. Nếu tool ngoài thất bại, hãy xin lỗi ngắn gọn và tự trả lời nếu có thể.\n\nQUY TẮC CHUNG:\n1. Nếu chỉ dùng memory tool, bạn vẫn phải tự trả lời người dùng bằng tiếng Việt tự nhiên.\n2. Bạn có thể dùng memory_search trước rồi mới quyết định có cần tool ngoài hay không.\n3. Luôn xưng 'Mia', gọi người dùng là 'bạn'.\n4. Không lộ quá trình suy nghĩ. Không in ra <think>.",
-          "maxIterations": 6
-        }
+        "jsCode": "const input = $input.item.json || {};\nconst msg = input.message || {};\n\nconst rawText = String(msg.text || msg.caption || input.text || input.rawText || '').trim();\nconst document = msg.document || null;\nconst photo = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1] : null;\nconst video = msg.video || null;\nconst audio = msg.audio || msg.voice || null;\nconst location = msg.location || null;\nconst contact = msg.contact || null;\n\nlet attachmentKind = 'none';\nif (document) attachmentKind = 'document';\nelse if (photo) attachmentKind = 'photo';\nelse if (video) attachmentKind = 'video';\nelse if (audio) attachmentKind = 'audio';\nelse if (location) attachmentKind = 'location';\nelse if (contact) attachmentKind = 'contact';\n\nconst fileName = document?.file_name || video?.file_name || audio?.file_name || '';\nconst fileId = document?.file_id || video?.file_id || audio?.file_id || photo?.file_id || '';\nconst hasAttachment = attachmentKind !== 'none';\n\nlet effectiveText = rawText;\nif (!effectiveText && hasAttachment) {\n  if (attachmentKind === 'document' && fileName) {\n    effectiveText = `Mình vừa gửi một file tên ${fileName}. Hãy hỏi lại mình cần làm gì với file này.`;\n  } else {\n    effectiveText = `Mình vừa gửi một ${attachmentKind}. Hãy hỏi lại mình muốn Mia làm gì tiếp theo.`;\n  }\n}\n\nif (!effectiveText) {\n  effectiveText = 'Xin chào Mia';\n}\n\nreturn [{\n  json: {\n    chatId: String(msg.chat?.id || ''),\n    rawText: effectiveText,\n    originalText: rawText,\n    attachmentKind,\n    hasAttachment,\n    fileName,\n    fileId,\n    message: msg,\n    payload: input\n  }\n}];"
       },
-      "id": "a6dd5e55-c42c-4024-a70e-1013fd7b0374",
-      "name": "OpenRouter Tool Agent (Làm việc)",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.6,
+      "id": "mia-normalize-input",
+      "name": "Normalize Telegram Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        -3300,
-        1360
+        -832,
+        320
       ]
     },
     {
       "parameters": {
-        "options": {
-          "temperature": 0,
-          "responseFormat": "text",
-          "maxTokens": 300
-        }
+        "method": "POST",
+        "url": "={{ $env.MIA_CORE_URL || 'http://mia-core:8000/mia/chat' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { chat_id: $json.chatId, text: $json.rawText, thread_id: 'telegram:' + $json.chatId, user_id: String($json.chatId || ''), metadata: { source: 'telegram', attachmentKind: $json.attachmentKind || 'none', hasAttachment: Boolean($json.hasAttachment), fileName: $json.fileName || '', fileId: $json.fileId || '' } } }}",
+        "options": {}
       },
-      "id": "14ca5b6c-ddf9-4d8e-9121-997d79f22480",
-      "name": "OpenRouter Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-      "typeVersion": 1,
+      "id": "mia-call-core",
+      "name": "Call Mia Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
-        -3300,
-        1544
-      ],
-      "credentials": {
-        "openRouterApi": {
-          "id": "placeholder",
-          "name": "OpenRouter account"
-        }
-      }
+        -528,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Input').item.json || {};\nconst raw = String($json.final_text || $json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim();\nconst text = raw || 'Xin lỗi, Mia chưa tạo được phản hồi. Bạn thử nói lại ngắn hơn giúp Mia nhé.';\nreturn [{ json: { chatId: source.chatId, text, toolsCalled: $json.tools_called || [], threadId: $json.thread_id || '', requestId: $json.request_id || '' } }];"
+      },
+      "id": "mia-format-response",
+      "name": "Format Mia Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        320
+      ]
     },
     {
       "parameters": {
@@ -73,11 +77,11 @@
           "parameters": [
             {
               "name": "chat_id",
-              "value": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
+              "value": "={{ $json.chatId }}"
             },
             {
               "name": "text",
-              "value": "={{ (() => { const raw = String($json.output || $json.text || '').replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim(); if (!raw || raw === '[TOOL_DELIVERED]') return 'Xin lỗi, Mia chưa gửi được phản hồi. Bạn thử lại nhé 😊'; return raw; })() }}"
+              "value": "={{ $json.text }}"
             },
             {
               "name": "parse_mode",
@@ -91,594 +95,13 @@
         },
         "options": {}
       },
-      "id": "35545409-4865-43d0-ab3a-c9031f797801",
-      "name": "Gui Tin Nhan Telegram",
+      "id": "mia-send-telegram",
+      "name": "Gửi Telegram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -2780,
-        1360
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_gold",
-        "description": "Dùng tool này để lấy thông tin giá vàng SJC, vàng 9999 mới nhất hôm nay.",
-        "workflowId": "KRRETdOwKih9MNPh",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "6ed0d784-bdd2-4b67-9f1f-b6977c0d2b5a",
-      "name": "Call Workflow: gold",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2900,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_news",
-        "description": "Dùng tool này để xem tin tức, đọc báo hôm nay.",
-        "workflowId": "dX9MXm49hdVAproP",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "992a2835-dd27-41f6-93f4-8e6b5bbe30c5",
-      "name": "Call Workflow: news",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2750,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_search",
-        "description": "Dùng tool này để tra cứu thông tin trên google, duckduckgo, wikipedia, thông tin chung.",
-        "workflowId": "72gE9VPYxBgxFn6h",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "c35059c1-addf-4d02-90b0-5d932477f8b6",
-      "name": "Call Workflow: search",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2600,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_weather",
-        "description": "Dùng tool này để xem dự báo thời tiết, nhiệt độ.",
-        "workflowId": "m1ip8fFcTkdBwtWh",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "c6840a2f-3b6d-4b98-b3f3-8ad4071ddc80",
-      "name": "Call Workflow: weather",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2450,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_calendar",
-        "description": "Dùng tool này để thao tác với lịch: xem lịch, tạo lịch, lên lịch họp, kiểm tra lịch rảnh.",
-        "workflowId": "hEGn8N6rE17tMw5T",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "de11f2a8-1856-4ec2-841d-841912a9f138",
-      "name": "Call Workflow: calendar",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2300,
-        1760
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_gmail",
-        "description": "Dùng tool này để thao tác email: xem mail, đọc mail, gửi mail, soạn mail.",
-        "workflowId": "s5LDuZZpOCAYiQsf",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "b40fa39e-cf35-4912-b7c8-011c9530bb66",
-      "name": "Call Workflow: gmail",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2900,
-        1904
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_drive",
-        "description": "Dùng tool này để thao tác Google Drive: tìm file, xem file, tải file lên, tạo thư mục, chia sẻ file, cấp quyền.",
-        "workflowId": "abTxYqrVCN4Qzz5U",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "158b0c75-f172-4d13-9c9c-3bc44d7f73f1",
-      "name": "Call Workflow: drive",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2750,
-        1904
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_docs",
-        "description": "Dùng tool này để thao tác Google Docs: tạo tài liệu, xem tài liệu, ghi thêm vào tài liệu.",
-        "workflowId": "kO3D2tjgJmy3CvSg",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "0d80e13d-387a-47fd-8637-802f330f02cc",
-      "name": "Call Workflow: docs",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2600,
-        1904
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_sheets",
-        "description": "Dùng tool này để thao tác Google Sheets: tạo bảng tính, đọc bảng tính, cập nhật ô, thêm dòng.",
-        "workflowId": "0cwoCCOYhAldS4Qj",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "3ff8c66c-6497-439b-84e4-4b116df16527",
-      "name": "Call Workflow: sheets",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2450,
-        1904
-      ]
-    },
-    {
-      "parameters": {
-        "name": "call_workflow_shortlink",
-        "description": "Dùng tool này để rút gọn link, tạo shortlink.",
-        "workflowId": "D1cdbPhZef9glsNh",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        }
-      },
-      "id": "4c8734ef-cd02-42e8-be68-3beaf02a05c7",
-      "name": "Call Workflow: shortlink",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2300,
-        1904
-      ]
-    },
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Lệnh Telegram').item.json.message.chat.id + ':mia:' + $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
-        "tableName": "n8n_chat_memory",
-        "contextWindowLength": 10
-      },
-      "id": "501036f5-2799-48f7-bde5-4bdc94f3918a",
-      "name": "Mia Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-      "typeVersion": 1.3,
-      "position": [
-        -2900,
-        1552
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "XIYO79FxACZ0XHMP",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const output = String($json.output || '').trim();\nif (output === '[TOOL_DELIVERED]') { return []; }\nreturn [{ json: $json }];"
-      },
-      "id": "0f5f38f1-7b80-4b84-8bbb-68deec594e95",
-      "name": "Tool Output Guard",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -3040,
-        1360
-      ]
-    },
-    {
-      "parameters": {
-        "name": "memory_write",
-        "description": "Ghi một memory dài hạn vào kho RAG của Mia. Dùng khi người dùng yêu cầu nhớ, hoặc khi có thông tin bền vững/quan trọng như sở thích, mục tiêu, preference, quyết định, kế hoạch, hoặc bối cảnh cần nhớ lâu. Tool này chỉ ghi memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "xmQmS2qjFIex9fsA",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        },
-        "specifyInputSchema": true,
-        "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"content\": {\"type\": \"string\", \"description\": \"Nội dung memory cần lưu, viết thành một hoặc vài câu rõ nghĩa.\"}, \"memory_type\": {\"type\": \"string\", \"description\": \"Loại memory: profile, preference, goal, relationship, event, decision, plan, note, general.\"}, \"title\": {\"type\": \"string\", \"description\": \"Tiêu đề ngắn gọn cho memory nếu có.\"}, \"tags\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"description\": \"Từ khóa ngắn để truy hồi lại memory.\"}, \"importance\": {\"type\": \"integer\", \"description\": \"Mức quan trọng từ 1 đến 5.\"}}, \"required\": [\"content\"], \"additionalProperties\": false}"
-      },
-      "id": "903da0f4-0250-4f3b-8dcd-3041d2096a39",
-      "name": "Call Workflow: memory_write",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2000,
-        1680
-      ]
-    },
-    {
-      "parameters": {
-        "name": "memory_search",
-        "description": "Tìm memory liên quan trong kho RAG của Mia. Dùng khi câu hỏi cần nhớ chuyện cũ, sở thích, mục tiêu, các quyết định, hoặc bất kỳ ngữ cảnh lâu dài nào vượt ra ngoài vài tin nhắn gần nhất. Tool này chỉ đọc memory nội bộ, KHÔNG gửi Telegram.",
-        "workflowId": "Z09ldJUYnJZ0CT3f",
-        "responsePropertyName": "text",
-        "fields": {
-          "values": [
-            {
-              "name": "chatId",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.chat.id }}"
-            },
-            {
-              "name": "rawText",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "text",
-              "type": "stringValue",
-              "stringValue": "={{ $('Lệnh Telegram').item.json.message.text || $('Lệnh Telegram').item.json.message.caption || '' }}"
-            },
-            {
-              "name": "message",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json.message }}"
-            },
-            {
-              "name": "payload",
-              "type": "objectValue",
-              "objectValue": "={{ $('Lệnh Telegram').item.json }}"
-            }
-          ]
-        },
-        "specifyInputSchema": true,
-        "schemaType": "manual",
-        "inputSchema": "{\"type\": \"object\", \"properties\": {\"query\": {\"type\": \"string\", \"description\": \"Câu tìm kiếm ngắn gọn mô tả điều cần nhớ lại.\"}, \"memory_type\": {\"type\": \"string\", \"description\": \"Lọc theo loại memory nếu cần: profile, preference, goal, relationship, event, decision, plan, note, general.\"}, \"limit\": {\"type\": \"integer\", \"description\": \"Số kết quả tối đa từ 1 đến 8.\"}, \"threshold\": {\"type\": \"number\", \"description\": \"Ngưỡng semantic similarity từ 0 đến 1. Để trống nếu không chắc.\"}}, \"required\": [\"query\"], \"additionalProperties\": false}"
-      },
-      "id": "37bb3bde-0d87-40e4-a8e4-689b33a74816",
-      "name": "Call Workflow: memory_search",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        -2000,
-        1840
+        80,
+        320
       ]
     }
   ],
@@ -687,184 +110,41 @@
       "main": [
         [
           {
-            "node": "OpenRouter Tool Agent (Làm việc)",
+            "node": "Normalize Telegram Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenRouter Tool Agent (Làm việc)": {
+    "Normalize Telegram Input": {
       "main": [
         [
           {
-            "node": "Tool Output Guard",
+            "node": "Call Mia Core",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Tool Output Guard": {
+    "Call Mia Core": {
       "main": [
         [
           {
-            "node": "Gui Tin Nhan Telegram",
+            "node": "Format Mia Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenRouter Chat Model": {
-      "ai_languageModel": [
+    "Format Mia Response": {
+      "main": [
         [
           {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mia Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: gold": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: news": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: search": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: weather": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: calendar": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: gmail": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: drive": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: docs": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: sheets": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: shortlink": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: memory_write": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Workflow: memory_search": {
-      "ai_tool": [
-        [
-          {
-            "node": "OpenRouter Tool Agent (Làm việc)",
-            "type": "ai_tool",
+            "node": "Gửi Telegram",
+            "type": "main",
             "index": 0
           }
         ]
