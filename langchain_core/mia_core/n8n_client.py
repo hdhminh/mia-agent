@@ -27,6 +27,8 @@ class N8nToolGatewayClient:
         tool_name: str,
         args: dict[str, Any],
         context: MiaContext,
+        *,
+        request_text: str = "",
     ) -> ToolGatewayResult:
         headers = {"Content-Type": "application/json"}
         if self.token:
@@ -40,6 +42,9 @@ class N8nToolGatewayClient:
             "requestId": context.request_id,
             "deliveryMode": "return",
         }
+        if request_text.strip():
+            payload["text"] = request_text.strip()
+            payload["rawText"] = request_text.strip()
 
         with httpx.Client(timeout=self.timeout_seconds) as client:
             response = client.post(self.url, headers=headers, json=payload)

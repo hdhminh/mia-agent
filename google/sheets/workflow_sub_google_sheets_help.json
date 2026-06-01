@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\n\nconst text = [\n  'Google Sheets',\n  '',\n  'Mia hỗ trợ các tác vụ:',\n  '- tạo sheet',\n  '- đọc dữ liệu sheet',\n  '- thêm dòng',\n  '- cập nhật ô',\n  '- tìm sheet',\n  '- xóa sheet',\n  '',\n  'Ví dụ nhanh:',\n  '- sheets help',\n  '- tạo sheet Chi tiêu',\n  '- đọc sheet Chi tiêu',\n  '- thêm dòng vào sheet Chi tiêu: cafe,30000,ăn uống',\n  '- cập nhật sheet Chi tiêu ô B2 thành 35000',\n  '- tìm sheet Chi tiêu',\n  '- xóa sheet Chi tiêu',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\n\nconst text = [\n  'Với Google Sheets, Mia có thể tạo bảng tính, đọc dữ liệu, thêm dòng, cập nhật ô, tìm sheet và xoá sheet.',\n  '',\n  'Anh Minh thử nhanh như sau:',\n  '- tạo sheet Chi tiêu',\n  '- đọc sheet Chi tiêu',\n  '- thêm dòng vào sheet Chi tiêu: cafe,30000,ăn uống',\n  '- cập nhật sheet Chi tiêu ô B2 thành 35000',\n  '- tìm sheet Chi tiêu',\n  '- xóa sheet Chi tiêu',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
       },
       "id": "sheets-help-format",
       "name": "Huong Dan Sheets",

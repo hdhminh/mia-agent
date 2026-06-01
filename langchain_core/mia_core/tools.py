@@ -345,7 +345,7 @@ def build_tools(
     def drive_search_file_tool(
         query: str,
         mime_type: str = "",
-        limit: int = 10,
+        limit: int = 5,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
         """Search files in Google Drive by name and optional mime type."""
@@ -357,7 +357,7 @@ def build_tools(
                 "query": query,
                 "fileName": query,
                 "mimeType": mime_type,
-                "limit": max(1, min(limit, 20)),
+                "limit": max(1, min(limit, 8)),
                 "instruction": text,
             },
             runtime,
@@ -468,7 +468,7 @@ def build_tools(
     @tool("docs_search_doc")
     def docs_search_doc_tool(
         query: str,
-        limit: int = 10,
+        limit: int = 5,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
         """Search Google Docs documents by title or keyword."""
@@ -476,7 +476,7 @@ def build_tools(
         return _run_gateway_tool(
             tool_gateway,
             "docs.search_doc",
-            {"query": query, "docName": query, "limit": max(1, min(limit, 20)), "instruction": text},
+            {"query": query, "docName": query, "limit": max(1, min(limit, 8)), "instruction": text},
             runtime,
         )
 
@@ -515,7 +515,7 @@ def build_tools(
     @tool("sheets_search_sheet")
     def sheets_search_sheet_tool(
         query: str,
-        limit: int = 10,
+        limit: int = 5,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
         """Search Google Sheets spreadsheets by title or keyword."""
@@ -523,7 +523,7 @@ def build_tools(
         return _run_gateway_tool(
             tool_gateway,
             "sheets.search_sheet",
-            {"query": query, "sheetName": query, "limit": max(1, min(limit, 20)), "instruction": text},
+            {"query": query, "sheetName": query, "limit": max(1, min(limit, 8)), "instruction": text},
             runtime,
         )
 

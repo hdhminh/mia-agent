@@ -53,7 +53,7 @@
           "mode": "id",
           "value": "={{ $json.calendarId || $json.payload?.calendarId || 'kuminhuynhdoan@gmail.com' }}"
         },
-        "limit": 10,
+        "limit": 5,
         "options": {
           "orderBy": "startTime"
         }

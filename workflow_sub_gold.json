@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst data = $json || {};\n\nconst formatPrice = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount <= 0) return 'N/A';\n  return `${amount.toLocaleString('vi-VN')} đ/lượng`;\n};\n\nlet text = 'Không lấy được giá vàng lúc này. Bạn thử lại sau nhé.';\nif (data.success) {\n  const title = data.name || 'SJC 9999';\n  const dateLine = [data.date, data.time].filter(Boolean).join(' ');\n  text = `Giá vàng ${title}`;\n  if (dateLine) text += `\\nCập nhật: ${dateLine}`;\n  text += `\\n- Mua vào: ${formatPrice(data.buy)}`;\n  text += `\\n- Bán ra: ${formatPrice(data.sell)}`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
+        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst item = $input.item.json || {};\n\nconst updatedAt = String(item.updatedAt || item.updated_at || item.date || '').trim();\nconst buy = String(item.buy || item.mua_vao || item.buyPrice || '').trim();\nconst sell = String(item.sell || item.ban_ra || item.sellPrice || '').trim();\n\nconst formatMoney = (value = '') => {\n  const digits = String(value).replace(/[^\\d]/g, '');\n  if (!digits) return value;\n  return `${Number(digits).toLocaleString('vi-VN')} đ/lượng`;\n};\n\nconst parts = ['Mia vừa lấy giá vàng SJC 9999 mới nhất cho anh Minh.'];\nif (updatedAt) parts.push(`Dữ liệu cập nhật lúc ${updatedAt}.`);\nif (buy || sell) parts.push(`Hiện mua vào ${formatMoney(buy || 'chưa rõ')}, bán ra ${formatMoney(sell || 'chưa rõ')}.`);\n\nreturn [{ json: { chatId: source.chatId || '', text: parts.join(' ').trim() } }];"
       },
       "id": "format-gold",
       "name": "Tổng Hợp Giá Vàng",

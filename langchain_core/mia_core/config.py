@@ -19,6 +19,7 @@ class Settings:
     temperature: float
     max_tokens: int
     recursion_limit: int
+    history_max_tokens: int
     request_timeout_seconds: float
 
     @classmethod
@@ -51,7 +52,8 @@ class Settings:
             timezone=os.getenv("MIA_TIMEZONE", "Asia/Ho_Chi_Minh").strip(),
             temperature=float(os.getenv("MIA_MODEL_TEMPERATURE", "0")),
             max_tokens=int(os.getenv("MIA_MODEL_MAX_TOKENS", "900")),
-            recursion_limit=int(os.getenv("MIA_RECURSION_LIMIT", "12")),
+            recursion_limit=int(os.getenv("MIA_RECURSION_LIMIT", "7")),
+            history_max_tokens=int(os.getenv("MIA_HISTORY_MAX_TOKENS", "1400")),
             request_timeout_seconds=float(os.getenv("MIA_REQUEST_TIMEOUT_SECONDS", "60")),
         )
 
