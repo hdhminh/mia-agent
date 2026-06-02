@@ -1,33 +1,68 @@
 # Domain Architecture
 
-## Đường chạy chính của Mia
+## Main Runtime Path
 
 ```text
 Telegram
 -> Mia: Main Gateway (n8n)
--> mia-core (FastAPI + LangChain)
--> domain tools
+-> mia-core Router
+   -> DirectExecutor
+   -> Domain agent/toolset path
 -> Mia: Tool Gateway (n8n)
 -> action-level workflows / services
--> mia-core tổng hợp câu trả lời
+-> response normalizer
 -> Telegram
 ```
 
-## Domain chính
+## Core Domains
 
 ### `memory`
 
-- Python repository chính: `langchain_core/mia_core/memory.py`
-- Workflow phụ trợ:
+- Python repository: `langchain_core/mia_core/memory.py`
+- Local capabilities:
+  - `memory_search`
+  - `memory_recent`
+  - `memory_write`
+- Workflow support:
   - `Memory: Search RAG`
   - `Memory: Write RAG`
   - `Memory: Recent`
 
+### `weather`
+
+- Capability:
+  - `weather.get`
+- Current path:
+  - deterministic direct
+
+### `gold`
+
+- Capability:
+  - `gold.get_price`
+- Current path:
+  - deterministic direct
+
+### `news`
+
+- Capability:
+  - `news.get`
+- Current path:
+  - deterministic direct
+
+### `search`
+
+- Capability:
+  - `search.web`
+- Current path:
+  - deterministic direct
+
 ### `shortlink`
 
-- Workflow chính:
-  - `workflow_shortlink_create`
-  - `workflow_shortlink_redirect`
+- Capabilities:
+  - `shortlink.create`
+  - redirect workflow
+- Current path:
+  - deterministic direct
 
 ### `google/calendar`
 
@@ -39,6 +74,9 @@ Telegram
   - `calendar.create_event`
   - `calendar.delete_event`
   - `calendar.check_availability`
+- Route intent:
+  - help/list -> direct preferred
+  - create/delete/find/check -> domain agent path
 
 ### `google/gmail`
 
@@ -50,6 +88,9 @@ Telegram
   - `gmail.send_email`
   - `gmail.draft_email`
   - `gmail.reply_email`
+- Route intent:
+  - help/inbox -> direct preferred
+  - read/search/write/reply -> domain agent path
 
 ### `google/drive`
 
@@ -91,21 +132,29 @@ Telegram
   - `sheets.update_cell`
   - `sheets.delete_sheet`
 
-### Mini-domains khác
-
-- `weather`
-- `gold`
-- `news`
-- `search`
-
-## Compatibility layer
+## Compatibility Layer
 
 Các file `*_master.json` trong `google/*` vẫn còn trong repo để:
 
 - giữ tương thích với workflow cũ
-- cho phép n8n flow khác gọi bằng text tự nhiên
+- cho phép flow khác gọi bằng text tự nhiên
 
-Nhưng với Mia, đường ưu tiên hiện tại là:
+Nhưng với Mia, hướng đi hiện tại là:
 
-- `mia_core.tools` gọi theo action-level tool
+- `mia_core.tools` gọi theo action-level capability
 - `Mia: Tool Gateway` route thẳng vào leaf workflow phù hợp
+- về lâu dài chỉ giữ `master` nếu thật sự có shared business logic
+
+## Local Structure Direction
+
+```text
+n8n/
+  docs/
+  google/
+  langchain_core/
+  memory/
+  scripts/
+    workflow_patches/
+  shortlink/
+  workflow_*.json
+```

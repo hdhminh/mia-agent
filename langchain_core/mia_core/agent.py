@@ -13,10 +13,23 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
 
+from mia_core import capabilities as caps
 from mia_core.config import Settings
+from mia_core.direct_executor import DirectExecutor, build_memory_recent_text
 from mia_core.memory import MemoryRepository
 from mia_core.models import MiaChatRequest, MiaChatResponse, MiaContext
 from mia_core.n8n_client import N8nToolGatewayClient
+from mia_core.request_parser import looks_multi_step as parser_looks_multi_step
+from mia_core.response_normalizer import (
+    coerce_message_text as normalized_coerce_message_text,
+    ensure_tool_links as normalized_ensure_tool_links,
+    extract_tools_called as normalized_extract_tools_called,
+    prefer_docs_search_output as normalized_prefer_docs_search_output,
+    prefer_tool_truth as normalized_prefer_tool_truth,
+    resolve_fallback_text as normalized_resolve_fallback_text,
+    sanitize_final_text as normalized_sanitize_final_text,
+)
+from mia_core.router import route_request
 from mia_core.tools import build_tools
 
 
@@ -810,6 +823,10 @@ class MiaAgentService:
         self.checkpointer = checkpointer
         self.model = self._build_model()
         self.tool_registry = self._build_tool_registry()
+        self.direct_executor = DirectExecutor(
+            memory_repo=self.memory_repo,
+            tool_gateway=self.tool_gateway,
+        )
         self.agents = self._build_agents()
 
     def _build_model(self) -> ChatOpenAI:
@@ -848,10 +865,10 @@ class MiaAgentService:
         )
 
     def _build_agents(self) -> dict[str, Any]:
-        return {name: self._build_agent(tool_names) for name, tool_names in AGENT_TOOLSETS.items()}
+        return {name: self._build_agent(tool_names) for name, tool_names in caps.AGENT_TOOLSETS.items()}
 
     def _choose_agent_key(self, hint_tool: str, request_text: str) -> str:
-        if _looks_multi_step(request_text):
+        if parser_looks_multi_step(request_text):
             if hint_tool.startswith(("calendar_", "gmail_", "drive_", "docs_", "sheets_")):
                 return "google_full"
             return "general"
@@ -872,47 +889,11 @@ class MiaAgentService:
         *,
         allow_multistep: bool = False,
     ) -> MiaChatResponse | None:
-        if not hint_tool or hint_tool not in DIRECT_ROUTE_TOOLS:
-            return None
-        if not allow_multistep and _looks_multi_step(request.text):
-            return None
-
-        request_id = context.request_id
-        thread_id = request.resolved_thread_id()
-
-        if hint_tool == "memory_recent":
-            text = _fallback_memory_recent_text(self.memory_repo, request.chat_id)
-            return MiaChatResponse(
-                final_text=_sanitize_final_text(text),
-                tools_called=["memory_recent"],
-                thread_id=thread_id,
-                request_id=request_id,
-            )
-
-        gateway_name = DIRECT_GATEWAY_TOOLS.get(hint_tool)
-        if not gateway_name:
-            return None
-
-        args = _direct_tool_args(hint_tool, request.text)
-        try:
-            result = self.tool_gateway.run_tool(
-                gateway_name,
-                args,
-                context,
-                request_text=request.text,
-            )
-        except Exception:
-            return None
-
-        final_text = _sanitize_final_text(result.text)
-        if not final_text:
-            return None
-
-        return MiaChatResponse(
-            final_text=final_text,
-            tools_called=[hint_tool],
-            thread_id=thread_id,
-            request_id=request_id,
+        return self.direct_executor.execute(
+            request,
+            context,
+            hint_tool,
+            allow_multistep=allow_multistep,
         )
 
     def _summarize_tool_result(self, user_text: str, tool_text: str) -> str:
@@ -934,7 +915,7 @@ class MiaAgentService:
                 ),
             ]
         )
-        return _sanitize_final_text(_coerce_message_text(result.content))
+        return normalized_sanitize_final_text(normalized_coerce_message_text(result.content))
 
     def chat(self, request: MiaChatRequest) -> MiaChatResponse:
         thread_id = request.resolved_thread_id()
@@ -945,13 +926,14 @@ class MiaAgentService:
             timezone=self.settings.timezone,
             request_id=request_id,
         )
-        hint_tool = _tool_hint_for_request(request.text)
+        route = route_request(request.text)
+        hint_tool = route.hint_tool
 
         direct_response = self._try_direct_route(request, context, hint_tool)
         if direct_response is not None:
             return direct_response
 
-        agent_key = self._choose_agent_key(hint_tool, request.text)
+        agent_key = route.agent_key or self._choose_agent_key(hint_tool, request.text)
         agent = self.agents[agent_key]
 
         messages_payload: list[dict[str, str]] = []
@@ -995,21 +977,21 @@ class MiaAgentService:
 
         messages = list(result.get("messages", []))
         final_message = messages[-1] if messages else AIMessage(content="")
-        final_text = _sanitize_final_text(_coerce_message_text(final_message.content))
-        tools_called = _extract_tools_called(messages)
+        final_text = normalized_sanitize_final_text(normalized_coerce_message_text(final_message.content))
+        tools_called = normalized_extract_tools_called(messages)
         if not tools_called and hint_tool == "memory_recent":
-            final_text = _fallback_memory_recent_text(self.memory_repo, request.chat_id)
+            final_text = build_memory_recent_text(self.memory_repo, request.chat_id)
             tools_called = ["memory_recent"]
         if (
             tools_called
             and final_text == "Xin lỗi, Mia chưa tạo được phản hồi rõ ràng. Bạn thử nói lại ngắn hơn giúp Mia nhé."
         ):
-            tool_text = _resolve_fallback_text(messages)
+            tool_text = normalized_resolve_fallback_text(messages)
             summarized = self._summarize_tool_result(request.text, tool_text)
             final_text = summarized or tool_text
-        final_text = _prefer_docs_search_output(request.text, final_text, messages, tools_called)
-        final_text = _prefer_tool_truth(final_text, messages, tools_called)
-        final_text = _ensure_tool_links(
+        final_text = normalized_prefer_docs_search_output(request.text, final_text, messages, tools_called)
+        final_text = normalized_prefer_tool_truth(final_text, messages, tools_called)
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
@@ -1017,7 +999,7 @@ class MiaAgentService:
             label="Link tham khảo:",
             limit=3,
         )
-        final_text = _ensure_tool_links(
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
@@ -1025,7 +1007,7 @@ class MiaAgentService:
             label="Link tham khảo:",
             limit=3,
         )
-        final_text = _ensure_tool_links(
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
@@ -1033,7 +1015,7 @@ class MiaAgentService:
             label="Link tài liệu:",
             limit=3,
         )
-        final_text = _ensure_tool_links(
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
@@ -1041,7 +1023,7 @@ class MiaAgentService:
             label="Link file tham khảo:",
             limit=3,
         )
-        final_text = _ensure_tool_links(
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
@@ -1049,7 +1031,7 @@ class MiaAgentService:
             label="Link file gần đây:",
             limit=3,
         )
-        final_text = _ensure_tool_links(
+        final_text = normalized_ensure_tool_links(
             final_text,
             messages,
             tools_called,
