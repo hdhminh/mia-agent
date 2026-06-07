@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\nlet cleaned = raw\n  .replace(/^(soan mail|soạn mail|soan email|soạn email|viet nhap mail|viết nháp mail|viet nhap email|viết nháp email|tao nhap mail|tạo nháp mail|tao nhap email|tạo nháp email|draft mail|draft email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((line) => line.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nconst guidance = '📝 <b>Tạo email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>soạn mail test@gmail.com Chào bạn\\nXin chào, đây là email nháp.</code>';\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, response: isReady ? '' : guidance } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || source.text || payload.text || '').trim();\n\nlet cleaned = raw\n  .replace(/^(soan mail|soạn mail|soan email|soạn email|viet nhap mail|viết nháp mail|viet nhap email|viết nháp email|tao nhap mail|tạo nháp mail|tao nhap email|tạo nháp email|draft mail|draft email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = String(source.toEmail || source.to || args.toEmail || args.to || '').trim();\nlet subject = String(source.subject || args.subject || '').trim();\nlet body = String(source.body || args.body || '').trim();\nlet isReady = Boolean(toEmail && subject && body);\n\nif (!isReady && emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((line) => line.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nconst guidance = '📝 <b>Tạo email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>soạn mail test@gmail.com Chào bạn\\nXin chào, đây là email nháp.</code>';\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, response: isReady ? '' : guidance } }];"
       },
       "id": "gmail-draft-prepare",
       "name": "Parse Draft Email",
@@ -84,6 +84,19 @@
         960,
         -80
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        160
+      ]
     }
   ],
   "connections": {
@@ -118,7 +131,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gmail Draft": {

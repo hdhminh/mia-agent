@@ -5,11 +5,12 @@ import json
 from pathlib import Path
 
 
-ROOT = Path("/home/huynhminh/Projects/n8n")
+ROOT = Path(__file__).resolve().parents[2]
+SIMPLE = ROOT / "workflows/simple"
 
 
 PATCHES = {
-    ROOT / "workflow_sub_weather.json": {
+    SIMPLE / "workflow_sub_weather.json": {
         "Tổng Hợp Thời Tiết": """const source = $('Chuẩn Bị Địa Điểm').item.json || {};
 const raw = $json?.data ?? $json;
 const data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
@@ -69,7 +70,7 @@ if (details.length) parts.push(`Mia ghi nhận ${details.join(', ')}.`);
 
 return [{ json: { chatId: source.chatId || '', text: parts.join(' ').trim() } }];""",
     },
-    ROOT / "workflow_sub_gold.json": {
+    SIMPLE / "workflow_sub_gold.json": {
         "Tổng Hợp Giá Vàng": """const source = $('Chuẩn bị ChatID').item.json || {};
 const item = $input.item.json || {};
 
@@ -89,7 +90,7 @@ if (buy || sell) parts.push(`Hiện mua vào ${formatMoney(buy || 'chưa rõ')},
 
 return [{ json: { chatId: source.chatId || '', text: parts.join(' ').trim() } }];""",
     },
-    ROOT / "workflow_sub_search.json": {
+    SIMPLE / "workflow_sub_search.json": {
         "Tổng Hợp Kết Quả": """const source = $('Chuẩn Bị Query').item.json || {};
 const html = String($json.data || '');
 
@@ -144,7 +145,7 @@ if (results.length > 0) {
 
 return [{ json: { chatId: source.chatId || '', text: text.trim() } }];""",
     },
-    ROOT / "workflow_sub_news.json": {
+    SIMPLE / "workflow_sub_news.json": {
         "Format Tin Tức": """const staticData = $getWorkflowStaticData('global');
 staticData.sentUrls = staticData.sentUrls || [];
 

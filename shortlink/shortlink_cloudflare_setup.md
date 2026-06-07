@@ -54,7 +54,7 @@ https://n8n.huynhminh.com/webhook/shortlink/go?id=<id>
 ### Bước 2. Tạo Worker
 
 - Tạo Worker mới
-- Dán nội dung từ file [cloudflare_worker_shortlink.js](/home/huynhminh/Projects/n8n/cloudflare_worker_shortlink.js)
+- Dán nội dung từ file [cloudflare_worker_shortlink.js](/home/huynhminh/Projects/n8n/shortlink/cloudflare_worker_shortlink.js)
 
 ### Bước 3. Gắn route
 

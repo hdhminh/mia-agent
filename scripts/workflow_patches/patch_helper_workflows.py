@@ -5,13 +5,14 @@ import json
 from pathlib import Path
 
 
-ROOT = Path("/home/huynhminh/Projects/n8n")
+ROOT = Path(__file__).resolve().parents[2]
+SIMPLE = ROOT / "workflows/simple"
 
 WORKFLOWS = [
-    ROOT / "workflow_sub_weather.json",
-    ROOT / "workflow_sub_gold.json",
-    ROOT / "workflow_sub_news.json",
-    ROOT / "workflow_sub_search.json",
+    SIMPLE / "workflow_sub_weather.json",
+    SIMPLE / "workflow_sub_gold.json",
+    SIMPLE / "workflow_sub_news.json",
+    SIMPLE / "workflow_sub_search.json",
     ROOT / "google/calendar/workflow_sub_google_calendar_master.json",
     ROOT / "google/gmail/workflow_sub_google_gmail_master.json",
     ROOT / "google/drive/workflow_sub_google_drive_master.json",
@@ -344,12 +345,13 @@ if (finalItems.length === 0) {
   return [{ json: { text: 'Hiện chưa có bài mới để gửi.', chatId } }];
 }
 
-const topicLine = [...new Set(finalItems.map((item) => item.topic))].slice(0, 3).join(', ');
+const topicLine = [...new Set(finalItems.map((item) => source.topicNames?.[item.topic] || item.topic))].slice(0, 3).join(', ');
 let text = topicLine ? `Tin nổi bật: ${topicLine}` : 'Tin nổi bật';
 
 for (let i = 0; i < finalItems.length; i += 1) {
   const item = finalItems[i];
-  text += `\\n\\n${i + 1}. [${item.topic}] ${item.title}\\n${item.link}`;
+  const topicLabel = source.topicNames?.[item.topic] || item.topic;
+  text += `\\n\\n${i + 1}. [${topicLabel}] ${item.title}\\n${item.link}`;
 }
 
 return [{ json: { text: text.trim(), chatId } }];"""

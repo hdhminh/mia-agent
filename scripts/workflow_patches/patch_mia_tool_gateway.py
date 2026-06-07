@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-WORKFLOW_PATH = Path("/home/huynhminh/Projects/n8n/workflow_mia_tool_gateway.json")
+WORKFLOW_PATH = Path(__file__).resolve().parents[2] / "workflows/core/workflow_mia_tool_gateway.json"
 
 PREPARE_CODE = r"""
 const source = $('Webhook Tool Request').item.json || {};
@@ -23,7 +23,7 @@ const args = body.args && typeof body.args === 'object' ? body.args : {};
 const requestId = String(body.requestId || '').trim();
 const originChatId = String(body.chatId || '').trim();
 const deliveryMode = String(body.deliveryMode || 'return').trim() || 'return';
-const backendChatId = deliveryMode === 'telegram' ? originChatId : '';
+const backendChatId = originChatId;
 
 function clean(value) {
   return String(value || '').trim();
@@ -54,6 +54,49 @@ const toolConfig = {
       text: `tìm kiếm ${clean(a.query)}`.trim(),
       query: clean(a.query),
     }),
+  },
+  'web.read_url': {
+    workflowKey: 'web.master',
+    build: (a) => {
+      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);
+      const instruction = clean(a.instruction || a.text || a.prompt) || (url ? `đọc link này ${url}` : 'đọc link này');
+      return {
+        text: instruction,
+        url,
+        instruction,
+        prompt: instruction,
+        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,
+      };
+    },
+  },
+  'web.summarize_url': {
+    workflowKey: 'web.master',
+    build: (a) => {
+      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);
+      const instruction = clean(a.instruction || a.text || a.prompt) || (url ? `tóm tắt link này ${url}` : 'tóm tắt link này');
+      return {
+        text: instruction,
+        url,
+        instruction,
+        prompt: instruction,
+        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,
+      };
+    },
+  },
+  'web.ask_url': {
+    workflowKey: 'web.master',
+    build: (a) => {
+      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);
+      const question = clean(a.question || a.instruction || a.text || a.prompt) || (url ? `hỏi tiếp link này ${url}` : 'hỏi tiếp link này');
+      return {
+        text: question,
+        url,
+        instruction: question,
+        question,
+        prompt: question,
+        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,
+      };
+    },
   },
 
   'calendar.help': {
@@ -115,6 +158,129 @@ const toolConfig = {
   'gmail.reply_email': {
     workflowKey: 'gmail.reply_email',
     build: (a) => ({ text: clean(a.instruction) || 'trả lời email' }),
+  },
+
+  'github.help': {
+    workflowKey: 'github.help',
+    build: () => ({ text: 'github help' }),
+  },
+
+  'github.list_user_repos': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.username) || 'xem repo cua minh',
+      username: clean(a.username),
+      visibility: clean(a.visibility),
+      limit: Number(a.limit || 20) || 20,
+      page: Number(a.page || 1) || 1,
+    }),
+  },
+  'github.search_repos': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.query) || clean(a.topic) || 'tim repo',
+      query: clean(a.query),
+      topic: clean(a.topic),
+      language: clean(a.language),
+      sortBy: clean(a.sortBy || a.sort_by),
+      limit: Number(a.limit || 10) || 10,
+      page: Number(a.page || 1) || 1,
+    }),
+  },
+
+  'github.get_repo': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem repo github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+    }),
+  },
+  'github.get_repo_tree': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem cấu trúc repo github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      path: clean(a.path),
+      ref: clean(a.ref),
+      limit: Number(a.limit || 20) || 20,
+    }),
+  },
+  'github.list_branches': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem branch github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      limit: Number(a.limit || 20) || 20,
+    }),
+  },
+  'github.list_commits': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem commit github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      ref: clean(a.ref),
+      limit: Number(a.limit || 20) || 20,
+    }),
+  },
+  'github.get_commit': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || clean(a.ref) || 'xem chi tiet commit github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      ref: clean(a.ref),
+    }),
+  },
+  'github.get_file': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.path) || clean(a.repoUrl) || clean(a.repo) || 'doc file github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      path: clean(a.path),
+      ref: clean(a.ref),
+      maxChars: Number(a.maxChars || 4000) || 4000,
+    }),
+  },
+  'github.search_code': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.query) || clean(a.repoUrl) || clean(a.repo) || 'tim code github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      query: clean(a.query),
+      limit: Number(a.limit || 10) || 10,
+    }),
+  },
+  'github.get_diff': {
+    workflowKey: 'github.master',
+    build: (a) => ({
+      text: clean(a.instruction) || clean(a.base) || clean(a.head) || clean(a.repoUrl) || clean(a.repo) || 'xem diff github',
+      repo: clean(a.repo),
+      owner: clean(a.owner),
+      repoName: clean(a.repoName),
+      repoUrl: clean(a.repoUrl),
+      base: clean(a.base),
+      head: clean(a.head),
+    }),
   },
 
   'drive.help': {
@@ -343,6 +509,9 @@ const workflowMap = {
   'gmail.reply_email': '8O7sp8oZjnYp8LPR',
   'gmail.master': 's5LDuZZpOCAYiQsf',
 
+  'github.help': 'EAjktOSsda0CNGcv',
+  'github.master': 'SZZSe1XuJx507pwK',
+
   'drive.help': '248qYlIWrhgkbw5a',
   'drive.list_files': 'ByX1wU72gZyR0dmz',
   'drive.search_file': 'kJ2TJUZESrqF3PSK',
@@ -378,6 +547,7 @@ const workflowMap = {
   'sheets.master': '0cwoCCOYhAldS4Qj',
 
   'shortlink.create': 'D1cdbPhZef9glsNh',
+  'web.master': 'y4V9eGjssR8sSJLb',
 };
 
 const workflowId = workflowMap[source.workflowKey || ''];

@@ -22,32 +22,59 @@
 - `calendar_help`
 - `calendar_list_today`
 - `calendar_list_tomorrow`
+- `calendar_find_event`
+- `calendar_check_availability`
+- `calendar_find_free_slot`
 - `gmail_help`
 - `gmail_list_inbox`
+- `gmail_read_email`
+- `gmail_search_email`
+- `gmail_search_by_sender`
+- `github_help`
+- `github_get_repo`
+- `github_list_branches`
+- `github_list_commits`
+- `github_get_commit`
+- `github_get_file`
+- `github_search_code`
+- `github_get_diff`
 - `drive_help`
 - `drive_list_files`
 - `drive_search_file`
 - `docs_help`
 - `docs_search_doc`
+- `docs_read_doc`
+- `sheets_read_range`
 - `sheets_help`
 - `sheets_search_sheet`
+- `sheets_read_sheet`
 
 ## Domain Agent Candidates
 
 ### `calendar`
 
-- `calendar_find_event`
 - `calendar_create_event`
 - `calendar_delete_event`
-- `calendar_check_availability`
+- `calendar_reschedule_event`
 
 ### `gmail`
 
-- `gmail_read_email`
-- `gmail_search_email`
 - `gmail_send_email`
 - `gmail_draft_email`
 - `gmail_reply_email`
+- `gmail_mark_read`
+- `gmail_archive`
+
+### `github`
+
+- `github_help`
+- `github_get_repo`
+- `github_list_branches`
+- `github_list_commits`
+- `github_get_commit`
+- `github_get_file`
+- `github_search_code`
+- `github_get_diff`
 
 ### `workspace`
 
@@ -66,11 +93,14 @@
 - `docs_read_doc`
 - `docs_create_doc`
 - `docs_append_doc`
+- `docs_update_doc`
 - `docs_delete_doc`
 - `sheets_read_sheet`
+- `sheets_read_range`
 - `sheets_create_sheet`
 - `sheets_append_row`
 - `sheets_update_cell`
+- `sheets_update_range`
 - `sheets_delete_sheet`
 
 ## Current Direction

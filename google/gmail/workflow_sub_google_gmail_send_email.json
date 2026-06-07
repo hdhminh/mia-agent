@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\n\n// Kiểm tra nếu lệnh là gửi email nháp\nconst isDraftSend = /^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft)\\s*/i.test(raw);\n\nlet cleaned = raw\n  .replace(/^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft|gui mail|gửi mail|gui email|gửi email|send mail|send email)\\s*/i, '')\n  .trim();\n\nconst emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\nlet toEmail = '';\nlet subject = '';\nlet body = '';\nlet isReady = false;\n\nif (emailMatch) {\n  toEmail = emailMatch[1];\n  const remaining = cleaned.replace(toEmail, '').trim();\n  const lines = remaining.split('\\n').map((l) => l.trim()).filter(Boolean);\n  if (lines.length >= 2) {\n    subject = lines[0];\n    body = lines.slice(1).join('\\n');\n    isReady = true;\n  } else if (lines.length === 1) {\n    const parts = lines[0].split(/\\s{2,}|\\t/);\n    if (parts.length >= 2) {\n      subject = parts[0];\n      body = parts.slice(1).join(' ');\n      isReady = true;\n    } else {\n      subject = lines[0];\n      body = lines[0];\n      isReady = true;\n    }\n  }\n}\n\nlet guidance;\nif (isDraftSend) {\n  guidance = '📤 <b>Gửi email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi nháp test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>';\n} else {\n  guidance = '📧 <b>Gửi email</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi mail test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>\\n\\nNếu chỉ muốn lưu nháp, dùng:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nNếu muốn gửi email nháp đã soạn, dùng:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>';\n}\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, isReady, isDraftSend, response: isReady ? '' : guidance } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || source.text || message.text || payload.text || '').trim();\n\nconst structuredTo = String(source.toEmail || source.to || args.toEmail || args.to || payload.toEmail || payload.to || '').trim();\nconst structuredSubject = String(source.subject || args.subject || payload.subject || '').trim();\nconst structuredBody = String(source.body || args.body || payload.body || '').trim();\nconst structuredCc = String(source.cc || args.cc || payload.cc || '').trim();\nconst structuredBcc = String(source.bcc || args.bcc || payload.bcc || '').trim();\n\nconst isDraftSend = /^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft)\\s*/i.test(raw);\n\nlet cleaned = raw\n  .replace(/^(gui nhap|gửi nháp|gui email nhap|gửi email nháp|gui mail nhap|gửi mail nháp|send draft|gui mail|gửi mail|gui email|gửi email|send mail|send email)\\s*/i, '')\n  .trim();\n\nlet toEmail = structuredTo;\nlet subject = structuredSubject;\nlet body = structuredBody;\nlet isReady = Boolean(toEmail && subject && body);\n\nif (!isReady) {\n  const emailMatch = cleaned.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);\n  if (emailMatch) {\n    toEmail = emailMatch[1];\n    const remaining = cleaned.replace(toEmail, '').trim();\n    const lines = remaining.split('\\n').map((l) => l.trim()).filter(Boolean);\n    if (lines.length >= 2) {\n      subject = lines[0];\n      body = lines.slice(1).join('\\n');\n      isReady = true;\n    } else if (lines.length === 1) {\n      const parts = lines[0].split(/\\s{2,}|\\t/);\n      if (parts.length >= 2) {\n        subject = parts[0];\n        body = parts.slice(1).join(' ');\n        isReady = true;\n      } else {\n        subject = lines[0];\n        body = lines[0];\n        isReady = true;\n      }\n    }\n  }\n}\n\nlet guidance;\nif (isDraftSend) {\n  guidance = '📤 <b>Gửi email nháp</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi nháp test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>';\n} else {\n  guidance = '📧 <b>Gửi email</b>\\n\\nBạn hãy nhập theo mẫu:\\n<code>gửi mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nVí dụ:\\n<code>gửi mail test@gmail.com Chào bạn\\nXin chào, đây là email test.</code>\\n\\nNếu chỉ muốn lưu nháp, dùng:\\n<code>soạn mail email@example.com Tiêu đề\\nNội dung email</code>\\n\\nNếu muốn gửi email nháp đã soạn, dùng:\\n<code>gửi nháp email@example.com Tiêu đề\\nNội dung email</code>';\n}\nreturn [{ json: { ...source, payload, message, chatId, toEmail, subject, body, cc: structuredCc, bcc: structuredBcc, isReady, isDraftSend, response: isReady ? '' : guidance } }];"
       },
       "id": "gmail-send-prepare",
       "name": "Parse Gui Email",
@@ -140,6 +140,19 @@
         1200,
         40
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        200
+      ]
     }
   ],
   "connections": {
@@ -174,7 +187,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "La Gui Draft?": {

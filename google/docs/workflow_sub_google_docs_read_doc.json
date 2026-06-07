@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc doc', 'xem doc', 'noi dung doc', 'read doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.fileId || source.targetId || source.payload?.docId || '';\nconst docName = cleanName(source.docName || source.fileName || source.title || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '📖 <b>Doc Google Doc</b>\\n\\nVi du: <code>doc doc Project Plan</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['doc doc', 'xem doc', 'noi dung doc', 'read doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst docId = source.docId || source.documentId || source.fileId || source.targetId || args.docId || args.documentId || args.fileId || source.payload?.docId || '';\nconst docName = cleanName(source.docName || source.fileName || source.title || args.docName || args.fileName || args.title || body);\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    docId,\n    docName,\n    hasTarget: Boolean(docId || docName),\n    response: (docId || docName) ? '' : '📖 <b>Doc Google Doc</b>\\n\\nVi du: <code>doc doc Project Plan</code>'\n  }\n}];"
       },
       "id": "51c25443-6056-4b83-8900-e9c596c05d8d",
       "name": "Prepare Action",
@@ -102,7 +102,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Khong tim thay Google Doc phu hop.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '', mimeType: doc.mimeType || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, docId: '', response: 'Mia chưa tìm thấy Google Doc phù hợp.' } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '', mimeType: doc.mimeType || '' } }];"
       },
       "id": "d4df4733-34d1-4f63-987e-413e4dfbc862",
       "name": "Resolve Search Result",
@@ -157,7 +157,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function collectText(node, out = []) {\n  if (Array.isArray(node)) {\n    node.forEach((item) => collectText(item, out));\n    return out;\n  }\n  if (!node || typeof node !== 'object') return out;\n  if (node.textRun && typeof node.textRun.content === 'string') out.push(node.textRun.content);\n  Object.values(node).forEach((value) => collectText(value, out));\n  return out;\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst docId = doc.documentId || source.docId || '';\nconst title = doc.title || source.docName || 'Không rõ tên';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();\nlet preview = content.slice(0, 1000) || '(Tài liệu rỗng)';\n\nlet text = `Nội dung Google Doc: ${title}`;\nif (docId) text += `\\nID: ${docId}`;\nif (link) text += `\\nMở tài liệu: ${link}`;\ntext += `\\n\\nXem trước:\\n${preview}`;\nif (content.length > 1000) text += '\\n\\nNội dung đã được rút gọn để tiết kiệm ngữ cảnh.';\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
+        "jsCode": "function collectText(node, out = []) {\n  if (Array.isArray(node)) {\n    node.forEach((item) => collectText(item, out));\n    return out;\n  }\n  if (!node || typeof node !== 'object') return out;\n  if (node.textRun && typeof node.textRun.content === 'string') out.push(node.textRun.content);\n  Object.values(node).forEach((value) => collectText(value, out));\n  return out;\n}\n\nconst source = $('Prepare Action').item.json || {};\nconst doc = $input.item.json || {};\nconst docId = doc.documentId || source.docId || '';\nconst title = doc.title || source.docName || 'Không rõ tên';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();\nlet preview = content.slice(0, 1000) || '(Tài liệu này đang trống.)';\nconst truncated = content.length > 1000;\n\nlet text = `Mia đọc được Google Doc \"${title}\".`;\nif (link) text += `\\nLink: ${link}`;\ntext += `\\n\\nXem trước:\\n${preview}`;\nif (truncated) text += '\\n\\nMia đã rút gọn nội dung để tiết kiệm ngữ cảnh.';\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'docs.read_doc',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: link ? [link] : [],\n    result: { documentId: docId, title, preview },\n    meta: { truncated, contentLength: content.length }\n  }\n}];\n"
       },
       "id": "3f649ef5-536f-4f2c-891c-aa68aa9ab890",
       "name": "Format Action",
@@ -166,6 +166,19 @@
       "position": [
         928,
         144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\nconst tool = source.tool || source.workflowKey || '';\nconst target =\n  source.docName ||\n  source.sheetName ||\n  source.query ||\n  source.fileName ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = source.response || source.text || '';\nif (!text) {\n  text = target\n    ? `Mia chưa tìm thấy tài liệu phù hợp với \"${target}\".`\n    : 'Mia cần tên tài liệu hoặc bảng tính để đọc.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool,\n    chatId: source.chatId || '',\n    text: String(text).trim(),\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false ? 'missing_target' : 'not_found'\n    }\n  }\n}];\n"
+      },
+      "id": "return-doc-read-empty",
+      "name": "Return Doc Read Empty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        336
       ]
     }
   ],
@@ -201,7 +214,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Doc Read Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Co Doc ID?": {
@@ -253,7 +272,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Doc Read Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Docs Get Document": {

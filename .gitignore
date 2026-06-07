@@ -2,10 +2,27 @@
 .env.*
 !.env.example
 
-sync.log
-sync.log.*
+# Logs and databases
+logs/
+*.log
 
+# Pyenv / Virtual environments
+.venv/
+venv/
+.venv-smoke/
+ENV/
+env/
+
+# Python cache / builds
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
+# Temporary directories
+tmp/
+temp/
+
+# OS files
 .DS_Store
+Thumbs.db

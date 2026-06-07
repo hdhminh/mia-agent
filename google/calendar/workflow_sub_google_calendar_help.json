@@ -1,4 +1,5 @@
 {
+  "name": "Sub-workflow: Google Calendar - Help",
   "nodes": [
     {
       "parameters": {},
@@ -13,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst msg =\n  source.message ||\n  source.body?.message ||\n  source.payload?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  msg.chat?.id ||\n  source.payload?.chatId ||\n  source.body?.chatId ||\n  '';\n\nconst text = [\n  'Mia có thể hỗ trợ Google Calendar cho anh Minh ở các việc như xem lịch, tìm sự kiện, tạo lịch, huỷ lịch và kiểm tra giờ rảnh.',\n  '',\n  'Anh Minh thử vài câu kiểu này là được:',\n  '- lịch hôm nay',\n  '- lịch ngày mai',\n  '- tìm lịch họp khách',\n  '- tạo lịch họp team lúc 15h mai',\n  '- huỷ lịch phỏng vấn ngày mai',\n  '- kiểm tra lịch rảnh 9h-10h mai',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst msg =\n  source.message ||\n  source.body?.message ||\n  source.payload?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  msg.chat?.id ||\n  source.payload?.chatId ||\n  source.body?.chatId ||\n  '';\n\nconst text = [\n  'Mia có thể hỗ trợ Google Calendar cho anh Minh ở các việc như xem lịch, tìm sự kiện, tạo lịch, huỷ lịch, kiểm tra giờ rảnh, tìm khung giờ trống và dời lịch.',\n  '',\n  'Anh Minh thử vài câu kiểu này là được:',\n  '- lịch hôm nay',\n  '- lịch ngày mai',\n  '- tìm lịch họp khách',\n  '- tạo lịch họp team lúc 15h mai',\n  '- huỷ lịch phỏng vấn ngày mai',\n  '- kiểm tra lịch rảnh 9h-10h mai',\n  '- tìm khung giờ trống chiều mai',\n  '- dời lịch họp sang 3h chiều',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
       },
       "id": "acf1e653-553e-4011-95ef-ec7e199aca84",
       "name": "Huong Dan Calendar",

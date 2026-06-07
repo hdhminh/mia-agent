@@ -45,3 +45,116 @@ CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_text_trgm
 
 CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_embedding_hnsw
   ON mia_memory_chunks USING HNSW (embedding vector_cosine_ops);
+
+CREATE TABLE IF NOT EXISTS mia_learning_events (
+  id BIGSERIAL PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  thread_id TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'chat',
+  scope TEXT NOT NULL DEFAULT 'general',
+  topic TEXT NOT NULL DEFAULT '',
+  user_text TEXT NOT NULL DEFAULT '',
+  final_text TEXT NOT NULL DEFAULT '',
+  tools_called TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  issue_type TEXT NOT NULL DEFAULT '',
+  severity INTEGER NOT NULL DEFAULT 0,
+  model TEXT NOT NULL DEFAULT '',
+  prompt_cache_key TEXT NOT NULL DEFAULT '',
+  cache_hit BOOLEAN NOT NULL DEFAULT FALSE,
+  cached_tokens INTEGER NOT NULL DEFAULT 0,
+  prompt_tokens INTEGER NOT NULL DEFAULT 0,
+  completion_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  trace JSONB NOT NULL DEFAULT '{}'::JSONB,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mia_learning_insights (
+  id BIGSERIAL PRIMARY KEY,
+  scope TEXT NOT NULL DEFAULT 'general',
+  topic TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  prompt_hint TEXT NOT NULL DEFAULT '',
+  memory_hint TEXT NOT NULL DEFAULT '',
+  support_count INTEGER NOT NULL DEFAULT 0,
+  confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+  usage_count INTEGER NOT NULL DEFAULT 0,
+  last_used_at TIMESTAMPTZ,
+  promoted_at TIMESTAMPTZ,
+  decay_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+  examples JSONB NOT NULL DEFAULT '[]'::JSONB,
+  source_digest TEXT NOT NULL UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE mia_learning_insights ADD COLUMN IF NOT EXISTS usage_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE mia_learning_insights ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
+ALTER TABLE mia_learning_insights ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ;
+ALTER TABLE mia_learning_insights ADD COLUMN IF NOT EXISTS decay_score DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS mia_learning_feedbacks (
+  id BIGSERIAL PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  thread_id TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'chat',
+  scope TEXT NOT NULL DEFAULT 'general',
+  topic TEXT NOT NULL DEFAULT '',
+  verdict TEXT NOT NULL DEFAULT '',
+  rating INTEGER NOT NULL DEFAULT 0,
+  comment TEXT NOT NULL DEFAULT '',
+  correction_text TEXT NOT NULL DEFAULT '',
+  current_text TEXT NOT NULL DEFAULT '',
+  trace JSONB NOT NULL DEFAULT '{}'::JSONB,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_events_chat_created
+  ON mia_learning_events (chat_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_events_scope_created
+  ON mia_learning_events (scope, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_events_issue
+  ON mia_learning_events (issue_type, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_insights_scope_active
+  ON mia_learning_insights (scope, is_active, confidence DESC, support_count DESC, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_insights_usage
+  ON mia_learning_insights (is_active, usage_count DESC, last_used_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_feedbacks_chat_created
+  ON mia_learning_feedbacks (chat_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_learning_feedbacks_scope_created
+  ON mia_learning_feedbacks (scope, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS mia_pending_actions (
+  id BIGSERIAL PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  tool_name TEXT NOT NULL DEFAULT '',
+  gateway_name TEXT NOT NULL DEFAULT '',
+  args JSONB NOT NULL DEFAULT '{}'::JSONB,
+  summary TEXT NOT NULL DEFAULT '',
+  reason TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_text TEXT NOT NULL DEFAULT '',
+  result_text TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '15 minutes')
+);
+
+CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_chat_status
+  ON mia_pending_actions (chat_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_expires
+  ON mia_pending_actions (status, expires_at);

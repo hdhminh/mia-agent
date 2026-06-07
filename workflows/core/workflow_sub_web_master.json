@@ -1,0 +1,161 @@
+{
+  "name": "Sub-workflow: Web Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "web-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args && typeof source.args === 'object' ? source.args : {};\nconst tool = String(source.tool || args.tool || '').trim();\nconst text = String(args.instruction || args.text || args.prompt || source.text || source.rawText || '').trim();\nconst urlFromArgs = String(args.url || args.link || args.sourceUrl || args.source_url || source.url || '').trim();\n\nfunction extractFirstUrl(value) {\n  const match = String(value || '').match(/https?:\\/\\/[^\\s<>\\]\\)\"']+/i);\n  return match ? match[0].replace(/[),.;!?]+$/, '') : '';\n}\n\nconst url = urlFromArgs || extractFirstUrl(text) || extractFirstUrl(source.rawText || '');\nconst endpointMap = {\n  'read_url': '/mia/web/read-url',\n  'web.read_url': '/mia/web/read-url',\n  'summarize_url': '/mia/web/summarize-url',\n  'web.summarize_url': '/mia/web/summarize-url',\n  'ask_url': '/mia/web/ask-url',\n  'web.ask_url': '/mia/web/ask-url',\n};\nconst endpointPath = endpointMap[tool] || '';\nconst maxChars = Number(args.maxChars || args.max_chars || 0) || 0;\n\nif (!endpointPath) {\n  return [{ json: { ok: false, error: `Unsupported web tool: ${tool}`, tool, url, requestId: String(source.requestId || '').trim(), originChatId: String(source.originChatId || source.chatId || '').trim(), deliveryMode: String(source.deliveryMode || 'return').trim() || 'return' } }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool,\n    endpointPath,\n    url,\n    instruction: text,\n    text,\n    prompt: text,\n    maxChars,\n    responseMode: String(args.responseMode || 'text').trim() || 'text',\n    coreBaseUrl: String($env.MIA_CORE_URL || 'http://mia-core:8000').replace(/\\/$/, ''),\n    requestId: String(source.requestId || '').trim(),\n    originChatId: String(source.originChatId || source.chatId || '').trim(),\n    deliveryMode: String(source.deliveryMode || 'return').trim() || 'return',\n  }\n}];"
+      },
+      "id": "web-normalize",
+      "name": "Normalize Web Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.url || '').trim() || $json.tool === 'ask_url' || $json.tool === 'web.ask_url' }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "web-needs-url",
+      "name": "Needs URL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.coreBaseUrl + $json.endpointPath }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tool: $json.tool, url: $json.url, instruction: $json.instruction, question: $json.text, text: $json.text, prompt: $json.prompt, request_id: $json.requestId, chat_id: $json.originChatId, max_chars: $json.maxChars, response_mode: $json.responseMode } }}",
+        "options": {}
+      },
+      "id": "web-call-core",
+      "name": "Call Mia Web Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -160,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Web Input').item.json || {};\nconst output = $json || {};\nconst text = String(output.text || output.summary || output.result?.text || output.result?.summary || output.result?.answer || '').trim() || 'Mia đã xử lý xong link này.';\nconst warnings = Array.isArray(output.warnings) ? output.warnings : Array.isArray(output.result?.warnings) ? output.result.warnings : [];\nreturn [{\n  json: {\n    ok: output.ok !== false,\n    tool: output.tool || source.tool || '',\n    url: output.url || source.url || '',\n    text,\n    result: output.data || output.result || output,\n    warnings,\n    trace: output.trace || output.result?.trace || {},\n    requestId: source.requestId || '',\n    originChatId: source.originChatId || '',\n    deliveryMode: source.deliveryMode || 'return',\n  }\n}];"
+      },
+      "id": "web-normalize-result",
+      "name": "Normalize Web Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Web Input').item.json || {};\nreturn [{\n  json: {\n    ok: false,\n    error: source.endpointPath ? 'URL not found.' : `Unsupported web tool: ${source.tool || ''}`,\n    tool: source.tool || '',\n    url: source.url || '',\n    requestId: source.requestId || '',\n    originChatId: source.originChatId || '',\n    deliveryMode: source.deliveryMode || 'return',\n  }\n}];"
+      },
+      "id": "web-return-error",
+      "name": "Return Web Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Web Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Web Input": {
+      "main": [
+        [
+          {
+            "node": "Needs URL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs URL?": {
+      "main": [
+        [
+          {
+            "node": "Call Mia Web Core",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Web Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Mia Web Core": {
+      "main": [
+        [
+          {
+            "node": "Normalize Web Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Web Result": {
+      "main": [
+        []
+      ]
+    },
+    "Return Web Error": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

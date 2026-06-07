@@ -1,0 +1,373 @@
+{
+  "name": "Sub-workflow: Google Docs - Update Doc",
+  "nodes": [
+    {
+      "id": "e69f9bc8-4f12-42d6-87c7-16badbbd6c81",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1560,
+        240
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "9ce7e048-a655-4878-95d9-a2027ac21ae2",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1320,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst content = String(source.content || args.content || payload.content || '').trim() || rawText;\nlet docId = String(source.documentId || source.docId || args.documentId || args.docId || payload.documentId || payload.docId || '').trim();\nlet docName = String(source.docName || source.fileName || args.docName || args.fileName || payload.docName || payload.fileName || '').trim();\nif (!docName && rawText) {\n  const splitIndex = rawText.indexOf(':');\n  if (splitIndex > 0) {\n    docName = rawText.slice(0, splitIndex).trim();\n  }\n}\nconst hasTarget = Boolean(docId || docName);\nreturn [{ json: { ...source, payload, message, chatId, rawText, content, docId, documentId: docId, docName, hasTarget, response: hasTarget && content ? '' : 'Mia cần tên/id tài liệu và nội dung mới để cập nhật.' } }];"
+      }
+    },
+    {
+      "id": "178a5156-c08d-4f33-bfed-c486fff3f831",
+      "name": "Has Direct Doc ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1080,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.docId || $json.documentId) }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6ba4d362-cf77-4cb1-9f24-a12bd76900dd",
+      "name": "Drive Search Docs",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -820,
+        420
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.docName || \"\").replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.document' and trashed = false\" }}",
+        "limit": 1,
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "5f05003c-9a62-40de-a295-b32a5e10a1b7",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: `Mia chưa tìm thấy Google Doc phù hợp: ${source.docName || source.query || ''}` } }];\n}\nconst doc = rows[0];\nreturn [{ json: { ...source, ok: true, docId: doc.id || source.docId || '', docName: doc.name || source.docName || '', webViewLink: doc.webViewLink || '' } }];"
+      }
+    },
+    {
+      "id": "ef221524-7152-466a-9917-30ac5dde1044",
+      "name": "Docs Get Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -300,
+        240
+      ],
+      "parameters": {
+        "url": "=https://docs.googleapis.com/v1/documents/{{$json.docId}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "5ee1fc03-7d54-4210-ae6b-8051ac657670",
+      "name": "Build Update Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst doc = $('Docs Get Document').item.json || {};\nconst content = String(source.content || '').trim();\nif (!content) {\n  throw new Error('Missing content. Cannot update Google Docs document with empty content.');\n}\nconst bodyContent = Array.isArray(doc.body?.content) ? doc.body.content : [];\nconst requests = [];\nif (bodyContent.length) {\n  const last = bodyContent[bodyContent.length - 1];\n  const endIndex = Number(last?.endIndex || 0);\n  if (endIndex > 2) {\n    requests.push({ deleteContentRange: { range: { startIndex: 1, endIndex: endIndex - 1 } } });\n  }\n}\nrequests.push({ insertText: { location: { index: 1 }, text: content } });\nreturn [{ json: { ...source, documentId: source.documentId || source.docId || doc.documentId || '', body: { requests } } }];"
+      }
+    },
+    {
+      "id": "faf546fe-9886-4f91-8b2e-9b6af1676d25",
+      "name": "Docs Update Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        220,
+        240
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://docs.googleapis.com/v1/documents/\" + encodeURIComponent($json.documentId) + \":batchUpdate\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "a0c4f875-e847-46c6-b0a7-60f3a0b23d5a",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst docId = source.docId || source.documentId || result.documentId || '';\nconst docName = source.docName || 'Không rõ tên';\nconst link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');\nconst chars = String(source.content || '').length;\nlet text = `Đã cập nhật Google Doc: ${docName}`;\nif (docId) text += `\\nID: ${docId}`;\ntext += `\\nSố ký tự mới: ${chars}`;\nif (link) text += `\\nMở tài liệu: ${link}`;\nreturn [{ json: { chatId: source.chatId || '', text: text.trim(), docId, webViewLink: link } }];"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.hasTarget) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-has-target",
+      "name": "Has Target?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.ok) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "docs-search-found",
+      "name": "Search Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        240
+      ]
+    },
+    {
+      "id": "37ecccdb-75ed-488d-9a91-187ab2b89536",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Has Direct Doc ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Direct Doc ID?": {
+      "main": [
+        [
+          {
+            "node": "Docs Get Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Target?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Search Docs": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Search Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs Get Document": {
+      "main": [
+        [
+          {
+            "node": "Build Update Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Update Request": {
+      "main": [
+        [
+          {
+            "node": "Docs Update Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs Update Content": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        []
+      ]
+    },
+    "Return Error": {
+      "main": [
+        []
+      ]
+    },
+    "Has Target?": {
+      "main": [
+        [
+          {
+            "node": "Drive Search Docs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Found?": {
+      "main": [
+        [
+          {
+            "node": "Docs Get Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

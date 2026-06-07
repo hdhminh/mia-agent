@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  message.caption ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseRange(text) {\n  const match = String(text || '').match(/\\b([A-Z]{1,3}\\d+:[A-Z]{1,3}\\d+|[A-Z]{1,3}\\d+)\\b/i);\n  return match ? match[1].toUpperCase() : '';\n}\n\nfunction parseSheetTab(rawText) {\n  const text = String(rawText || '').trim();\n  const match = text.match(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?([^\"'“”‘’]+?)[\"'“”‘’]?(?:\\s+(?:range|vung|[A-Z]{1,3}\\d+)|$)/i);\n  return match ? cleanName(match[1]) : '';\n}\n\nfunction parseSheetName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'doc sheet',\n    'xem sheet',\n    'read sheet',\n    'doc bang tinh',\n    'xem bang tinh',\n    'noi dung sheet',\n    'noi dung bang tinh'\n  ];\n\n  let bodyOriginal = original;\n  let bodyNormalized = normalized;\n\n  for (const prefix of prefixes) {\n    if (bodyNormalized.startsWith(prefix + ' ')) {\n      bodyOriginal = original.slice(prefix.length + 1).trim();\n      bodyNormalized = normalized.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (bodyNormalized === prefix) {\n      return '';\n    }\n  }\n\n  const range = parseRange(bodyOriginal);\n  if (range) {\n    bodyOriginal = bodyOriginal.replace(new RegExp(range, 'i'), ' ').trim();\n  }\n\n  const tab = parseSheetTab(bodyOriginal);\n  if (tab) {\n    bodyOriginal = bodyOriginal\n      .replace(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?[^\"'“”‘’]+?[\"'“”‘’]?(?:\\s+(?:range|vung)|$)/i, ' ')\n      .trim();\n  }\n\n  bodyOriginal = bodyOriginal\n    .replace(/\\brange\\b/gi, ' ')\n    .replace(/\\bvung\\b/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  return cleanName(bodyOriginal);\n}\n\nconst spreadsheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  source.fileId ||\n  payload.spreadsheetId ||\n  payload.sheetId ||\n  payload.fileId ||\n  '';\n\nconst range =\n  source.range ||\n  payload.range ||\n  parseRange(raw) ||\n  'A1:Z30';\n\nconst sheetTab =\n  source.sheetTab ||\n  payload.sheetTab ||\n  parseSheetTab(raw) ||\n  '';\n\nconst sheetName = cleanName(\n  source.sheetName ||\n  source.title ||\n  source.query ||\n  payload.sheetName ||\n  payload.title ||\n  payload.query ||\n  parseSheetName(raw)\n);\n\nconst hasTarget = Boolean(spreadsheetId || sheetName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    spreadsheetId,\n    sheetId: spreadsheetId,\n    sheetName,\n    query: sheetName,\n    range,\n    sheetTab,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📊 <b>Đọc Google Sheet</b>\\n\\nVí dụ:\\n<code>đọc sheet Chi tiêu</code>\\n<code>đọc sheet Chi tiêu A1:C10</code>'\n  }\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\n\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  message.caption ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction parseRange(text) {\n  const match = String(text || '').match(/\\b([A-Z]{1,3}\\d+:[A-Z]{1,3}\\d+|[A-Z]{1,3}\\d+)\\b/i);\n  return match ? match[1].toUpperCase() : '';\n}\n\nfunction parseSheetTab(rawText) {\n  const text = String(rawText || '').trim();\n  const match = text.match(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?([^\"'“”‘’]+?)[\"'“”‘’]?(?:\\s+(?:range|vung|[A-Z]{1,3}\\d+)|$)/i);\n  return match ? cleanName(match[1]) : '';\n}\n\nfunction parseSheetName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'doc sheet',\n    'xem sheet',\n    'read sheet',\n    'doc bang tinh',\n    'xem bang tinh',\n    'noi dung sheet',\n    'noi dung bang tinh'\n  ];\n\n  let bodyOriginal = original;\n  let bodyNormalized = normalized;\n\n  for (const prefix of prefixes) {\n    if (bodyNormalized.startsWith(prefix + ' ')) {\n      bodyOriginal = original.slice(prefix.length + 1).trim();\n      bodyNormalized = normalized.slice(prefix.length + 1).trim();\n      break;\n    }\n\n    if (bodyNormalized === prefix) {\n      return '';\n    }\n  }\n\n  const range = parseRange(bodyOriginal);\n  if (range) {\n    bodyOriginal = bodyOriginal.replace(new RegExp(range, 'i'), ' ').trim();\n  }\n\n  const tab = parseSheetTab(bodyOriginal);\n  if (tab) {\n    bodyOriginal = bodyOriginal\n      .replace(/\\b(?:tab|sheet tab|trang tinh|worksheet)\\s+[\"'“”‘’]?[^\"'“”‘’]+?[\"'“”‘’]?(?:\\s+(?:range|vung)|$)/i, ' ')\n      .trim();\n  }\n\n  bodyOriginal = bodyOriginal\n    .replace(/\\brange\\b/gi, ' ')\n    .replace(/\\bvung\\b/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  return cleanName(bodyOriginal);\n}\n\nconst spreadsheetId =\n  source.spreadsheetId ||\n  source.sheetId ||\n  source.fileId ||\n  args.spreadsheetId ||\n  args.sheetId ||\n  args.fileId ||\n  payload.spreadsheetId ||\n  payload.sheetId ||\n  payload.fileId ||\n  '';\n\nconst range =\n  source.range ||\n  args.range ||\n  payload.range ||\n  parseRange(raw) ||\n  'A1:Z30';\n\nconst sheetTab =\n  source.sheetTab ||\n  args.sheetTab ||\n  payload.sheetTab ||\n  parseSheetTab(raw) ||\n  '';\n\nconst sheetName = cleanName(\n  source.sheetName ||\n  source.title ||\n  source.query ||\n  args.sheetName ||\n  args.title ||\n  args.query ||\n  payload.sheetName ||\n  payload.title ||\n  payload.query ||\n  parseSheetName(raw)\n);\n\nconst hasTarget = Boolean(spreadsheetId || sheetName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    spreadsheetId,\n    sheetId: spreadsheetId,\n    sheetName,\n    query: sheetName,\n    range,\n    sheetTab,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📊 <b>Đọc Google Sheet</b>\\n\\nVí dụ:\\n<code>đọc sheet Chi tiêu</code>\\n<code>đọc sheet Chi tiêu A1:C10</code>'\n  }\n}];"
       },
       "id": "1e8fc33a-e684-4148-8983-508d8e6170a3",
       "name": "Prepare Action",
@@ -157,7 +157,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function getJson(nodeName) {\n  try {\n    return $(nodeName).item.json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nconst source = {\n  ...getJson('Prepare Action'),\n  ...getJson('Resolve Search Result')\n};\nconst result = $input.item.json || {};\nconst rows = Array.isArray(result.values) ? result.values : [];\nconst limited = rows.slice(0, 12);\nlet preview = limited.map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`).join('\\n');\nlet truncated = rows.length > 12;\nif (preview.length > 1200) {\n  preview = preview.slice(0, 1200);\n  truncated = true;\n}\n\nconst sheetId = source.spreadsheetId || source.sheetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\nconst shownRange = source.sheetTab ? `'${source.sheetTab}'!${source.range || 'A1:Z12'}` : (source.range || 'A1:Z12');\n\nlet text = `Nội dung Google Sheet: ${source.sheetName || source.name || 'Không rõ tên'}`;\nif (sheetId) text += `\\nID: ${sheetId}`;\ntext += `\\nRange: ${shownRange}`;\nif (link) text += `\\nMở bảng tính: ${link}`;\ntext += `\\n\\nDữ liệu xem trước:\\n${preview || '(Không có dữ liệu)'}`;\nif (truncated) text += '\\n\\nNội dung đã được rút gọn để tiết kiệm ngữ cảnh.';\n\nreturn [{ json: { chatId: source.chatId || result.chatId || '', text: text.trim() } }];"
+        "jsCode": "function getJson(nodeName) {\n  try {\n    return $(nodeName).item.json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nconst source = {\n  ...getJson('Prepare Action'),\n  ...getJson('Resolve Search Result')\n};\nconst result = $input.item.json || {};\nconst rows = Array.isArray(result.values) ? result.values : [];\nconst limited = rows.slice(0, 10);\nlet preview = limited.map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`).join('\\n');\nlet truncated = rows.length > 10;\nif (preview.length > 1000) {\n  preview = preview.slice(0, 1000).trimEnd();\n  truncated = true;\n}\n\nconst sheetId = source.spreadsheetId || source.sheetId || '';\nconst title = source.sheetName || source.name || 'Không rõ tên';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\nconst shownRange = source.sheetTab ? `'${source.sheetTab}'!${source.range || 'A1:Z30'}` : (source.range || 'A1:Z30');\n\nlet text = `Mia đọc được Google Sheet \"${title}\" ở range ${shownRange}.`;\nif (link) text += `\\nLink: ${link}`;\ntext += `\\n\\nDữ liệu xem trước:\\n${preview || '(Range này chưa có dữ liệu.)'}`;\nif (truncated) text += '\\n\\nMia đã rút gọn bảng để Telegram dễ đọc hơn.';\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'sheets.read_sheet',\n    chatId: source.chatId || result.chatId || '',\n    text: text.trim(),\n    links: link ? [link] : [],\n    result: { spreadsheetId: sheetId, title, range: shownRange, rows: limited },\n    meta: { truncated, rowCount: rows.length }\n  }\n}];\n"
       },
       "id": "ad346294-9c6c-426a-b5f8-89c140e5e5bd",
       "name": "Format Action",
@@ -166,6 +166,19 @@
       "position": [
         928,
         -128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\nconst tool = source.tool || source.workflowKey || '';\nconst target =\n  source.docName ||\n  source.sheetName ||\n  source.query ||\n  source.fileName ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = source.response || source.text || '';\nif (!text) {\n  text = target\n    ? `Mia chưa tìm thấy tài liệu phù hợp với \"${target}\".`\n    : 'Mia cần tên tài liệu hoặc bảng tính để đọc.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool,\n    chatId: source.chatId || '',\n    text: String(text).trim(),\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false ? 'missing_target' : 'not_found'\n    }\n  }\n}];\n"
+      },
+      "id": "return-sheet-read-empty",
+      "name": "Return Sheet Read Empty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        80
       ]
     }
   ],
@@ -201,7 +214,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Sheet Read Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Co Spreadsheet ID?": {
@@ -253,7 +272,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Sheet Read Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Sheets Get Values": {

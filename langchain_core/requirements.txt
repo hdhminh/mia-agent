@@ -5,4 +5,8 @@ langchain-openai
 langgraph
 langgraph-checkpoint-postgres
 psycopg[binary,pool]
+paddleocr
+pymupdf
+Pillow
+python-docx
 uvicorn[standard]

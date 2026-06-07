@@ -1,4 +1,5 @@
 {
+  "name": "Sub-workflow: Google Gmail - Help",
   "nodes": [
     {
       "parameters": {},
@@ -13,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst msg = source.message || source.body?.message || source.payload?.message || {};\nconst chatId = source.chatId || msg.chat?.id || source.payload?.chatId || source.body?.chatId || '';\n\nconst text = [\n  'Mia có thể hỗ trợ Gmail cho anh Minh theo vài việc chính như xem hộp thư, đọc mail, tìm mail, soạn nháp, gửi mail và trả lời mail.',\n  '',\n  'Anh Minh có thể thử ngay mấy câu như:',\n  '- xem mail',\n  '- đọc mail từ Google',\n  '- tìm mail hóa đơn',\n  '- soạn mail cho test@gmail.com tiêu đề Chào bạn nội dung Hẹn gặp bạn ngày mai',\n  '- gửi mail test@gmail.com tiêu đề Chào bạn nội dung Đây là mail thử',\n  '- trả lời mail từ Google nội dung Cảm ơn bạn',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst msg = source.message || source.body?.message || source.payload?.message || {};\nconst chatId = source.chatId || msg.chat?.id || source.payload?.chatId || source.body?.chatId || '';\n\nconst text = [\n  'Mia có thể hỗ trợ Gmail cho anh Minh theo vài việc chính như xem hộp thư, đọc mail, tìm mail, tìm theo người gửi, soạn nháp, gửi mail, trả lời mail, đánh dấu đã đọc và lưu trữ mail.',\n  '',\n  'Anh Minh có thể thử ngay mấy câu như:',\n  '- xem mail',\n  '- đọc mail từ Google',\n  '- tìm mail hóa đơn',\n  '- tìm mail từ Nintendo',\n  '- đánh dấu mail này đã đọc',\n  '- lưu trữ mail này',\n  '- soạn mail cho test@gmail.com tiêu đề Chào bạn nội dung Hẹn gặp bạn ngày mai',\n  '- gửi mail test@gmail.com tiêu đề Chào bạn nội dung Đây là mail thử',\n  '- trả lời mail từ Google nội dung Cảm ơn bạn',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
       },
       "id": "6217cf07-7a12-4562-8465-bf52e2b49e86",
       "name": "Huong Dan Gmail",

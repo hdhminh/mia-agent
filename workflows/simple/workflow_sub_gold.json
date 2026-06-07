@@ -1,72 +1,74 @@
 {
-  "name": "Sub-workflow: Tìm Kiếm Web",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-sub-search",
+      "id": "trigger-sub",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        200,
-        300
+        208,
+        400
       ]
     },
     {
       "parameters": {
-        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet query = String(args.query || '').trim();\nif (!query) {\n  query = rawText\n    .replace(/^(tim|tìm|tim kiem|tìm kiếm|timkiem|search|tra cuu|tra cứu|google|duckduckgo)\\s*/i, '')\n    .replace(/^(ve|về|thong tin ve|thông tin về|cho toi biet ve|cho tôi biết về|noi ve|nói về)\\s*/i, '')\n    .trim();\n}\n\nif (!query) query = 'n8n automation';\n\nreturn [{ json: { chatId, query, rawText } }];"
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,18 * * *"
+            }
+          ]
+        }
       },
-      "id": "code-prepare-search",
-      "name": "Chuẩn Bị Query",
+      "id": "trigger-schedule",
+      "name": "Lịch Vàng (6,18)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\nconst msg = source.message || source.body?.message || {};\nconst directChatId = String(source.chatId || msg.chat?.id || '').trim();\nconst deliveryMode = String(source.deliveryMode || source.payload?.deliveryMode || '').trim().toLowerCase();\nconst scheduledFallbackChatId = String($env.TELEGRAM_ADMIN_CHAT_ID || '').trim();\n\nlet chatId = '';\nlet isAuto = false;\n\nif (directChatId) {\n  chatId = directChatId;\n} else if (deliveryMode === 'return') {\n  chatId = '';\n} else {\n  chatId = scheduledFallbackChatId;\n  isAuto = Boolean(chatId);\n}\n\nreturn [{ json: { ...source, chatId, isAuto } }];"
+      },
+      "id": "code-prepare",
+      "name": "Chuẩn bị ChatID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        420,
-        300
+        464,
+        304
       ]
     },
     {
       "parameters": {
-        "url": "=https://html.duckduckgo.com/html/?q={{ encodeURIComponent($json.query) }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "text",
-              "responsePropertyName": "data"
-            }
-          }
-        }
+        "url": "https://giavang.now/api/prices?type=SJL1L10",
+        "options": {}
       },
-      "id": "duckduckgo-html",
-      "name": "DuckDuckGo HTML",
+      "id": "fetch-gold",
+      "name": "Lấy Giá Vàng SJC",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        680,
-        300
-      ],
-      "onError": "continueRegularOutput"
+        656,
+        304
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn Bị Query').item.json || {};\nconst html = String($json.data || '');\n\nconst decodeHtml = (value = '') => String(value)\n  .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))\n  .replace(/&#(\\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))\n  .replace(/&amp;/g, '&')\n  .replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\")\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst cleanText = (value = '') => decodeHtml(String(value).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim());\n\nconst extractUrl = (href = '') => {\n  const normalized = decodeHtml(href);\n  const match = normalized.match(/[?&]uddg=([^&]+)/);\n  if (match) {\n    try {\n      return decodeURIComponent(match[1]);\n    } catch (error) {}\n  }\n  if (normalized.startsWith('//')) return `https:${normalized}`;\n  return normalized;\n};\n\nconst results = [];\nconst resultRegex = /<a[^>]*class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet match;\nwhile ((match = resultRegex.exec(html)) !== null && results.length < 3) {\n  const url = extractUrl(match[1]);\n  const title = cleanText(match[2]);\n  if (!url || !title) continue;\n  if (results.some((item) => item.url === url)) continue;\n  results.push({ url, title });\n}\n\nlet text = `Mia thấy vài kết quả khá khớp với \"${source.query}\".`;\nif (results.length > 0) {\n  for (let i = 0; i < results.length; i += 1) {\n    const item = results[i];\n    text += `\\n- ${item.title}`;\n  }\n  text += '\\n\\nLink tham khảo:';\n  for (let i = 0; i < results.length; i += 1) {\n    const item = results[i];\n    text += `\\n${i + 1}. ${item.url}`;\n  }\n} else {\n  text += '\\nMia chưa thấy kết quả nào đủ rõ. Anh Minh thử đổi từ khóa cụ thể hơn nhé.';\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
+        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst data = $json || {};\n\nconst formatPrice = (value) => {\n  const amount = Number(value || 0);\n  if (!Number.isFinite(amount) || amount <= 0) return 'N/A';\n  return `${amount.toLocaleString('vi-VN')} đ/lượng`;\n};\n\nlet text = 'Không lấy được giá vàng lúc này. Bạn thử lại sau nhé.';\nif (data.success) {\n  const title = data.name || 'SJC 9999';\n  const dateLine = [data.date, data.time].filter(Boolean).join(' ');\n  text = `Giá vàng ${title}`;\n  if (dateLine) text += `\\nCập nhật: ${dateLine}`;\n  text += `\\n- Mua vào: ${formatPrice(data.buy)}`;\n  text += `\\n- Bán ra: ${formatPrice(data.sell)}`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
       },
-      "id": "code-format-search",
-      "name": "Tổng Hợp Kết Quả",
+      "id": "format-gold",
+      "name": "Tổng Hợp Giá Vàng",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        940,
-        300
+        912,
+        304
       ]
     },
     {
@@ -92,7 +94,7 @@
         },
         "options": {}
       },
-      "id": "520e23f5-e197-46f1-99e5-7564a9f1836f",
+      "id": "34f49a2d-293e-4436-803a-34f1a8e7aa57",
       "name": "Gửi Telegram Trực Tiếp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
@@ -105,7 +107,7 @@
       "parameters": {
         "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
       },
-      "id": "738a8050-4422-4fe2-a3dd-e350f72e384c",
+      "id": "18d9710a-32ee-48e1-ab5b-6967f434e78d",
       "name": "ACK Tool Delivered",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -125,12 +127,12 @@
           ]
         }
       },
-      "id": "30be2dea-2ba8-470e-b468-6ee160d565f5",
+      "id": "3cdf3b13-a7b4-4bae-bdc5-a8488536687e",
       "name": "Có ChatId?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        300,
+        304,
         0
       ]
     },
@@ -138,20 +140,20 @@
       "parameters": {
         "jsCode": "return [{ json: $json }];"
       },
-      "id": "3d01da4c-3276-42fd-9a8a-1a3f840152f9",
+      "id": "e76df2dd-f40f-4783-8313-cbed125c2c56",
       "name": "Giữ Text Khi Thiếu ChatId",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         560,
-        224
+        160
       ]
     },
     {
       "parameters": {
         "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
       },
-      "id": "normalize-tool-text-Sub-workflow: Tìm Kiếm Web",
+      "id": "normalize-tool-text-wf",
       "name": "Chuẩn Hóa Tool Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -166,36 +168,47 @@
       "main": [
         [
           {
-            "node": "Chuẩn Bị Query",
+            "node": "Chuẩn bị ChatID",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Chuẩn Bị Query": {
+    "Lịch Vàng (6,18)": {
       "main": [
         [
           {
-            "node": "DuckDuckGo HTML",
+            "node": "Chuẩn bị ChatID",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "DuckDuckGo HTML": {
+    "Chuẩn bị ChatID": {
       "main": [
         [
           {
-            "node": "Tổng Hợp Kết Quả",
+            "node": "Lấy Giá Vàng SJC",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Tổng Hợp Kết Quả": {
+    "Lấy Giá Vàng SJC": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Giá Vàng",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Giá Vàng": {
       "main": [
         [
           {
@@ -256,5 +269,9 @@
         ]
       ]
     }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

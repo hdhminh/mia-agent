@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-PATH = Path("/home/huynhminh/Projects/n8n/workflow_mia_tool_gateway.json")
+PATH = Path(__file__).resolve().parents[2] / "workflows/core/workflow_mia_tool_gateway.json"
 
 ROUTE_CODE = """const source = $('Prepare Tool Request').item.json || $json || {};
 const workflowMap = {
@@ -15,6 +15,10 @@ const workflowMap = {
   search: '72gE9VPYxBgxFn6h',
   calendar: 'hEGn8N6rE17tMw5T',
   gmail: 's5LDuZZpOCAYiQsf',
+  'github.help': 'Sub-workflow: GitHub - Help',
+  'github.master': 'Sub-workflow: GitHub Master',
+  'github.get_repo_tree': 'Sub-workflow: GitHub Master',
+  github: 'Sub-workflow: GitHub Master',
   drive: 'abTxYqrVCN4Qzz5U',
   docs: 'kO3D2tjgJmy3CvSg',
   sheets: '0cwoCCOYhAldS4Qj',

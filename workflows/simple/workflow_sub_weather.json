@@ -1,74 +1,65 @@
 {
+  "name": "Sub-workflow: Thời Tiết",
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger-sub",
+      "id": "trigger-sub-weather",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        208,
-        400
+        200,
+        300
       ]
     },
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 6,18 * * *"
-            }
-          ]
-        }
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet location = String(args.location || '').trim();\nif (!location) {\n  location = rawText\n    .replace(/^(thoi tiet|thời tiết|weather|nhiet do|nhiệt độ|troi|trời|du bao thoi tiet|dự báo thời tiết)\\s*/i, '')\n    .replace(/^(tai|tại|o|ở|cho|cho toi|cho tôi|hom nay|hôm nay)\\s*/i, '')\n    .trim();\n}\n\nif (!location) location = 'Ho Chi Minh City';\n\nreturn [{ json: { chatId, rawText, location } }];"
       },
-      "id": "trigger-schedule",
-      "name": "Lịch Vàng (6,18)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        208,
-        208
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const source = $input.item.json || {};\nconst msg = source.message || source.body?.message || {};\nconst directChatId = String(source.chatId || msg.chat?.id || '').trim();\nconst deliveryMode = String(source.deliveryMode || source.payload?.deliveryMode || '').trim().toLowerCase();\nconst scheduledFallbackChatId = String($env.TELEGRAM_ADMIN_CHAT_ID || '').trim();\n\nlet chatId = '';\nlet isAuto = false;\n\nif (directChatId) {\n  chatId = directChatId;\n} else if (deliveryMode === 'return') {\n  chatId = '';\n} else {\n  chatId = scheduledFallbackChatId;\n  isAuto = Boolean(chatId);\n}\n\nreturn [{ json: { ...source, chatId, isAuto } }];"
-      },
-      "id": "code-prepare",
-      "name": "Chuẩn bị ChatID",
+      "id": "code-prepare-weather",
+      "name": "Chuẩn Bị Địa Điểm",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        464,
-        304
+        430,
+        300
       ]
     },
     {
       "parameters": {
-        "url": "https://giavang.now/api/prices?type=SJL1L10",
+        "url": "=https://wttr.in/{{ encodeURIComponent($json.location) }}?format=j1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "fetch-gold",
-      "name": "Lấy Giá Vàng SJC",
+      "id": "fetch-weather",
+      "name": "Lấy Dữ Liệu Thời Tiết",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        656,
-        304
-      ]
+        680,
+        300
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuẩn bị ChatID').item.json || {};\nconst item = $input.item.json || {};\n\nconst updatedAt = String(item.updatedAt || item.updated_at || item.date || '').trim();\nconst buy = String(item.buy || item.mua_vao || item.buyPrice || '').trim();\nconst sell = String(item.sell || item.ban_ra || item.sellPrice || '').trim();\n\nconst formatMoney = (value = '') => {\n  const digits = String(value).replace(/[^\\d]/g, '');\n  if (!digits) return value;\n  return `${Number(digits).toLocaleString('vi-VN')} đ/lượng`;\n};\n\nconst parts = ['Mia vừa lấy giá vàng SJC 9999 mới nhất cho anh Minh.'];\nif (updatedAt) parts.push(`Dữ liệu cập nhật lúc ${updatedAt}.`);\nif (buy || sell) parts.push(`Hiện mua vào ${formatMoney(buy || 'chưa rõ')}, bán ra ${formatMoney(sell || 'chưa rõ')}.`);\n\nreturn [{ json: { chatId: source.chatId || '', text: parts.join(' ').trim() } }];"
+        "jsCode": "const source = $('Chuẩn Bị Địa Điểm').item.json || {};\nconst raw = $json?.data ?? $json;\nconst data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});\n\nconst current = Array.isArray(data.current_condition) ? data.current_condition[0] || {} : {};\nconst today = Array.isArray(data.weather) ? data.weather[0] || {} : {};\nconst nearest = Array.isArray(data.nearest_area) ? data.nearest_area[0] || {} : {};\nconst request = Array.isArray(data.request) ? data.request[0] || {} : {};\n\nconst areaName = nearest.areaName?.[0]?.value || source.location;\nconst region = nearest.region?.[0]?.value || '';\nconst country = nearest.country?.[0]?.value || '';\nconst desc = current.weatherDesc?.[0]?.value || '';\nconst tempC = current.temp_C || '';\nconst feelsLike = current.FeelsLikeC || '';\nconst humidity = current.humidity || '';\nconst windKmph = current.windspeedKmph || '';\nconst maxTemp = today.maxtempC || '';\nconst minTemp = today.mintempC || '';\nconst rainMm = current.precipMM || '';\nconst sunrise = today.astronomy?.[0]?.sunrise || '';\nconst sunset = today.astronomy?.[0]?.sunset || '';\n\nlet locationLine = request.query || areaName || source.location;\nif (region && !locationLine.includes(region)) locationLine += `, ${region}`;\nif (country && !locationLine.includes(country)) locationLine += `, ${country}`;\n\nconst parts = [];\nparts.push(`Thời tiết tại ${locationLine}:`);\n\nif (tempC !== '') {\n  let tempLine = `- Nhiệt độ: ${tempC}°C`;\n  if (feelsLike !== '') tempLine += `, cảm giác như ${feelsLike}°C`;\n  parts.push(tempLine);\n}\nif (desc) parts.push(`- Tình trạng: ${desc}`);\nif (humidity !== '') parts.push(`- Độ ẩm: ${humidity}%`);\nif (windKmph !== '') parts.push(`- Gió: ${windKmph} km/h`);\nif (rainMm !== '') parts.push(`- Lượng mưa: ${rainMm} mm`);\nif (minTemp !== '' || maxTemp !== '') parts.push(`- Nhiệt độ trong ngày: ${minTemp}°C đến ${maxTemp}°C`);\nif (sunrise || sunset) parts.push(`- Mặt trời: ${sunrise || '?'} / ${sunset || '?'}`);\n\nif (parts.length === 1) {\n  parts[0] = `Không lấy được dữ liệu thời tiết cho ${source.location}. Bạn thử ghi rõ địa điểm hơn nhé.`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: parts.join('\\n').trim() } }];"
       },
-      "id": "format-gold",
-      "name": "Tổng Hợp Giá Vàng",
+      "id": "code-format-weather",
+      "name": "Tổng Hợp Thời Tiết",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        912,
-        304
+        930,
+        300
       ]
     },
     {
@@ -94,7 +85,7 @@
         },
         "options": {}
       },
-      "id": "34f49a2d-293e-4436-803a-34f1a8e7aa57",
+      "id": "2d8fde8d-ca35-4923-a03f-ed0c70882d2b",
       "name": "Gửi Telegram Trực Tiếp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
@@ -107,7 +98,7 @@
       "parameters": {
         "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
       },
-      "id": "18d9710a-32ee-48e1-ab5b-6967f434e78d",
+      "id": "60547538-9ef6-4594-a206-b9af93d97d14",
       "name": "ACK Tool Delivered",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -127,12 +118,12 @@
           ]
         }
       },
-      "id": "3cdf3b13-a7b4-4bae-bdc5-a8488536687e",
+      "id": "a8fd24bc-060b-4f62-be65-3777feb43c57",
       "name": "Có ChatId?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        304,
+        300,
         0
       ]
     },
@@ -140,20 +131,20 @@
       "parameters": {
         "jsCode": "return [{ json: $json }];"
       },
-      "id": "e76df2dd-f40f-4783-8313-cbed125c2c56",
+      "id": "e53474c8-9093-416a-aee3-6009067897d4",
       "name": "Giữ Text Khi Thiếu ChatId",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         560,
-        160
+        224
       ]
     },
     {
       "parameters": {
         "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
       },
-      "id": "normalize-tool-text-wf",
+      "id": "normalize-tool-text-Sub-workflow: Thời Tiết",
       "name": "Chuẩn Hóa Tool Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -168,47 +159,36 @@
       "main": [
         [
           {
-            "node": "Chuẩn bị ChatID",
+            "node": "Chuẩn Bị Địa Điểm",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Lịch Vàng (6,18)": {
+    "Chuẩn Bị Địa Điểm": {
       "main": [
         [
           {
-            "node": "Chuẩn bị ChatID",
+            "node": "Lấy Dữ Liệu Thời Tiết",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Chuẩn bị ChatID": {
+    "Lấy Dữ Liệu Thời Tiết": {
       "main": [
         [
           {
-            "node": "Lấy Giá Vàng SJC",
+            "node": "Tổng Hợp Thời Tiết",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Lấy Giá Vàng SJC": {
-      "main": [
-        [
-          {
-            "node": "Tổng Hợp Giá Vàng",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tổng Hợp Giá Vàng": {
+    "Tổng Hợp Thời Tiết": {
       "main": [
         [
           {
@@ -269,9 +249,5 @@
         ]
       ]
     }
-  },
-  "pinData": {},
-  "meta": {
-    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
   }
 }

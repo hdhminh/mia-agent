@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || payload.payload?.message || {};\n\nconst chatId = source.chatId || message.chat?.id || payload.chatId || payload.payload?.chatId || '';\nconst raw = String(source.rawText || source.text || message.text || message.caption || payload.text || payload.rawText || '').trim();\n\nconst document = source.document || message.document || payload.document || payload.payload?.document || payload.payload?.message?.document || null;\nconst video = source.video || message.video || payload.video || payload.payload?.video || payload.payload?.message?.video || null;\nconst audio = source.audio || message.audio || message.voice || payload.audio || payload.payload?.audio || payload.payload?.message?.audio || payload.payload?.message?.voice || null;\nconst photo = source.photo || message.photo || payload.photo || payload.payload?.photo || payload.payload?.message?.photo || null;\n\nconst photoItem = Array.isArray(photo) && photo.length ? photo[photo.length - 1] : photo;\n\nconst telegramFileId = source.fileId || document?.file_id || video?.file_id || audio?.file_id || photoItem?.file_id || '';\nconst fileName = source.fileName || document?.file_name || video?.file_name || audio?.file_name || (photoItem?.file_id ? `telegram-photo-${photoItem.file_id}.jpg` : 'upload.bin');\nconst mimeType = source.mimeType || document?.mime_type || video?.mime_type || audio?.mime_type || (photoItem?.file_id ? 'image/jpeg' : 'application/octet-stream');\nconst folderId = source.folderId || payload.folderId || 'root';\nconst binaryPropertyName = 'data';\n\nconst hasTarget = Boolean(telegramFileId);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    telegramFileId,\n    fileId: telegramFileId,\n    fileName,\n    mimeType,\n    folderId,\n    binaryPropertyName,\n    hasTarget,\n    response: hasTarget ? '' : 'Bạn hãy gửi kèm file/ảnh rồi nhập caption: upload file này vào drive'\n  }\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || payload.payload?.message || {};\n\nconst chatId = source.chatId || message.chat?.id || payload.chatId || payload.payload?.chatId || '';\nconst raw = String(source.rawText || source.text || args.instruction || message.text || message.caption || payload.text || payload.rawText || '').trim();\n\nconst document = source.document || message.document || payload.document || payload.payload?.document || payload.payload?.message?.document || null;\nconst video = source.video || message.video || payload.video || payload.payload?.video || payload.payload?.message?.video || null;\nconst audio = source.audio || message.audio || message.voice || payload.audio || payload.payload?.audio || payload.payload?.message?.audio || payload.payload?.message?.voice || null;\nconst photo = source.photo || message.photo || payload.photo || payload.payload?.photo || payload.payload?.message?.photo || null;\n\nconst photoItem = Array.isArray(photo) && photo.length ? photo[photo.length - 1] : photo;\n\nconst explicitFileId = String(\n  source.telegramFileId ||\n  source.fileId ||\n  args.telegramFileId ||\n  args.fileId ||\n  payload.telegramFileId ||\n  payload.fileId ||\n  ''\n).trim();\nconst telegramFileId = explicitFileId || document?.file_id || video?.file_id || audio?.file_id || photoItem?.file_id || '';\nconst fileName =\n  String(source.fileName || args.fileName || payload.fileName || '').trim() ||\n  document?.file_name ||\n  video?.file_name ||\n  audio?.file_name ||\n  (photoItem?.file_id ? `telegram-photo-${photoItem.file_id}.jpg` : 'upload.bin');\nconst mimeType =\n  String(source.mimeType || args.mimeType || payload.mimeType || '').trim() ||\n  document?.mime_type ||\n  video?.mime_type ||\n  audio?.mime_type ||\n  (photoItem?.file_id ? 'image/jpeg' : 'application/octet-stream');\nconst folderId = String(source.folderId || args.folderId || payload.folderId || 'root').trim() || 'root';\nconst binaryPropertyName = 'data';\n\nconst hasTarget = Boolean(telegramFileId);\nconst guidance = hasTarget\n  ? ''\n  : 'Bạn hãy gửi kèm file hoặc ảnh rồi nhập caption như \"upload file này vào drive\" để Mia lưu giúp bạn.';\n\nreturn [{\n  json: {\n    ...source,\n    args,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    telegramFileId,\n    fileId: telegramFileId,\n    fileName,\n    mimeType,\n    folderId,\n    binaryPropertyName,\n    hasTarget,\n    response: guidance,\n    text: guidance,\n  }\n}];"
       },
       "id": "8b72d316-33f7-438a-b937-7db68ceb6ae9",
       "name": "Prepare Action",
@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $input.item.json?.result || {};\nconst filePath = result.file_path || '';\nif (!filePath) {\n  return [{ json: { ...source, response: 'Không lấy được file_path từ Telegram getFile.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    telegramFilePath: filePath,\n    telegramDownloadUrl: `https://api.telegram.org/file/bot${$env.TELEGRAM_BOT_TOKEN}/${filePath}`\n  }\n}];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $input.item.json?.result || {};\nconst filePath = String(result.file_path || '').trim();\nif (!filePath) {\n  const fallback = 'Không lấy được file_path từ Telegram getFile.';\n  return [{ json: { ...source, response: fallback, text: fallback } }];\n}\nreturn [{\n  json: {\n    ...source,\n    telegramFilePath: filePath,\n    telegramDownloadUrl: `https://api.telegram.org/file/bot${$env.TELEGRAM_BOT_TOKEN}/${filePath}`\n  }\n}];"
       },
       "id": "cb7a40ca-a11b-4488-8cd1-82c69e45df4c",
       "name": "Build Telegram Download URL",
@@ -111,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\nconst fileName = item.name || source.fileName || 'Không rõ tên';\nconst fileId = item.id || '';\nconst link = item.webViewLink || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\nconst mimeType = item.mimeType || source.mimeType || '';\n\nlet text = '✅ <b>Đã upload file lên Google Drive</b>\\n\\n';\ntext += `📄 <b>${escapeHtml(fileName)}</b>\\n`;\nif (mimeType) text += `Loại: <code>${escapeHtml(mimeType)}</code>\\n`;\nif (fileId) text += `ID: <code>${escapeHtml(fileId)}</code>\\n`;\nif (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Mở file</a>`;\n\nreturn [{ json: { chatId: source.chatId || item.chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst item = $input.item.json || {};\n\nconst fileName = String(item.name || source.fileName || 'Không rõ tên').trim();\nconst fileId = String(item.id || '').trim();\nconst mimeType = String(item.mimeType || source.mimeType || '').trim();\nconst link = String(item.webViewLink || item.webContentLink || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '')).trim();\n\nif (!fileId) {\n  const fallback = String(item.response || source.response || '').trim() || 'Mia chưa upload được file lên Google Drive.';\n  return [{\n    json: {\n      chatId: source.chatId || item.chatId || '',\n      text: fallback,\n      links: [],\n      result: {},\n      meta: { folderId: String(source.folderId || '').trim() }\n    }\n  }];\n}\n\nlet text = `Mia đã upload file \"${fileName}\" lên Google Drive`;\nif (link) {\n  text += `.\\nMở file: ${link}`;\n} else {\n  text += '.';\n}\n\nreturn [{\n  json: {\n    chatId: source.chatId || item.chatId || '',\n    text,\n    links: link ? [link] : [],\n    result: {\n      id: fileId,\n      name: fileName,\n      mimeType,\n      webViewLink: link,\n      folderId: String(source.folderId || '').trim()\n    },\n    meta: {\n      fileId,\n      mimeType,\n      folderId: String(source.folderId || '').trim()\n    }\n  }\n}];"
       },
       "id": "0dc2e1b2-67e1-4d53-bda9-d3e04bac164c",
       "name": "Format Action",
@@ -119,6 +119,42 @@
       "typeVersion": 2,
       "position": [
         960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ `https://api.telegram.org/bot${$env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent($json.telegramFileId)}` }}",
+        "options": {}
+      },
+      "id": "ac83c4fa-9e81-4f92-9c74-telegram-get-file",
+      "name": "Resolve Telegram File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.telegramDownloadUrl) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "c9eb1c6a-11d2-4f0f-9c2f-drive-upload-has-url",
+      "name": "Co URL Download?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        360,
         0
       ]
     }
@@ -148,15 +184,27 @@
     },
     "Co File Telegram?": {
       "main": [
-        [],
-        []
+        [
+          {
+            "node": "Resolve Telegram File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Build Telegram Download URL": {
       "main": [
         [
           {
-            "node": "Download Telegram Binary",
+            "node": "Co URL Download?",
             "type": "main",
             "index": 0
           }
@@ -188,6 +236,35 @@
     "Format Action": {
       "main": [
         []
+      ]
+    },
+    "Resolve Telegram File": {
+      "main": [
+        [
+          {
+            "node": "Build Telegram Download URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co URL Download?": {
+      "main": [
+        [
+          {
+            "node": "Download Telegram Binary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

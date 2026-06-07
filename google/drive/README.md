@@ -60,4 +60,5 @@ Action chính:
 ## Ghi chú
 
 - `drive.search_file` và `drive.list_files` hiện đã giữ được link trong câu trả lời cuối của Mia.
+- `drive.upload_file` hiện ưu tiên structured args với `fileId/telegramFileId`, `fileName`, `mimeType`, `folderId` trước khi fallback về `instruction`.
 - Các workflow local cho `delete_file` và `share_file` đã được thêm credential để tránh lệch với live instance.

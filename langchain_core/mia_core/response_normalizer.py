@@ -5,6 +5,8 @@ from typing import Any
 
 from langchain.messages import AIMessage, HumanMessage, ToolMessage
 
+from mia_core.parsers.common import normalize_query_text
+
 
 def coerce_message_text(content: Any) -> str:
     if isinstance(content, str):
@@ -30,6 +32,8 @@ def sanitize_final_text(text: str) -> str:
     cleaned = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", cleaned)
     cleaned = cleaned.replace("**", "").replace("__", "").replace("`", "")
     cleaned = re.sub(r"(?m)^\s*[-*]\s+", "- ", cleaned)
+    cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
+    cleaned = "\n".join(line.rstrip() for line in cleaned.splitlines())
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     cleaned = cleaned.strip()
     if cleaned:
@@ -69,9 +73,29 @@ def extract_urls(text: str) -> list[str]:
     return seen
 
 
+def cap_visible_links(text: str, limit: int = 3) -> str:
+    urls = extract_urls(text)
+    if len(urls) <= limit:
+        return text
+
+    extra_urls = set(urls[limit:])
+    kept_lines: list[str] = []
+    for line in str(text or "").splitlines():
+        line_urls = extract_urls(line)
+        if line_urls and all(url in extra_urls for url in line_urls):
+            continue
+        for url in line_urls:
+            if url in extra_urls:
+                line = line.replace(url, "").rstrip(" .:-")
+        kept_lines.append(line.rstrip())
+
+    cleaned = "\n".join(kept_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    return cleaned or text
+
+
 def looks_like_not_found(text: str) -> bool:
-    normalized = " ".join(str(text or "").strip().lower().split())
-    normalized = normalized.replace("đ", "d")
+    normalized = normalize_query_text(text)
     cues = (
         "khong tim thay",
         "khong thay",
@@ -130,6 +154,9 @@ def prefer_tool_truth(final_text: str, messages: list[Any], tools_called: list[s
         "drive_search_file",
         "drive_list_files",
         "search_web",
+        "read_url",
+        "summarize_url",
+        "ask_url",
         "news_get",
         "gmail_list_inbox",
     }
@@ -146,7 +173,7 @@ def prefer_docs_search_output(request_text: str, final_text: str, messages: list
     if "docs_search_doc" not in tools_called:
         return final_text
 
-    normalized = " ".join(str(request_text or "").strip().lower().split()).replace("đ", "d")
+    normalized = normalize_query_text(request_text)
     search_cues = ("tim doc", "search doc", "tim tai lieu", "doc project", "tai lieu")
     if not any(cue in normalized for cue in search_cues):
         return final_text
@@ -164,7 +191,7 @@ def ensure_tool_links(
     *,
     tool_name: str,
     label: str,
-    limit: int,
+    limit: int = 3,
 ) -> str:
     if tool_name not in tools_called:
         return final_text
@@ -184,4 +211,3 @@ def ensure_tool_links(
     for index, url in enumerate(urls[:limit], start=1):
         lines.append(f"{index}. {url}")
     return "\n".join(lines).strip()
-

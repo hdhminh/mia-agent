@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction extractFileName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'download file',\n    'download tep',\n    'tai file',\n    'tai tep',\n    'tai xuong file',\n    'tai xuong tep',\n    'gui toi file',\n    'gui toi tep',\n    'gui file',\n    'send me file',\n    'send file',\n    'lay file',\n    'lay tep'\n  ];\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      return cleanName(original.slice(prefix.length + 1));\n    }\n\n    if (normalized === prefix) {\n      return '';\n    }\n  }\n\n  return '';\n}\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  extractFileName(raw)\n);\n\nconst hasTarget = Boolean(fileId || fileName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📥 <b>Tải file từ Drive</b>\\n\\nVí dụ:\\n<code>tải file báo cáo.pdf</code>\\n<code>download file test_n8n.md</code>'\n  }\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  source.fileName ||\n  args.fileName ||\n  args.targetName ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction extractFileName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'download file',\n    'download tep',\n    'tai file',\n    'tai tep',\n    'tai xuong file',\n    'tai xuong tep',\n    'gui toi file',\n    'gui toi tep',\n    'gui file',\n    'send me file',\n    'send file',\n    'lay file',\n    'lay tep'\n  ];\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      return cleanName(original.slice(prefix.length + 1));\n    }\n\n    if (normalized === prefix) {\n      return '';\n    }\n  }\n\n  return '';\n}\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  args.fileId ||\n  args.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  args.fileName ||\n  args.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  extractFileName(raw)\n);\n\nconst hasTarget = Boolean(fileId || fileName);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n\n    hasTarget,\n    response: hasTarget\n      ? ''\n      : '📥 <b>Tải file từ Drive</b>\\n\\nVí dụ:\\n<code>tải file báo cáo.pdf</code>\\n<code>download file test_n8n.md</code>'\n  }\n}];"
       },
       "id": "9535d38b-4271-4166-9408-04a7da3207c9",
       "name": "Prepare Action",
@@ -102,7 +102,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      found: false,\n      fileId: '',\n      targetId: '',\n      response: 'Không tìm thấy file phù hợp với: <b>' + escapeHtml(source.fileName || source.targetName || '') + '</b>'\n    }\n  }];\n}\n\nconst file = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...file,\n    found: true,\n    fileId: file.id || source.fileId || '',\n    targetId: file.id || source.targetId || source.fileId || '',\n    fileName: file.name || source.fileName || source.targetName || '',\n    targetName: file.name || source.targetName || source.fileName || '',\n    webViewLink: file.webViewLink || source.webViewLink || '',\n    webContentLink: file.webContentLink || source.webContentLink || '',\n    mimeType: file.mimeType || source.mimeType || ''\n  }\n}];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\n\nfunction escapeHtml(value = '') {\n  return String(value)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((item) => item.id || item.name);\n\nif (!rows.length) {\n  return [{\n    json: {\n      ...source,\n      found: false,\n      fileId: '',\n      targetId: '',\n      response: 'Không tìm thấy file phù hợp với: <b>' + escapeHtml(source.fileName || source.targetName || '') + '</b>',\n      text: 'Không tìm thấy file phù hợp với: ' + String(source.fileName || source.targetName || '').trim()\n    }\n  }];\n}\n\nconst file = rows[0];\n\nreturn [{\n  json: {\n    ...source,\n    ...file,\n    found: true,\n    fileId: file.id || source.fileId || '',\n    targetId: file.id || source.targetId || source.fileId || '',\n    fileName: file.name || source.fileName || source.targetName || '',\n    targetName: file.name || source.targetName || source.fileName || '',\n    webViewLink: file.webViewLink || source.webViewLink || '',\n    webContentLink: file.webContentLink || source.webContentLink || '',\n    mimeType: file.mimeType || source.mimeType || ''\n  }\n}];"
       },
       "id": "c6f562e4-9147-439f-8422-28026f72f69a",
       "name": "Resolve Search Result",
@@ -170,7 +170,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const prepared = $('Prepare Action').item.json || {};\nconst meta = $input.item.json || {};\n\nconst fileId = meta.id || prepared.fileId || prepared.targetId || '';\nconst fileName = meta.name || prepared.fileName || prepared.targetName || 'download';\nconst mimeType = meta.mimeType || prepared.mimeType || '';\nconst isGoogleWorkspace = String(mimeType).startsWith('application/vnd.google-apps');\n\nconst webViewLink =\n  meta.webViewLink ||\n  prepared.webViewLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst downloadUrl = fileId\n  ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`\n  : '';\n\nconst caption = [\n  '📥 <b>Đã tải file từ Google Drive</b>',\n  '',\n  `📄 <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n  mimeType ? `Loại: <code>${mimeType.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : '',\n  fileId ? `ID: <code>${fileId.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...prepared,\n    ...meta,\n    fileId,\n    targetId: fileId,\n    fileName,\n    mimeType,\n    webViewLink,\n    downloadUrl,\n    isGoogleWorkspace,\n    caption,\n    response: isGoogleWorkspace\n      ? [\n          '⚠️ <b>Đây là file Google Workspace</b>',\n          '',\n          `File: <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n          'Google Docs/Sheets/Slides không tải trực tiếp bằng flow Download.',\n          'Hãy dùng lệnh <code>xuất file ... sang pdf/docx/xlsx/pptx</code>.',\n          webViewLink ? `🔗 <a href=\"${webViewLink.replace(/&/g, '&amp;').replace(/\"/g, '&quot;')}\">Mở file gốc</a>` : ''\n        ].filter(Boolean).join('\\n')\n      : ''\n  }\n}];"
+        "jsCode": "const prepared = $('Prepare Action').item.json || {};\nconst meta = $input.item.json || {};\n\nconst fileId = meta.id || prepared.fileId || prepared.targetId || '';\nconst fileName = meta.name || prepared.fileName || prepared.targetName || 'download';\nconst mimeType = meta.mimeType || prepared.mimeType || '';\nconst isGoogleWorkspace = String(mimeType).startsWith('application/vnd.google-apps');\n\nconst webViewLink =\n  meta.webViewLink ||\n  prepared.webViewLink ||\n  (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');\n\nconst downloadUrl = fileId\n  ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`\n  : '';\n\nconst caption = [\n  '📥 <b>Đã tải file từ Google Drive</b>',\n  '',\n  `📄 <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n  mimeType ? `Loại: <code>${mimeType.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : '',\n  fileId ? `ID: <code>${fileId.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>` : ''\n].filter(Boolean).join('\\n');\n\nconst workspaceResponse = [\n  '⚠️ <b>Đây là file Google Workspace</b>',\n  '',\n  `File: <b>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,\n  'Google Docs/Sheets/Slides không tải trực tiếp bằng flow Download.',\n  'Hãy dùng lệnh <code>xuất file ... sang pdf/docx/xlsx/pptx</code>.',\n  webViewLink ? `🔗 <a href=\"${webViewLink.replace(/&/g, '&amp;').replace(/\"/g, '&quot;')}\">Mở file gốc</a>` : ''\n].filter(Boolean).join('\\n');\n\nconst workspaceText = [\n  'Đây là file Google Workspace.',\n  `File: ${fileName}`,\n  'Google Docs/Sheets/Slides không tải trực tiếp bằng flow Download.',\n  'Hãy dùng lệnh xuất file ... sang pdf/docx/xlsx/pptx.',\n  webViewLink ? `Mở file gốc: ${webViewLink}` : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...prepared,\n    ...meta,\n    fileId,\n    targetId: fileId,\n    fileName,\n    mimeType,\n    webViewLink,\n    downloadUrl,\n    isGoogleWorkspace,\n    caption,\n    response: isGoogleWorkspace ? workspaceResponse : '',\n    text: isGoogleWorkspace ? workspaceText : ''\n  }\n}];"
       },
       "id": "bfce1bf9-6a57-4e79-b76b-a8ee982ebe1e",
       "name": "Prepare Download",
@@ -241,6 +241,19 @@
         1296,
         16
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        176
+      ]
     }
   ],
   "connections": {
@@ -275,7 +288,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Co File ID?": {
@@ -327,7 +346,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Drive Get Metadata": {
@@ -354,7 +379,13 @@
     },
     "La Google Workspace?": {
       "main": [
-        [],
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Drive Download Binary",

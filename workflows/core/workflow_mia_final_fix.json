@@ -40,7 +40,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.MIA_CORE_URL || 'http://mia-core:8000/mia/chat' }}",
+        "url": "http://mia-core:8000/mia/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-mia-core-token",
+              "value": "={{ $env.MIA_CORE_API_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { chat_id: $json.chatId, text: $json.rawText, thread_id: 'telegram:' + $json.chatId, user_id: String($json.chatId || ''), metadata: { source: 'telegram', attachmentKind: $json.attachmentKind || 'none', hasAttachment: Boolean($json.hasAttachment), fileName: $json.fileName || '', fileId: $json.fileId || '' } } }}",

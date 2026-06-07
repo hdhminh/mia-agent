@@ -4,9 +4,9 @@ import subprocess
 import json
 import urllib.request
 import sys
+from pathlib import Path
 
-# Đổi đường dẫn vào thư mục n8n
-WORK_DIR = "/home/huynhminh/Projects/n8n"
+WORK_DIR = Path(__file__).resolve().parents[2]
 os.chdir(WORK_DIR)
 
 def run(cmd, check=True):

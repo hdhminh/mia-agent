@@ -1,0 +1,349 @@
+{
+  "name": "Sub-workflow: Google Sheets - Update Range",
+  "nodes": [
+    {
+      "id": "b75ac73d-920f-4389-afe7-24fc8ec38ad4",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1560,
+        240
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "676e1f9b-e02c-4d3b-8c45-58d5fe99014d",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1320,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nlet spreadsheetId = String(source.spreadsheetId || source.sheetId || args.spreadsheetId || args.sheetId || payload.spreadsheetId || payload.sheetId || '').trim();\nlet sheetName = String(source.sheetName || source.fileName || source.title || args.sheetName || args.fileName || args.title || payload.sheetName || payload.fileName || payload.title || '').trim();\nlet sheetTab = String(source.sheetTab || args.sheetTab || payload.sheetTab || '').trim();\nlet range = String(source.range || source.rangeName || source.cell || args.range || args.rangeName || args.cell || payload.range || payload.rangeName || payload.cell || '').trim();\nlet content = source.content ?? args.content ?? payload.content ?? '';\nlet values = Array.isArray(source.values) ? source.values : Array.isArray(args.values) ? args.values : Array.isArray(payload.values) ? payload.values : [];\n\nif (typeof content === 'string') {\n  content = content.trim();\n}\nif (!content && rawText) {\n  content = rawText;\n}\nconst hasTarget = Boolean(spreadsheetId || sheetName);\nreturn [{ json: { ...source, payload, message, chatId, rawText, spreadsheetId, sheetName, sheetTab, range, content, values, hasTarget, response: hasTarget && range ? '' : 'Mia cần tên/id sheet, phạm vi và dữ liệu mới để cập nhật.' } }];"
+      }
+    },
+    {
+      "id": "22a13275-2659-4964-9181-5f142b4a7c5b",
+      "name": "Has Direct Sheet ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1080,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.spreadsheetId || $json.sheetId) }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3822ed4c-497f-49a5-b4f3-a3ac732b7418",
+      "name": "Drive Search Sheet",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -820,
+        420
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ \"name contains '\" + String($json.sheetName || \"\").replace(/'/g, \"\\\\'\") + \"' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false\" }}",
+        "limit": 1,
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "whatToSearch": "all",
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "9312f365-adff-4bba-9cfe-dd551065aa71",
+      "name": "Resolve Search Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: `Mia chưa tìm thấy Google Sheet phù hợp: ${source.sheetName || source.query || ''}` } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, ok: true, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetId: sheet.id || source.sheetId || '', sheetName: sheet.name || source.sheetName || source.query || '', query: source.query || source.sheetName || '', webViewLink: sheet.webViewLink || source.webViewLink || '', mimeType: sheet.mimeType || source.mimeType || '', sheetTab: source.sheetTab || '' } }];"
+      }
+    },
+    {
+      "id": "d49bc061-0ca9-4c78-b73b-808794f4643d",
+      "name": "Build Update Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nfunction parseValues(input) {\n  if (Array.isArray(input) && input.length) {\n    return input;\n  }\n  const text = String(input || '').trim();\n  if (!text) return [];\n  if ((text.startsWith('[') && text.endsWith(']')) || (text.startsWith('{') && text.endsWith('}'))) {\n    try {\n      const parsed = JSON.parse(text);\n      if (Array.isArray(parsed)) return parsed;\n    } catch (err) {}\n  }\n  return text\n    .split(/\\r?\\n+/)\n    .map((line) => line.trim())\n    .filter(Boolean)\n    .map((line) => line.split(/\\t|,/).map((cell) => String(cell).trim()));\n}\n\nconst spreadsheetId = String(source.spreadsheetId || source.sheetId || '').trim();\nconst sheetTab = String(source.sheetTab || '').trim();\nconst range = String(source.range || source.rangeName || source.cell || 'A1').trim().toUpperCase();\nconst values = parseValues(source.values && source.values.length ? source.values : source.content);\nif (!values.length) {\n  throw new Error('Missing values. Cannot update Google Sheets range with empty content.');\n}\nconst targetRange = sheetTab ? `'${sheetTab.replace(/'/g, \"''\")}'!${range}` : range;\nreturn [{ json: { ...source, spreadsheetId, range: targetRange, values } }];"
+      }
+    },
+    {
+      "id": "5ef9d690-0e81-41fe-80b2-7c8d0a80784e",
+      "name": "Sheets Update Range",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -40,
+        240
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$json.spreadsheetId || $json.sheetId}}/values/{{$json.range}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "valueInputOption",
+              "value": "USER_ENTERED"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { values: $json.values } }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "xa6nA0L0pPqTF0jz",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "48198c43-17f7-43e8-a7b5-d0ae1dfd4882",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst sheetId = source.spreadsheetId || source.sheetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\nconst updatedRange = result.updatedRange || result.updatedData?.range || source.range || '';\nconst shownTarget = source.sheetName || 'Không rõ tên';\nlet text = `Đã cập nhật Google Sheet: ${shownTarget}`;\nif (sheetId) text += `\\nID: ${sheetId}`;\ntext += `\\nPhạm vi cập nhật: ${updatedRange}`;\nif (link) text += `\\nMở bảng tính: ${link}`;\nreturn [{ json: { chatId: source.chatId || result.chatId || '', text: text.trim(), spreadsheetId: sheetId, webViewLink: link } }];"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.hasTarget) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-has-target",
+      "name": "Has Target?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.ok) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sheets-search-found",
+      "name": "Search Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        240
+      ]
+    },
+    {
+      "id": "90659696-afe1-4c1d-93e8-c96631419918",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Has Direct Sheet ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Direct Sheet ID?": {
+      "main": [
+        [
+          {
+            "node": "Build Update Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Target?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Search Sheet": {
+      "main": [
+        [
+          {
+            "node": "Resolve Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Search Result": {
+      "main": [
+        [
+          {
+            "node": "Search Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Update Request": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets Update Range": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        []
+      ]
+    },
+    "Return Error": {
+      "main": [
+        []
+      ]
+    },
+    "Has Target?": {
+      "main": [
+        [
+          {
+            "node": "Drive Search Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Found?": {
+      "main": [
+        [
+          {
+            "node": "Build Update Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

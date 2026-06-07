@@ -18,12 +18,28 @@ The n8n side should keep:
 
 ## Environment
 
-- `OPENROUTER_API_KEY`: required if using OpenRouter
-- `MIA_MODEL`: model id, default `openai/gpt-4.1-mini`
+- `PRIMARY_LLM_PROVIDER`: `openrouter` or `deepseek_direct`
+- `OPENROUTER_API_KEY`: required if using OpenRouter or as DeepSeek fallback
+- `DEEPSEEK_API_KEY`: required if `PRIMARY_LLM_PROVIDER=deepseek_direct`
+- `MIA_MODEL`: OpenRouter fallback model id, default `deepseek/deepseek-v4-flash`
+- `MIA_DEEPSEEK_MODEL`: direct DeepSeek model id, default `deepseek-v4-flash`
 - `MIA_POSTGRES_URI`: defaults to the local pgvector container
 - `MIA_MEMORY_EMBEDDER_URL`: defaults to `http://memory-embedder:8000/embed`
 - `MIA_TOOL_GATEWAY_URL`: defaults to `http://n8n:5678/webhook/mia-tool`
 - `MIA_TOOL_GATEWAY_TOKEN`: shared secret with the n8n tool gateway
+- `MIA_EVALUATOR_MODE`: evaluator mode (`soft` or `hard`, default `hard`)
+- `MIA_EVALUATOR_MAX_RETRIES`: max evaluator retry attempts (default `2`)
+
+## Directory Structure
+
+Under `mia_core/`, the codebase is organized as follows:
+- `parsers/`: Submodules for request parsing & normalization (`google.py`, `github.py`, `media.py`, `web.py`, `common.py`). Central orchestrator is `request_parser.py`.
+- `tool_defs/`: Submodules defining LangChain tools (`memory.py`, `simple.py`, `google.py`, `github.py`, `media.py`, `web.py`, `common.py`). Exported via `tools.py`.
+- `web/`: Runtime web-page fetch/read/summarize service used by `/mia/chat`.
+- `media/`: Runtime multimodal analysis service for OCR, document, audio, video, and TTS flows.
+- `nodes/`: Agent state graph nodes (e.g. `supervisor.py`).
+- `prompts.py`: Central repository for all system instructions and prompts.
+- `github_handler.py` & `followup_handler.py`: Decoupled helper classes for executing special GitHub operations and follow-up handlers.
 
 ## API
 

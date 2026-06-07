@@ -1,0 +1,286 @@
+{
+  "name": "Mia: Tool Gateway",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "mia-tool",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "mia-tool-webhook",
+      "name": "Webhook Tool Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Webhook Tool Request').item.json || {};\nconst body = source.body || source;\nconst headers = source.headers || {};\nconst expectedToken = String($env.MIA_TOOL_GATEWAY_TOKEN || '').trim();\nconst providedToken = String(headers['x-mia-tool-token'] || headers['X-Mia-Tool-Token'] || '').trim();\n\nif (expectedToken && providedToken !== expectedToken) {\n  return [{ json: { ok: false, error: 'Unauthorized tool gateway token.' } }];\n}\n\nconst tool = String(body.tool || '').trim();\nconst args = body.args && typeof body.args === 'object' ? body.args : {};\nconst requestId = String(body.requestId || '').trim();\nconst originChatId = String(body.chatId || '').trim();\nconst deliveryMode = String(body.deliveryMode || 'return').trim() || 'return';\nconst backendChatId = originChatId;\n\nfunction clean(value) {\n  return String(value || '').trim();\n}\n\nconst toolConfig = {\n  'weather.get': {\n    workflowKey: 'weather',\n    build: (a) => ({\n      text: `thời tiết ${clean(a.location)}`.trim(),\n      location: clean(a.location),\n    }),\n  },\n  'gold.get_price': {\n    workflowKey: 'gold',\n    build: () => ({ text: 'giá vàng hôm nay' }),\n  },\n  'news.get': {\n    workflowKey: 'news',\n    build: (a) => ({\n      text: clean(a.topic) ? `tin tức ${clean(a.topic)}` : 'tin tức hôm nay',\n      topic: clean(a.topic),\n    }),\n  },\n  'search.web': {\n    workflowKey: 'search',\n    build: (a) => ({\n      text: `tìm kiếm ${clean(a.query)}`.trim(),\n      query: clean(a.query),\n    }),\n  },\n  'web.read_url': {\n    workflowKey: 'web.master',\n    build: (a) => {\n      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);\n      const instruction = clean(a.instruction || a.text || a.prompt) || (url ? `đọc link này ${url}` : 'đọc link này');\n      return {\n        text: instruction,\n        url,\n        instruction,\n        prompt: instruction,\n        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,\n      };\n    },\n  },\n  'web.summarize_url': {\n    workflowKey: 'web.master',\n    build: (a) => {\n      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);\n      const instruction = clean(a.instruction || a.text || a.prompt) || (url ? `tóm tắt link này ${url}` : 'tóm tắt link này');\n      return {\n        text: instruction,\n        url,\n        instruction,\n        prompt: instruction,\n        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,\n      };\n    },\n  },\n  'web.ask_url': {\n    workflowKey: 'web.master',\n    build: (a) => {\n      const url = clean(a.url || a.link || a.sourceUrl || a.source_url);\n      const question = clean(a.question || a.instruction || a.text || a.prompt) || (url ? `hỏi tiếp link này ${url}` : 'hỏi tiếp link này');\n      return {\n        text: question,\n        url,\n        instruction: question,\n        question,\n        prompt: question,\n        maxChars: Number(a.maxChars || a.max_chars || 0) || 0,\n      };\n    },\n  },\n\n  'calendar.help': {\n    workflowKey: 'calendar.help',\n    build: () => ({ text: 'calendar help' }),\n  },\n  'calendar.list_today': {\n    workflowKey: 'calendar.list_today',\n    build: () => ({ text: 'lịch hôm nay' }),\n  },\n  'calendar.list_tomorrow': {\n    workflowKey: 'calendar.list_tomorrow',\n    build: () => ({ text: 'lịch ngày mai' }),\n  },\n  'calendar.find_event': {\n    workflowKey: 'calendar.find_event',\n    build: (a) => ({ text: clean(a.instruction) || 'tìm sự kiện lịch' }),\n  },\n  'calendar.create_event': {\n    workflowKey: 'calendar.create_event',\n    build: (a) => ({ text: clean(a.instruction) || 'tạo lịch' }),\n  },\n  'calendar.delete_event': {\n    workflowKey: 'calendar.delete_event',\n    build: (a) => ({ text: clean(a.instruction) || 'xóa lịch' }),\n  },\n  'calendar.check_availability': {\n    workflowKey: 'calendar.check_availability',\n    build: (a) => ({ text: clean(a.instruction) || 'kiểm tra lịch rảnh' }),\n  },\n\n  'gmail.help': {\n    workflowKey: 'gmail.help',\n    build: () => ({ text: 'gmail help' }),\n  },\n  'gmail.list_inbox': {\n    workflowKey: 'gmail.list_inbox',\n    build: () => ({ text: 'xem mail' }),\n  },\n  'gmail.read_email': {\n    workflowKey: 'gmail.read_email',\n    build: (a) => ({ text: clean(a.instruction) || 'đọc email' }),\n  },\n  'gmail.search_email': {\n    workflowKey: 'gmail.search_email',\n    build: (a) => ({\n      text: clean(a.instruction) || (clean(a.query) ? `tìm email ${clean(a.query)}` : 'tìm email'),\n      query: clean(a.query),\n    }),\n  },\n  'gmail.send_email': {\n    workflowKey: 'gmail.send_email',\n    build: (a) => ({ text: clean(a.instruction) || 'gửi email' }),\n  },\n  'gmail.draft_email': {\n    workflowKey: 'gmail.draft_email',\n    build: (a) => ({ text: clean(a.instruction) || 'soạn email' }),\n  },\n  'gmail.reply_email': {\n    workflowKey: 'gmail.reply_email',\n    build: (a) => ({ text: clean(a.instruction) || 'trả lời email' }),\n  },\n\n  'github.help': {\n    workflowKey: 'github.help',\n    build: () => ({ text: 'github help' }),\n  },\n\n  'github.list_user_repos': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.username) || 'xem repo cua minh',\n      username: clean(a.username),\n      visibility: clean(a.visibility),\n      limit: Number(a.limit || 20) || 20,\n      page: Number(a.page || 1) || 1,\n    }),\n  },\n  'github.search_repos': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.query) || clean(a.topic) || 'tim repo',\n      query: clean(a.query),\n      topic: clean(a.topic),\n      language: clean(a.language),\n      sortBy: clean(a.sortBy || a.sort_by),\n      limit: Number(a.limit || 10) || 10,\n      page: Number(a.page || 1) || 1,\n    }),\n  },\n\n  'github.get_repo': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem repo github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n    }),\n  },\n  'github.get_repo_tree': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem cấu trúc repo github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      path: clean(a.path),\n      ref: clean(a.ref),\n      limit: Number(a.limit || 20) || 20,\n    }),\n  },\n  'github.list_branches': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem branch github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      limit: Number(a.limit || 20) || 20,\n    }),\n  },\n  'github.list_commits': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || 'xem commit github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      ref: clean(a.ref),\n      limit: Number(a.limit || 20) || 20,\n    }),\n  },\n  'github.get_commit': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.repoUrl) || clean(a.repo) || clean(a.ref) || 'xem chi tiet commit github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      ref: clean(a.ref),\n    }),\n  },\n  'github.get_file': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.path) || clean(a.repoUrl) || clean(a.repo) || 'doc file github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      path: clean(a.path),\n      ref: clean(a.ref),\n      maxChars: Number(a.maxChars || 4000) || 4000,\n    }),\n  },\n  'github.search_code': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.query) || clean(a.repoUrl) || clean(a.repo) || 'tim code github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      query: clean(a.query),\n      limit: Number(a.limit || 10) || 10,\n    }),\n  },\n  'github.get_diff': {\n    workflowKey: 'github.master',\n    build: (a) => ({\n      text: clean(a.instruction) || clean(a.base) || clean(a.head) || clean(a.repoUrl) || clean(a.repo) || 'xem diff github',\n      repo: clean(a.repo),\n      owner: clean(a.owner),\n      repoName: clean(a.repoName),\n      repoUrl: clean(a.repoUrl),\n      base: clean(a.base),\n      head: clean(a.head),\n    }),\n  },\n\n  'drive.help': {\n    workflowKey: 'drive.help',\n    build: () => ({ text: 'drive help' }),\n  },\n  'drive.list_files': {\n    workflowKey: 'drive.list_files',\n    build: () => ({ text: 'xem file drive' }),\n  },\n  'drive.search_file': {\n    workflowKey: 'drive.search_file',\n    build: (a) => ({\n      text: clean(a.instruction) || (clean(a.query) ? `tìm file ${clean(a.query)}` : 'tìm file'),\n      query: clean(a.query),\n      fileName: clean(a.fileName || a.query),\n      mimeType: clean(a.mimeType),\n      limit: Number(a.limit || 10) || 10,\n    }),\n  },\n  'drive.get_file_info': {\n    workflowKey: 'drive.get_file_info',\n    build: (a) => ({ text: clean(a.instruction) || 'xem chi tiết file' }),\n  },\n  'drive.create_folder': {\n    workflowKey: 'drive.create_folder',\n    build: (a) => ({ text: clean(a.instruction) || 'tạo folder' }),\n  },\n  'drive.create_file': {\n    workflowKey: 'drive.create_file',\n    build: (a) => ({ text: clean(a.instruction) || 'tạo file' }),\n  },\n  'drive.upload_file': {\n    workflowKey: 'drive.upload_file',\n    build: (a) => ({ text: clean(a.instruction) || 'upload file' }),\n  },\n  'drive.download_file': {\n    workflowKey: 'drive.download_file',\n    build: (a) => ({ text: clean(a.instruction) || 'tải file' }),\n  },\n  'drive.share_file': {\n    workflowKey: 'drive.share_file',\n    build: (a) => ({ text: clean(a.instruction) || 'share file' }),\n  },\n  'drive.move_file': {\n    workflowKey: 'drive.move_file',\n    build: (a) => ({ text: clean(a.instruction) || 'di chuyển file' }),\n  },\n  'drive.rename_file': {\n    workflowKey: 'drive.rename_file',\n    build: (a) => ({ text: clean(a.instruction) || 'đổi tên file' }),\n  },\n  'drive.copy_file': {\n    workflowKey: 'drive.copy_file',\n    build: (a) => ({ text: clean(a.instruction) || 'copy file' }),\n  },\n  'drive.delete_file': {\n    workflowKey: 'drive.delete_file',\n    build: (a) => ({ text: clean(a.instruction) || 'xóa file' }),\n  },\n  'drive.delete_folder': {\n    workflowKey: 'drive.delete_folder',\n    build: (a) => ({ text: clean(a.instruction) || 'xóa folder' }),\n  },\n  'drive.export_file': {\n    workflowKey: 'drive.export_file',\n    build: (a) => ({ text: clean(a.instruction) || 'export file' }),\n  },\n\n  'docs.help': {\n    workflowKey: 'docs.help',\n    build: () => ({ text: 'docs help' }),\n  },\n  'docs.search_doc': {\n    workflowKey: 'docs.search_doc',\n    build: (a) => ({\n      text: clean(a.instruction) || (clean(a.query) ? `tìm doc ${clean(a.query)}` : 'tìm doc'),\n      query: clean(a.query),\n      docName: clean(a.docName || a.query),\n      limit: Number(a.limit || 10) || 10,\n    }),\n  },\n  'docs.read_doc': {\n    workflowKey: 'docs.read_doc',\n    build: (a) => ({ text: clean(a.instruction) || 'xem doc' }),\n  },\n  'docs.create_doc': {\n    workflowKey: 'docs.create_doc',\n    build: (a) => ({ text: clean(a.instruction) || 'tạo doc' }),\n  },\n  'docs.append_doc': {\n    workflowKey: 'docs.append_doc',\n    build: (a) => ({ text: clean(a.instruction) || 'thêm vào doc' }),\n  },\n  'docs.delete_doc': {\n    workflowKey: 'docs.delete_doc',\n    build: (a) => ({ text: clean(a.instruction) || 'xóa doc' }),\n  },\n\n  'sheets.help': {\n    workflowKey: 'sheets.help',\n    build: () => ({ text: 'sheets help' }),\n  },\n  'sheets.search_sheet': {\n    workflowKey: 'sheets.search_sheet',\n    build: (a) => ({\n      text: clean(a.instruction) || (clean(a.query) ? `tìm sheet ${clean(a.query)}` : 'tìm sheet'),\n      query: clean(a.query),\n      sheetName: clean(a.sheetName || a.query),\n      limit: Number(a.limit || 10) || 10,\n    }),\n  },\n  'sheets.read_sheet': {\n    workflowKey: 'sheets.read_sheet',\n    build: (a) => ({ text: clean(a.instruction) || 'xem sheet' }),\n  },\n  'sheets.create_sheet': {\n    workflowKey: 'sheets.create_sheet',\n    build: (a) => ({ text: clean(a.instruction) || 'tạo sheet' }),\n  },\n  'sheets.append_row': {\n    workflowKey: 'sheets.append_row',\n    build: (a) => ({ text: clean(a.instruction) || 'thêm dòng vào sheet' }),\n  },\n  'sheets.update_cell': {\n    workflowKey: 'sheets.update_cell',\n    build: (a) => ({ text: clean(a.instruction) || 'cập nhật sheet' }),\n  },\n  'sheets.delete_sheet': {\n    workflowKey: 'sheets.delete_sheet',\n    build: (a) => ({ text: clean(a.instruction) || 'xóa sheet' }),\n  },\n\n  'shortlink.create': {\n    workflowKey: 'shortlink.create',\n    build: (a) => {\n      const url = clean(a.url);\n      const ttl = clean(a.ttl);\n      return {\n        text: ttl ? `rút gọn link ${url} ${ttl}` : `rút gọn link ${url}`,\n        url,\n        ttl,\n      };\n    },\n  },\n\n  'calendar.assistant': {\n    workflowKey: 'calendar.master',\n    build: (a) => ({ text: clean(a.instruction) || 'calendar help' }),\n  },\n  'gmail.assistant': {\n    workflowKey: 'gmail.master',\n    build: (a) => ({ text: clean(a.instruction) || 'gmail help' }),\n  },\n  'drive.assistant': {\n    workflowKey: 'drive.master',\n    build: (a) => ({ text: clean(a.instruction) || 'drive help' }),\n  },\n  'docs.assistant': {\n    workflowKey: 'docs.master',\n    build: (a) => ({ text: clean(a.instruction) || 'docs help' }),\n  },\n  'sheets.assistant': {\n    workflowKey: 'sheets.master',\n    build: (a) => ({ text: clean(a.instruction) || 'sheets help' }),\n  },\n};\n\nif (!tool) {\n  return [{ json: { ok: false, error: 'Missing tool name.' } }];\n}\n\nconst config = toolConfig[tool];\nif (!config) {\n  return [{ json: { ok: false, error: `Unsupported or invalid tool request: ${tool}` } }];\n}\n\nconst built = config.build(args || {});\nconst text = clean(built.text);\nif (!text) {\n  return [{ json: { ok: false, error: `Unsupported or invalid tool request: ${tool}` } }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool,\n    workflowKey: config.workflowKey,\n    text,\n    rawText: text,\n    chatId: backendChatId,\n    originChatId,\n    requestId,\n    deliveryMode,\n    args,\n    payload: { tool, args, requestId, originChatId, deliveryMode },\n    message: { text, caption: text },\n    ...built,\n  }\n}];"
+      },
+      "id": "mia-tool-prepare",
+      "name": "Prepare Tool Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "mia-tool-can-continue",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Tool Request').item.json || $json || {};\nconst workflowMap = {\n  weather: 'm1ip8fFcTkdBwtWh',\n  gold: 'KRRETdOwKih9MNPh',\n  news: 'dX9MXm49hdVAproP',\n  search: '72gE9VPYxBgxFn6h',\n\n  'calendar.help': 'buFXNQy3jqWDmpqe',\n  'calendar.list_today': 'fbbeN6ckzosQJv14',\n  'calendar.list_tomorrow': 'mwuGFWvzZ47770HO',\n  'calendar.find_event': 'R5yJqwK9Y8hVGzcQ',\n  'calendar.create_event': 'lQUROmYRGrPOfGru',\n  'calendar.delete_event': 'zTyOoljgq4XoXUnZ',\n  'calendar.check_availability': 'QNGbJJxdxx5bkYRS',\n  'calendar.master': 'hEGn8N6rE17tMw5T',\n\n  'gmail.help': 'efiXM0nYtf8h5oN1',\n  'gmail.list_inbox': 'bUttIwvNK8gokFRY',\n  'gmail.read_email': 'KMSgPWsLgD78Lgqs',\n  'gmail.search_email': 'AsyVChldV5uHWMLv',\n  'gmail.send_email': 'bsMiSbmWuz04ED7d',\n  'gmail.draft_email': '95MhxIrGwcGCzqfJ',\n  'gmail.reply_email': '8O7sp8oZjnYp8LPR',\n  'gmail.master': 's5LDuZZpOCAYiQsf',\n\n  'github.help': 'EAjktOSsda0CNGcv',\n  'github.master': 'SZZSe1XuJx507pwK',\n\n  'drive.help': '248qYlIWrhgkbw5a',\n  'drive.list_files': 'ByX1wU72gZyR0dmz',\n  'drive.search_file': 'kJ2TJUZESrqF3PSK',\n  'drive.get_file_info': 'EtGHnyz7zIUeX7BT',\n  'drive.create_folder': 'eZK8FwtV0DEZ2iGw',\n  'drive.create_file': '1dCaJf0LLvPvLfEf',\n  'drive.upload_file': 'CQ0pTKvmWRsc1EIg',\n  'drive.download_file': 'HWdqSk7Ypm050tMj',\n  'drive.share_file': '1GZEqdbawBTQ1uGI',\n  'drive.move_file': 'Y9eTfqjWgS4OxZLb',\n  'drive.rename_file': 'ckwW3SXzyTYZtVUD',\n  'drive.copy_file': 'x76DaXdWmvZmqtuj',\n  'drive.delete_file': 'Yg27A2SbktcGd3LH',\n  'drive.delete_folder': 'fzVMUuApymKD8CRC',\n  'drive.export_file': 'bqFzCUZ5pBhpMFaP',\n  'drive.master': 'abTxYqrVCN4Qzz5U',\n\n  'docs.help': 'vMfknpP9mURW6wpG',\n  'docs.search_doc': '14Xy6V6vrcsLQnaN',\n  'docs.read_doc': 'Q2GmORDNyNLKoHjq',\n  'docs.create_doc': 'eiKAYFRQ5WODOIsJ',\n  'docs.append_doc': 'g224aehzAvc7e6Ey',\n  'docs.delete_doc': 'GH0RIzGys3QjYl9f',\n  'docs.master': 'kO3D2tjgJmy3CvSg',\n\n  'sheets.help': 'KKM9UszskWpawgUG',\n  'sheets.search_sheet': 'FkjdZUfve4hIpE8T',\n  'sheets.read_sheet': 'PNiB0UmyVcmICyBh',\n  'sheets.create_sheet': 'TqKhGvLdtz6vM4iv',\n  'sheets.append_row': 'ZJvMK3osguI9UdyE',\n  'sheets.update_cell': 't7WfKIJjuKDYnRnf',\n  'sheets.delete_sheet': 'QkFLuoiyQCyhtLbf',\n  'sheets.master': '0cwoCCOYhAldS4Qj',\n\n  'shortlink.create': 'D1cdbPhZef9glsNh',\n  'web.master': 'y4V9eGjssR8sSJLb',\n};\n\nconst workflowId = workflowMap[source.workflowKey || ''];\nif (!workflowId) {\n  return [{ json: { ok: false, error: `Unsupported workflow key: ${source.workflowKey || '(empty)'}`, tool: source.tool || '', workflowKey: source.workflowKey || '', requestId: source.requestId || '' } }];\n}\nreturn [{ json: { ...source, workflowId } }];"
+      },
+      "id": "mia-tool-route",
+      "name": "Route Tool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Tool Request').item.json || {};\nconst output = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst raw = String(\n  output.text ||\n  output.output ||\n  output.response ||\n  output.responseText ||\n  ''\n).replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim();\n\nconst text = htmlToPlainText(raw) || raw || JSON.stringify(output);\n\nreturn [{\n  json: {\n    ok: output.ok !== false,\n    tool: source.tool || '',\n    workflowKey: source.workflowKey || '',\n    requestId: source.requestId || '',\n    text,\n    data: output,\n  }\n}];"
+      },
+      "id": "mia-tool-normalize-result",
+      "name": "Normalize Tool Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "mia-tool-return-error",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "mia-tool-call-routed",
+      "name": "Call Routed Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.workflowLookup }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "mia-tool-needs-lookup",
+      "name": "Needs Workflow Lookup?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?active=true&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mia-tool-lookup-workflow",
+      "name": "Lookup Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -480,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data;\nconst routed = $('Route Tool').item.json || {};\nconst targetName = routed.workflowName;\nconst found = Array.isArray(workflows) ? workflows.find((w) => w.name === targetName) : null;\nif (!found) {\n  return [{ json: { ...routed, workflowId: null, error: 'Workflow not found: ' + targetName } }];\n}\nreturn [{ json: { ...routed, workflowId: found.id } }];"
+      },
+      "id": "mia-tool-extract-workflow",
+      "name": "Extract Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        512
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Tool Request": {
+      "main": [
+        [
+          {
+            "node": "Prepare Tool Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Tool Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Route Tool",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Tool": {
+      "main": [
+        [
+          {
+            "node": "Needs Workflow Lookup?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Routed Workflow": {
+      "main": [
+        [
+          {
+            "node": "Normalize Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Tool Result": {
+      "main": [
+        []
+      ]
+    },
+    "Return Error": {
+      "main": [
+        []
+      ]
+    },
+    "Needs Workflow Lookup?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Routed Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Call Routed Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

@@ -1,0 +1,203 @@
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from mia_core.parsers.common import (
+    any_keyword_matches,
+    keyword_matches,
+    normalize_query_text,
+    _matches_action,
+    READ_ACTION_CUES,
+    VIEW_ACTION_CUES,
+)
+
+GITHUB_REPO_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)"
+    r"(?:/(?:tree|blob)/(?P<ref>[^/\s?#]+)(?:/(?P<path>[^\s?#]+))?)?",
+    flags=re.IGNORECASE,
+)
+
+GITHUB_ACCOUNT_REPO_CUES = (
+    "repo cua toi",
+    "repo của tôi",
+    "repo cua minh",
+    "repo của mình",
+    "repos cua toi",
+    "repos của tôi",
+    "repos cua minh",
+    "repos của mình",
+    "danh sach repo",
+    "danh sách repo",
+    "liet ke repo",
+    "liệt kê repo",
+    "xem repo cua toi",
+    "xem repo của tôi",
+    "xem repo cua minh",
+    "xem repo của mình",
+    "github repos",
+    "my repos",
+)
+
+GITHUB_REPO_SEARCH_CUES = (
+    "tim repo",
+    "tìm repo",
+    "tim kiem repo",
+    "tìm kiếm repo",
+    "tim kiem cac repo",
+    "tìm kiếm các repo",
+    "tim cac repo",
+    "tìm các repo",
+    "search repo",
+    "search repositories",
+    "search repository",
+    "find repo",
+    "find repositories",
+    "find repository",
+    "repo theo topic",
+    "repo theo language",
+    "repo theo ngon ngu",
+    "repo theo ngôn ngữ",
+    "repo ve",
+    "repo về",
+    "cac repo",
+    "các repo",
+    "topic repo",
+    "github repos by topic",
+)
+
+
+def _infer_github_hint(
+    normalized: str,
+    metadata: dict[str, Any] | None,
+    help_request: bool,
+) -> tuple[str, bool]:
+    context = extract_github_repo_context(normalized, metadata)
+    if not context:
+        if help_request:
+            return "github_help", True
+        return "", False
+
+    path = str(context.get("path") or "").strip()
+    ref = str(context.get("ref") or "").strip()
+    repo = str(context.get("repo") or "").strip()
+
+    if any_keyword_matches(normalized, ("diff", "compare", "so sanh", "so sánh", "patch", "changes")):
+        return "github_get_diff", True
+    if any_keyword_matches(normalized, ("cau truc repo", "cấu trúc repo", "repo tree", "tree", "cay repo", "cây repo", "directory structure", "file tree")):
+        return "github_get_repo_tree", True
+    if any_keyword_matches(normalized, ("branch", "branches", "nhanh", "nhánh")):
+        return "github_list_branches", True
+    if re.search(r"\b[0-9a-f]{7,40}\b", normalized):
+        if any_keyword_matches(normalized, ("commit", "commits", "chi tiet", "chi tiết", "details")):
+            return "github_get_commit", True
+    if any_keyword_matches(normalized, ("commit", "commits", "lịch sử commit", "lich su commit", "history")):
+        return "github_list_commits", True
+    if path and (
+        _matches_action(normalized, READ_ACTION_CUES)
+        or _matches_action(normalized, VIEW_ACTION_CUES)
+        or any_keyword_matches(normalized, ("file", "code", "source", "doc", "đọc", "xem"))
+    ):
+        return "github_get_file", True
+    if any_keyword_matches(normalized, ("readme", "read me", "tóm tắt readme", "tom tat readme", "summary readme", "summarize readme", "overview readme")):
+        return "github_get_file", False
+    if any_keyword_matches(normalized, ("doc file", "đọc file", "xem file", "read file", "source file", "file")):
+        return "github_get_file", True
+    if path:
+        return "github_get_file", True
+    if any_keyword_matches(normalized, ("search code", "tim code", "tìm code", "tim trong repo", "tìm trong repo", "code search", "find code", "search repository")):
+        return "github_search_code", True
+    if any_keyword_matches(normalized, ("repo", "repository", "source repo", "github repo", "thong tin repo", "thông tin repo", "xem repo", "repo nay", "repo này")):
+        return "github_get_repo", True
+    if ref and (any_keyword_matches(normalized, ("commit", "history", "lịch sử", "lich su")) or help_request):
+        return "github_get_commit", True
+    if help_request:
+        return "github_help", True
+    if repo:
+        return "github_get_repo", False
+    return "github_get_repo", False
+
+
+def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = None) -> dict[str, str]:
+    source = " ".join(
+        part
+        for part in [
+            str(text or "").strip(),
+            str((metadata or {}).get("repoUrl") or (metadata or {}).get("repo_url") or "").strip(),
+            str((metadata or {}).get("repo") or "").strip(),
+            str((metadata or {}).get("owner") or "").strip(),
+            str((metadata or {}).get("repoName") or (metadata or {}).get("repo_name") or "").strip(),
+            str((metadata or {}).get("path") or (metadata or {}).get("filePath") or (metadata or {}).get("file_path") or "").strip(),
+            str((metadata or {}).get("ref") or "").strip(),
+        ]
+        if part
+    ).strip()
+    if not source:
+        return {}
+    normalized_source = normalize_query_text(source)
+
+    match = GITHUB_REPO_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        ref = match.group("ref") or ""
+        path = match.group("path") or ""
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "ref": ref,
+            "path": path,
+        }
+
+    repo = str((metadata or {}).get("repo") or "").strip()
+    owner = str((metadata or {}).get("owner") or "").strip()
+    repo_name = str((metadata or {}).get("repoName") or (metadata or {}).get("repo_name") or "").strip()
+    if repo:
+        if "/" in repo and not owner and not repo_name:
+            owner, repo_name = repo.split("/", 1)
+        elif owner and not repo_name:
+            repo_name = repo
+        elif repo_name and not owner:
+            owner = repo
+        repo_name = repo_name or ""
+        if owner and repo_name:
+            return {
+                "repo": f"{owner}/{repo_name}",
+                "owner": owner,
+                "repoName": repo_name,
+                "repoUrl": f"https://github.com/{owner}/{repo_name}",
+                "ref": str((metadata or {}).get("ref") or "").strip(),
+                "path": str((metadata or {}).get("path") or (metadata or {}).get("filePath") or (metadata or {}).get("file_path") or "").strip(),
+            }
+
+    github_action_cues = (
+        "github",
+        "repo",
+        "repository",
+        "diff",
+        "compare",
+        "commit",
+        "branch",
+        "branches",
+        "file",
+        "code",
+        "search",
+    )
+    if "github.com/" in normalized_source or any(keyword_matches(normalized_source, cue) for cue in github_action_cues):
+        plain = re.search(r"\b([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)\b", source)
+        if plain:
+            owner = plain.group(1)
+            repo_name = plain.group(2)
+            return {
+                "repo": f"{owner}/{repo_name}",
+                "owner": owner,
+                "repoName": repo_name,
+                "repoUrl": f"https://github.com/{owner}/{repo_name}",
+                "ref": str((metadata or {}).get("ref") or "").strip(),
+                "path": str((metadata or {}).get("path") or (metadata or {}).get("filePath") or (metadata or {}).get("file_path") or "").strip(),
+            }
+
+    return {}

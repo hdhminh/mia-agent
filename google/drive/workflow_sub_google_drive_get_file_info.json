@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction extractFileName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'thong tin file',\n    'chi tiet file',\n    'file info',\n    'metadata file',\n    'info file',\n    'xem thong tin file',\n    'xem chi tiet file',\n    'noi dung file',\n    'doc file',\n    'read file'\n  ];\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      return cleanName(original.slice(prefix.length + 1));\n    }\n\n    if (normalized === prefix) {\n      return '';\n    }\n  }\n\n  return '';\n}\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  extractFileName(raw)\n);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n    hasTarget: Boolean(fileId || fileName),\n    response: fileId || fileName\n      ? ''\n      : '📄 <b>Thông tin file</b>\\n\\nVí dụ: <code>thông tin file báo cáo.pdf</code>\\n<code>nội dung file note.md</code>'\n  }\n}];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\n\nconst payload = source.payload || {};\nconst message =\n  source.message ||\n  payload.message ||\n  payload.body?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  message.chat?.id ||\n  payload.chatId ||\n  '';\n\nconst raw = String(\n  source.rawText ||\n  source.text ||\n  message.text ||\n  payload.text ||\n  ''\n).trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nfunction extractFileName(rawText) {\n  const original = String(rawText || '').trim();\n  const normalized = normalize(original);\n\n  const prefixes = [\n    'thong tin file',\n    'chi tiet file',\n    'file info',\n    'metadata file',\n    'info file',\n    'xem thong tin file',\n    'xem chi tiet file',\n    'noi dung file',\n    'doc file',\n    'read file'\n  ];\n\n  for (const prefix of prefixes) {\n    if (normalized.startsWith(prefix + ' ')) {\n      return cleanName(original.slice(prefix.length + 1));\n    }\n\n    if (normalized === prefix) {\n      return '';\n    }\n  }\n\n  return '';\n}\n\nconst fileId =\n  source.fileId ||\n  source.targetId ||\n  args.fileId ||\n  args.targetId ||\n  payload.fileId ||\n  payload.targetId ||\n  '';\n\nconst fileName = cleanName(\n  source.fileName ||\n  source.targetName ||\n  args.fileName ||\n  args.targetName ||\n  payload.fileName ||\n  payload.targetName ||\n  extractFileName(raw)\n);\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    raw,\n    rawText: raw,\n    text: normalize(raw),\n    fileId,\n    targetId: fileId,\n    fileName,\n    targetName: fileName,\n    hasTarget: Boolean(fileId || fileName),\n    response: fileId || fileName\n      ? ''\n      : '📄 <b>Thông tin file</b>\\n\\nVí dụ: <code>thông tin file báo cáo.pdf</code>\\n<code>nội dung file note.md</code>'\n  }\n}];"
       },
       "id": "967d69a2-2198-4f4c-ac67-b1e81c7e763b",
       "name": "Prepare Action",
@@ -254,6 +254,19 @@
         944,
         -112
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        48
+      ]
     }
   ],
   "connections": {
@@ -288,7 +301,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Co File ID?": {
@@ -340,7 +359,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Drive Get Metadata": {

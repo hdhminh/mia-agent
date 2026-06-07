@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-ROOT = Path("/home/huynhminh/Projects/n8n/google")
+ROOT = Path(__file__).resolve().parents[2] / "google"
 
 
 PATCHES = {
@@ -158,13 +158,13 @@ const docId = doc.documentId || source.docId || '';
 const title = doc.title || source.docName || 'Không rõ tên';
 const link = source.webViewLink || (docId ? `https://docs.google.com/document/d/${docId}/edit` : '');
 const content = collectText(doc.body?.content || []).join('').replace(/\\n{3,}/g, '\\n\\n').trim();
-let preview = content.slice(0, 3000) || '(Tài liệu rỗng)';
+let preview = content.slice(0, 1000) || '(Tài liệu rỗng)';
 
 let text = `Nội dung Google Doc: ${title}`;
 if (docId) text += `\\nID: ${docId}`;
 if (link) text += `\\nMở tài liệu: ${link}`;
 text += `\\n\\nXem trước:\\n${preview}`;
-if (content.length > 3000) text += '\\n\\nNội dung đã được rút gọn.';
+if (content.length > 1000) text += '\\n\\nNội dung đã được rút gọn.';
 
 return [{ json: { chatId: source.chatId || '', text: text.trim() } }];""",
     },
@@ -268,11 +268,11 @@ const source = {
 };
 const result = $input.item.json || {};
 const rows = Array.isArray(result.values) ? result.values : [];
-const limited = rows.slice(0, 30);
+const limited = rows.slice(0, 10);
 let preview = limited.map((row, index) => `${index + 1}. ${row.map((cell) => String(cell)).join(' | ')}`).join('\\n');
-let truncated = rows.length > 30;
-if (preview.length > 3000) {
-  preview = preview.slice(0, 3000);
+let truncated = rows.length > 10;
+if (preview.length > 1000) {
+  preview = preview.slice(0, 1000);
   truncated = true;
 }
 

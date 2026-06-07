@@ -1,0 +1,440 @@
+{
+  "name": "Sub-workflow: Media Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "media-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args && typeof source.args === 'object' ? source.args : {};\nconst rawTool = String(source.tool || args.tool || '').trim();\nconst tool = rawTool.replace(/^media\\./, '');\nconst fileId = String(args.fileId || args.telegramFileId || source.fileId || '').trim();\nconst fileName = String(args.fileName || source.fileName || '').trim();\nconst mimeType = String(args.mimeType || source.mimeType || '').trim();\nconst attachmentKind = String(args.attachmentKind || source.attachmentKind || '').trim();\nconst hasAttachment = Boolean(args.hasAttachment ?? source.hasAttachment ?? fileId);\nconst text = String(args.text || args.instruction || source.text || source.rawText || '').trim();\nconst question = String(args.question || text).trim();\nconst prompt = String(args.prompt || text).trim();\nconst language = String(args.language || '').trim();\nconst voice = String(args.voice || '').trim();\nconst model = String(args.model || '').trim();\nconst responseMode = String(args.responseMode || 'json').trim();\nconst coreToken = String($env.MIA_CORE_API_TOKEN || '').trim();\n\nconst toolToEndpoint = {\n  'image_ocr': '/mia/media/image/ocr',\n  'image_describe': '/mia/media/image/describe',\n  'image_extract_fields': '/mia/media/image/extract-fields',\n  'document_extract_text': '/mia/media/document/extract-text',\n  'document_summarize': '/mia/media/document/summarize',\n  'document_search_answer': '/mia/media/document/search-answer',\n  'document_extract_fields': '/mia/media/document/extract-fields',\n  'audio_transcribe': '/mia/media/audio/transcribe',\n  'audio_summarize': '/mia/media/audio/summarize',\n  'video_transcribe': '/mia/media/video/transcribe',\n  'video_summarize': '/mia/media/video/summarize',\n  'tts_speak': '/mia/media/tts/speak',\n};\n\nconst configuredCoreUrl = String($env.MIA_CORE_URL || 'http://mia-core:8000').replace(/\\/$/, '');\nconst coreBaseUrl = configuredCoreUrl.replace(/\\/mia\\/chat\\/?$/, '');\nconst endpointPath = toolToEndpoint[tool] || '';\nif (!endpointPath) {\n  return [{ json: { ok: false, error: `Unsupported media tool: ${rawTool || tool}`, tool: rawTool || tool } }];\n}\n\nconst needsFile = tool !== 'tts_speak';\nreturn [{\n  json: {\n    ok: true,\n    tool,\n    rawTool,\n    endpointPath,\n    coreBaseUrl,\n    coreUrl: `${coreBaseUrl}${endpointPath}`,\n    coreToken,\n    fileId,\n    fileName,\n    mimeType,\n    attachmentKind: attachmentKind || (tool.startsWith('video_') ? 'video' : tool.startsWith('audio_') ? 'audio' : tool.startsWith('document_') ? 'document' : 'photo'),\n    hasAttachment,\n    text,\n    question,\n    prompt,\n    language,\n    voice,\n    model,\n    responseMode,\n    needsFile,\n    requestId: String(source.requestId || '').trim(),\n    originChatId: String(source.originChatId || source.chatId || '').trim(),\n    deliveryMode: String(source.deliveryMode || 'return').trim() || 'return',\n  }\n}];"
+      },
+      "id": "media-normalize",
+      "name": "Normalize Media Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needsFile }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "media-needs-file",
+      "name": "Needs File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/getFile",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.fileId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "media-get-file",
+      "name": "Telegram Get File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -336,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Normalize Media Input').item.json || {};\nconst filePath = String($json.result?.file_path || '').trim();\nif (!filePath) {\n  return [{ json: { ok: false, error: 'Telegram file path not found.', ...input } }];\n}\nreturn [{\n  json: {\n    ...input,\n    filePath,\n    downloadUrl: `https://api.telegram.org/file/bot${$env.TELEGRAM_BOT_TOKEN}/${filePath}`,\n  }\n}];"
+      },
+      "id": "media-prepare-download",
+      "name": "Prepare Download",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.downloadUrl }}",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "id": "media-download-file",
+      "name": "Download Telegram File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Prepare Download').item.json || {};\nconst binaryMeta = $input.item.binary?.data || $binary?.data || null;\nif (!binaryMeta) {\n  return [{ json: { ...input, ok: false, error: 'No binary data downloaded from Telegram.' } }];\n}\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst binary = buffer.toString('base64');\nconst payload = {\n  tool: input.tool,\n  request_id: input.requestId,\n  chat_id: input.originChatId,\n  text: input.text,\n  question: input.question,\n  prompt: input.prompt,\n  file_base64: binary,\n  file_name: input.fileName || binaryMeta.fileName || 'attachment.bin',\n  mime_type: input.mimeType || binaryMeta.mimeType || 'application/octet-stream',\n  attachment_kind: input.attachmentKind,\n  has_attachment: Boolean(input.hasAttachment),\n  language: input.language,\n  voice: input.voice,\n  model: input.model,\n  response_mode: input.responseMode,\n};\nreturn [{\n  json: {\n    ...input,\n    ok: true,\n    corePayload: payload,\n    coreUrl: input.coreUrl || `${input.coreBaseUrl}${input.endpointPath}`,\n  }\n}];"
+      },
+      "id": "media-build-core-payload",
+      "name": "Build Core Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.coreUrl || ($json.coreBaseUrl + $json.endpointPath) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-mia-core-token",
+              "value": "={{ $json.coreToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.corePayload }}",
+        "options": {}
+      },
+      "id": "media-call-core",
+      "name": "Call Mia Media Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        592,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Media Input').item.json || {};\nconst output = $json || {};\nconst text = String(output.text || output.summary || output.result?.text || output.result?.summary || output.result?.answer || output.result?.ocr_text || '').trim() || 'Mia đã xử lý xong file media này.';\nreturn [{\n  json: {\n    ok: output.ok !== false,\n    tool: output.tool || source.tool || '',\n    text,\n    result: output.data || output.result || output,\n    audioBase64: output.audio_base64 || output.audioBase64 || '',\n    links: Array.isArray(output.links) ? output.links : [],\n    requestId: source.requestId || '',\n    originChatId: source.originChatId || '',\n    deliveryMode: source.deliveryMode || 'return',\n  }\n}];"
+      },
+      "id": "media-normalize-result",
+      "name": "Normalize Media Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.coreUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-mia-core-token",
+              "value": "={{ $json.coreToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tool: 'tts_speak', request_id: $json.requestId, chat_id: $json.originChatId, text: $json.text, prompt: $json.prompt, voice: $json.voice, model: $json.model, response_mode: $json.responseMode } }}",
+        "options": {}
+      },
+      "id": "media-call-tts-core",
+      "name": "Call TTS Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -112,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Media Input').item.json || {};\nconst output = $json || {};\nconst deliveryMode = source.deliveryMode || 'return';\nconst text = String(output.text || source.text || 'Mia đã chuẩn bị phần đọc giọng nói.').trim();\nreturn [{\n  json: {\n    ok: output.ok !== false,\n    tool: output.tool || source.tool || 'tts_speak',\n    text,\n    audioBase64: output.audio_base64 || output.audioBase64 || '',\n    mimeType: output.mime_type || output.mimeType || 'audio/mpeg',\n    fileName: output.file_name || output.fileName || 'mia-tts.mp3',\n    requestId: source.requestId || '',\n    originChatId: source.originChatId || '',\n    deliveryMode,\n    shouldSendTelegram: deliveryMode === 'telegram',\n  }\n}];"
+      },
+      "id": "media-normalize-tts",
+      "name": "Normalize TTS Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!$json.shouldSendTelegram }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "media-tts-delivery-mode",
+      "name": "Send Voice To Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        336,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Normalize TTS Result').item.json || $json || {};\nconst audioBase64 = String(input.audioBase64 || '').trim();\nif (!audioBase64) {\n  return [{ json: { ok: false, error: 'No audio payload returned from TTS core.', ...input } }];\n}\nconst buffer = Buffer.from(audioBase64, 'base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, input.fileName || 'mia-tts.mp3', input.mimeType || 'audio/mpeg');\nreturn [{\n  json: {\n    ...input,\n    ok: true,\n  },\n  binary: {\n    data: binaryData,\n  },\n}];"
+      },
+      "id": "media-prepare-voice",
+      "name": "Prepare Voice Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendVoice' }}",
+        "sendBody": true,
+        "sendBinaryData": true,
+        "binaryPropertyName": "data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.originChatId }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "media-send-voice",
+      "name": "Send Telegram Voice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        784,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\nreturn [{\n  json: {\n    ok: source.ok !== false,\n    tool: source.tool || 'tts_speak',\n    text: source.text || 'Mia đã chuẩn bị câu trả lời bằng giọng nói.',\n    audioBase64: source.audioBase64 || '',\n    mimeType: source.mimeType || 'audio/mpeg',\n    fileName: source.fileName || 'mia-tts.mp3',\n    requestId: source.requestId || '',\n    originChatId: source.originChatId || '',\n    deliveryMode: source.deliveryMode || 'return',\n  }\n}];"
+      },
+      "id": "media-final-voice",
+      "name": "Finalize TTS Voice Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        512
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Media Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Media Input": {
+      "main": [
+        [
+          {
+            "node": "Needs File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs File?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Get File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call TTS Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Get File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Download": {
+      "main": [
+        [
+          {
+            "node": "Download Telegram File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Telegram File": {
+      "main": [
+        [
+          {
+            "node": "Build Core Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Core Payload": {
+      "main": [
+        [
+          {
+            "node": "Call Mia Media Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Mia Media Core": {
+      "main": [
+        [
+          {
+            "node": "Normalize Media Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call TTS Core": {
+      "main": [
+        [
+          {
+            "node": "Normalize TTS Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize TTS Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize TTS Voice Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Voice To Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Voice Binary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finalize TTS Voice Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Voice Binary": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Voice": {
+      "main": [
+        [
+          {
+            "node": "Finalize TTS Voice Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize TTS Voice Result": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

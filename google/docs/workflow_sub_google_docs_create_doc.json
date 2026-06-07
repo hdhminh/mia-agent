@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['tao doc', 'tao tai lieu', 'create doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet title = cleanName(source.title || source.docTitle || source.fileName || source.documentTitle || '');\nlet content = source.content || source.docContent || '';\n\nif (!title && body) {\n  const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n  if (markerMatch) {\n    const idx = markerMatch.index || 0;\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + markerMatch[0].length)).trim();\n  } else if (body.includes(':')) {\n    const idx = body.indexOf(':');\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + 1)).trim();\n  } else {\n    title = cleanName(body);\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    title,\n    content: String(content || ''),\n    hasTarget: Boolean(title),\n    response: title ? '' : '📝 <b>Tao Google Doc</b>\\n\\nVi du: <code>tao doc Project Plan noi dung Muc tieu du an</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText ||\n    source.text ||\n    message.text ||\n    message.caption ||\n    payload.text ||\n    ''\n  ).trim();\n\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanName(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst normalized = normalize(raw);\nconst prefixes = ['tao doc', 'tao tai lieu', 'create doc'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (normalized.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nlet title = cleanName(source.title || source.docTitle || source.fileName || source.documentTitle || args.title || args.docTitle || args.fileName || '');\nlet content = source.content || source.docContent || args.content || args.docContent || '';\n\nif (!title && body) {\n  const markerMatch = body.match(/\\s+(?:noi dung|nội dung|content)\\s*[:=-]?\\s*/i);\n  if (markerMatch) {\n    const idx = markerMatch.index || 0;\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + markerMatch[0].length)).trim();\n  } else if (body.includes(':')) {\n    const idx = body.indexOf(':');\n    title = cleanName(body.slice(0, idx));\n    content = String(content || body.slice(idx + 1)).trim();\n  } else {\n    title = cleanName(body);\n  }\n}\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text: normalized,\n    title,\n    content: String(content || ''),\n    folderId: String(source.folderId || args.folderId || '').trim(),\n    hasTarget: Boolean(title),\n    response: title ? '' : '📝 <b>Tao Google Doc</b>\\n\\nVi du: <code>tao doc Project Plan noi dung Muc tieu du an</code>'\n  }\n}];"
       },
       "id": "0e17bc96-a1c5-414a-8dec-ddb01ad4bf63",
       "name": "Prepare Action",
@@ -137,6 +137,19 @@
         240,
         80
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        320
+      ]
     }
   ],
   "connections": {
@@ -171,7 +184,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Docs Create File": {

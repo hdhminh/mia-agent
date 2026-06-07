@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || {};\nconst chatId = source.chatId || message.chat?.id || '';\nconst raw = String(source.rawText || message.text || '').trim();\nconst query = raw.replace(/^(tim mail|tìm mail|tim email|tìm email|search mail|search email|tim kiem mail|tìm kiếm mail|tim kiem email|tìm kiếm email)\\s*/i, '').trim();\nconst hasQuery = Boolean(query);\nconst guidance = '🔎 <b>Tìm kiếm email</b>\\n\\nVí dụ: tìm mail từ Google';\nreturn [{ json: { ...source, chatId, query, hasQuery, response: hasQuery ? '' : guidance } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || source.text || message.text || payload.text || '').trim();\n\nfunction clean(value) {\n  return String(value || '').trim();\n}\n\nconst query = clean(\n  source.query ||\n  payload.query ||\n  raw.replace(/^(tim mail|tìm mail|tim email|tìm email|search mail|search email|tim kiem mail|tìm kiếm mail|tim kiem email|tìm kiếm email)\\s*/i, '')\n);\nconst sender = clean(source.sender || payload.sender);\nconst subject = clean(source.subject || payload.subject);\nconst limit = Number(source.limit || payload.limit || 3) || 3;\nconst hasQuery = Boolean(query || sender || subject);\nconst guidance = '🔎 <b>Tìm kiếm email</b>\\n\\nVí dụ: tìm mail từ Google';\n\nreturn [{\n  json: {\n    ...source,\n    payload,\n    message,\n    chatId,\n    query,\n    sender,\n    subject,\n    limit,\n    hasQuery,\n    response: hasQuery ? '' : guidance\n  }\n}];"
       },
       "id": "gmail-search-prepare",
       "name": "Chuan Bi Tim Email",
@@ -48,9 +48,9 @@
     {
       "parameters": {
         "operation": "getAll",
-        "limit": 5,
+        "limit": "={{ $json.limit }}",
         "filters": {
-          "search": "={{ $json.query }}"
+          "search": "={{ [$json.query, $json.sender ? ('from:' + $json.sender) : '', $json.subject ? ('subject:' + $json.subject) : ''].filter(Boolean).join(' ') }}"
         }
       },
       "id": "4c96d70c-ffd5-4d6f-a62b-518f9174d219",
@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Tim Email').item.json;\n\nconst escapeHtml = (value = '') => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\\"/g, '&quot;');\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst buildMailLink = (email) => {\n  const threadId = pickFirst(email.threadId);\n  const messageId = pickFirst(email.id);\n  if (threadId) return `https://mail.google.com/mail/u/0/#inbox/${threadId}`;\n  if (messageId) return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;\n  return '';\n};\n\nconst rows = $input.all().map((i) => i.json || {}).filter((e) => e.id || e.subject || e.Subject || e.from || e.From || e.snippet);\nlet text = '🔎 <b>Kết quả tìm email</b>\\n\\n';\nif (!rows.length) {\n  text += `Không tìm thấy email phù hợp với: <i>${escapeHtml(source.query)}</i>`;\n} else {\n  rows.forEach((e, i) => {\n    const subject = pickFirst(e.subject, e.Subject, e.payload?.headers?.find((h) => h.name === 'Subject')?.value) || 'Không có tiêu đề';\n    const from = pickFirst(e.from?.value?.[0]?.name, e.from?.value?.[0]?.address, e.From, e.from, e.payload?.headers?.find((h) => h.name === 'From')?.value) || 'Không rõ';\n    const date = formatDate(pickFirst(e.date, e.Date, e.internalDate));\n    const link = buildMailLink(e);\n    text += `<b>${i + 1}. ${escapeHtml(subject)}</b>\\n👤 ${escapeHtml(from)}\\n`;\n    if (date) text += `🕒 ${escapeHtml(date)}\\n`;\n    if (link) text += `🔗 <a href=\"${escapeHtml(link)}\">Link</a>\\n`;\n    text += '\\n';\n  });\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "const source = $('Chuan Bi Tim Email').item.json || {};\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime())\n    ? ''\n    : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst cleanText = (value = '') => String(value)\n  .replace(/[\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180e\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst buildMailLink = (email) => {\n  const threadId = pickFirst(email.threadId);\n  const messageId = pickFirst(email.id);\n  if (threadId) return `https://mail.google.com/mail/u/0/#inbox/${threadId}`;\n  if (messageId) return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;\n  return '';\n};\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((email) => email.id || email.subject || email.Subject || email.from || email.From || email.snippet)\n  .slice(0, 3);\n\nconst query = pickFirst(source.query, source.sender, source.subject);\nconst links = [];\nlet text = '';\n\nif (!rows.length) {\n  text = query\n    ? `Mia chưa tìm thấy email nào khớp với \"${query}\".`\n    : 'Mia chưa tìm thấy email phù hợp.';\n} else {\n  text = query\n    ? `Mia tìm thấy ${rows.length} email khá khớp với \"${query}\":`\n    : `Mia tìm thấy ${rows.length} email phù hợp:`;\n\n  rows.forEach((email, index) => {\n    const subject = pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value) || 'Không có tiêu đề';\n    const from = cleanText(pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value)) || 'Không rõ người gửi';\n    const date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\n    const snippet = cleanText(pickFirst(email.snippet));\n    const link = buildMailLink(email);\n\n    text += `\\n${index + 1}. ${subject} — từ ${from}`;\n    if (date) text += `, lúc ${date}`;\n    if (snippet) text += `\\n   ${snippet.slice(0, 180)}`;\n    if (link && !links.includes(link)) links.push(link);\n  });\n\n  if (links.length) {\n    text += '\\n\\nMở nhanh email:';\n    links.slice(0, 3).forEach((link, index) => {\n      text += `\\n${index + 1}. ${link}`;\n    });\n  }\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'gmail.search_email',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: links.slice(0, 3),\n    result: { emails: rows },\n    meta: { query, count: rows.length }\n  }\n}];\n"
       },
       "id": "gmail-search-format",
       "name": "Format Tim Email",
@@ -81,6 +81,19 @@
       "position": [
         960,
         -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        160
       ]
     }
   ],
@@ -116,7 +129,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gmail Search": {
