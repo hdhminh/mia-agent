@@ -21,10 +21,11 @@ class TestTimeUtils(unittest.TestCase):
             now=datetime(2026, 6, 7, 9, 30, 0),
         )
 
-        self.assertEqual(response["text"], "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026.")
+        self.assertEqual(response["text"], "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026, bây giờ là 09:30.")
         self.assertEqual(response["trace"]["timezone"], "Asia/Ho_Chi_Minh")
         self.assertEqual(response["trace"]["weekday"], "Chủ Nhật")
         self.assertEqual(response["trace"]["weekday_index"], 6)
+        self.assertEqual(response["trace"]["clock"], "09:30")
 
     def test_build_current_date_response_falls_back_to_utc_for_invalid_timezone(self) -> None:
         response = build_current_date_response(
@@ -34,3 +35,4 @@ class TestTimeUtils(unittest.TestCase):
 
         self.assertEqual(response["trace"]["timezone"], "UTC")
         self.assertIn("2026", response["text"])
+        self.assertIn(":", response["trace"]["clock"])

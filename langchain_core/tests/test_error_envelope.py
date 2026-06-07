@@ -150,7 +150,7 @@ class ErrorEnvelopeTests(unittest.TestCase):
         with patch(
             "mia_core.direct_executor.build_current_date_response",
             return_value={
-                "text": "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026.",
+                "text": "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026, bây giờ là 09:30.",
                 "trace": {
                     "timezone": "Asia/Ho_Chi_Minh",
                     "datetime": "2026-06-07T12:00:00+07:00",
@@ -165,7 +165,7 @@ class ErrorEnvelopeTests(unittest.TestCase):
         assert response is not None
         self.assertTrue(response.ok)
         self.assertEqual(response.tools_called, ["time_now"])
-        self.assertEqual(response.final_text, "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026.")
+        self.assertEqual(response.final_text, "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026, bây giờ là 09:30.")
         self.assertEqual(response.trace["time_now"]["weekday"], "Chủ Nhật")
 
     def test_tool_gateway_approval_branch_returns_error_envelope(self) -> None:

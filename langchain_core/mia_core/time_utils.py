@@ -35,7 +35,8 @@ def current_datetime(timezone_name: str, now: datetime | None = None) -> tuple[d
 def build_current_date_response(timezone_name: str, now: datetime | None = None) -> dict[str, Any]:
     current, resolved_name = current_datetime(timezone_name, now)
     weekday_name = VI_WEEKDAY_NAMES[current.weekday()]
-    text = f"Hôm nay là {weekday_name}, ngày {current.day} tháng {current.month} năm {current.year}."
+    clock_text = current.strftime("%H:%M")
+    text = f"Hôm nay là {weekday_name}, ngày {current.day} tháng {current.month} năm {current.year}, bây giờ là {clock_text}."
     return {
         "text": text,
         "trace": {
@@ -43,5 +44,6 @@ def build_current_date_response(timezone_name: str, now: datetime | None = None)
             "datetime": current.isoformat(timespec="seconds"),
             "weekday": weekday_name,
             "weekday_index": current.weekday(),
+            "clock": clock_text,
         },
     }

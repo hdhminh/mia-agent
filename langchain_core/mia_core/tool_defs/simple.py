@@ -34,7 +34,7 @@ def get_simple_tools(tool_gateway: N8nToolGatewayClient) -> list:
     def time_now(
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
-        """Get the current date in the configured timezone."""
+        """Get the current date and time in the configured timezone."""
         timezone = str(getattr(getattr(runtime, "context", None), "timezone", "Asia/Ho_Chi_Minh") or "Asia/Ho_Chi_Minh").strip()
         return str(build_current_date_response(timezone)["text"])
 
