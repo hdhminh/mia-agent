@@ -71,6 +71,27 @@ def is_general_tool_overview_request(text: str) -> bool:
     )
     return not any(keyword_matches(normalized, cue) for cue in domain_cues)
 
+def is_current_time_request(normalized: str) -> bool:
+    if not normalized:
+        return False
+    patterns = (
+        r"\bhom nay la thu may\b",
+        r"\bhom nay thu may\b",
+        r"\bthu may hom nay\b",
+        r"\bthu may\b",
+        r"\bhom nay la ngay may\b",
+        r"\bngay may hom nay\b",
+        r"\bngay may\b",
+        r"\bngay bao nhieu\b",
+        r"\bmay gio\b",
+        r"\bgio hien tai\b",
+        r"\bgio bay gio\b",
+        r"\bthoi gian hien tai\b",
+        r"\bcurrent time\b",
+        r"\bcurrent date\b",
+    )
+    return any(re.search(pattern, normalized) for pattern in patterns)
+
 
 def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> RequestProfile:
     normalized = normalize_query_text(text)
@@ -93,6 +114,9 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
 
     if any_keyword_matches(normalized, ("thoi tiet", "weather", "nhiet do", "nhiệt độ", "du bao", "dự báo")):
         return RequestProfile(domain="general", hint_tool="weather_get", direct_confident=True, reason="weather request")
+
+    if is_current_time_request(normalized):
+        return RequestProfile(domain="general", hint_tool="time_now", direct_confident=True, reason="current date/time request")
 
     if any_keyword_matches(normalized, ("gia vang", "sjc", "gold")):
         return RequestProfile(domain="general", hint_tool="gold_get_price", direct_confident=True, reason="gold request")
@@ -234,6 +258,9 @@ def build_direct_tool_args(
         if normalize_query_text(cleaned) in {"nay", "link nay", "bai nay", "trang nay"}:
             cleaned = ""
         return cleaned or fallback
+
+    if tool_name == "time_now":
+        return {}
 
     if tool_name == "weather_get":
         location = strip_prefixes(

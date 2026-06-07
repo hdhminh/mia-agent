@@ -5,6 +5,7 @@ import json
 import re
 
 from mia_core.capabilities import DIRECT_GATEWAY_TOOLS, DIRECT_ROUTE_TOOLS
+from mia_core.time_utils import build_current_date_response
 from mia_core.error_envelope import ErrorEnvelope
 from mia_core.memory import MemoryRepository
 from mia_core.models import MiaChatRequest, MiaChatResponse, MiaContext
@@ -301,6 +302,16 @@ class DirectExecutor:
                 thread_id=thread_id,
                 request_id=request_id,
                 trace={},
+            )
+
+        if hint_tool == "time_now":
+            time_response = build_current_date_response(context.timezone)
+            return MiaChatResponse(
+                final_text=cap_visible_links(sanitize_final_text(str(time_response["text"])), limit=3),
+                tools_called=["time_now"],
+                thread_id=thread_id,
+                request_id=request_id,
+                trace={"time_now": time_response["trace"]},
             )
 
         gateway_name = DIRECT_GATEWAY_TOOLS.get(hint_tool)

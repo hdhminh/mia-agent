@@ -11,6 +11,7 @@ if str(LANGCHAIN_ROOT) not in sys.path:
     sys.path.insert(0, str(LANGCHAIN_ROOT))
 
 from mia_core.request_parser import build_direct_tool_args
+from mia_core.router import route_request
 
 
 class TestRequestParserUrlInstructions(unittest.TestCase):
@@ -39,3 +40,17 @@ class TestRequestParserUrlInstructions(unittest.TestCase):
         self.assertEqual(args["url"], url)
         self.assertEqual(args["instruction"], "hỏi tiếp link này")
         self.assertEqual(args["question"], "hỏi tiếp link này")
+
+
+class TestRequestParserCurrentTime(unittest.TestCase):
+    def test_current_time_question_routes_to_time_now(self) -> None:
+        route = route_request("hôm nay là thứ mấy z")
+
+        self.assertTrue(route.use_direct)
+        self.assertEqual(route.route_type, "direct_deterministic")
+        self.assertEqual(route.hint_tool, "time_now")
+
+    def test_time_now_direct_args_are_empty(self) -> None:
+        args = build_direct_tool_args("time_now", "hôm nay là thứ mấy z")
+
+        self.assertEqual(args, {})

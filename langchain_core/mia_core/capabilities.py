@@ -5,7 +5,7 @@ from typing import Any
 
 MEMORY_TOOL_NAMES = ["memory_search", "memory_recent", "memory_write"]
 WEB_TOOL_NAMES = ["read_url", "summarize_url", "ask_url"]
-SIMPLE_TOOL_NAMES = ["weather_get", "gold_get_price", "news_get", "search_web", "shortlink_create"] + WEB_TOOL_NAMES
+SIMPLE_TOOL_NAMES = ["weather_get", "gold_get_price", "news_get", "search_web", "shortlink_create", "time_now"] + WEB_TOOL_NAMES
 MEDIA_TOOL_NAMES = [
     "image_ocr",
     "image_describe",
@@ -196,7 +196,7 @@ DIRECT_TOOL_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
     "github_get_repo_tree": {"limit": 20},
 }
 
-DIRECT_ROUTE_TOOLS = set(DIRECT_GATEWAY_TOOLS) | {"memory_recent"}
+DIRECT_ROUTE_TOOLS = set(DIRECT_GATEWAY_TOOLS) | {"memory_recent", "time_now"}
 
 # Read-only / low-side-effect capabilities that should stay on the cheap path
 # even when users append style instructions like "rồi tóm tắt ngắn".
@@ -209,6 +209,7 @@ DETERMINISTIC_DIRECT_TOOLS = {
     "read_url",
     "summarize_url",
     "shortlink_create",
+    "time_now",
     "image_ocr",
     "image_describe",
     "image_extract_fields",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import dataclass
+from unittest.mock import patch
 
 from mia_core.direct_executor import DirectExecutor
 from mia_core.error_envelope import (
@@ -38,6 +39,10 @@ class _DummyErrorGateway:
             "force_execute": force_execute,
         }
         return self.result
+
+class _DummyStaticGateway:
+    def run_tool(self, *args: object, **kwargs: object) -> ToolGatewayResult:  # pragma: no cover - should not be called
+        raise AssertionError("time_now must not call the gateway")
 
 
 class _DummyApprovalRepo:
@@ -135,6 +140,33 @@ class ErrorEnvelopeTests(unittest.TestCase):
         self.assertIsNotNone(response.error)
         self.assertEqual(response.error.code, "tool_not_found")
         self.assertEqual(response.final_text, envelope.display_text())
+
+
+    def test_direct_executor_time_now_uses_context_timezone(self) -> None:
+        executor = DirectExecutor(memory_repo=_DummyMemoryRepo(), tool_gateway=_DummyStaticGateway())  # type: ignore[arg-type]
+        request = MiaChatRequest(chat_id="chat-1", text="hôm nay là thứ mấy z")
+        context = MiaContext(chat_id="chat-1", user_id="chat-1", timezone="Asia/Ho_Chi_Minh", request_id="req-1")
+
+        with patch(
+            "mia_core.direct_executor.build_current_date_response",
+            return_value={
+                "text": "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026.",
+                "trace": {
+                    "timezone": "Asia/Ho_Chi_Minh",
+                    "datetime": "2026-06-07T12:00:00+07:00",
+                    "weekday": "Chủ Nhật",
+                    "weekday_index": 6,
+                },
+            },
+        ):
+            response = executor.execute(request, context, "time_now", allow_multistep=True)
+
+        self.assertIsNotNone(response)
+        assert response is not None
+        self.assertTrue(response.ok)
+        self.assertEqual(response.tools_called, ["time_now"])
+        self.assertEqual(response.final_text, "Hôm nay là Chủ Nhật, ngày 7 tháng 6 năm 2026.")
+        self.assertEqual(response.trace["time_now"]["weekday"], "Chủ Nhật")
 
     def test_tool_gateway_approval_branch_returns_error_envelope(self) -> None:
         approval_repo = _DummyApprovalRepo()
