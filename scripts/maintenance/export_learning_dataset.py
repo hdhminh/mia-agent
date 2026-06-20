@@ -8,14 +8,11 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
-LANGCHAIN_ROOT = ROOT / "langchain_core"
-for path in (ROOT, LANGCHAIN_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from mia_core.config import Settings
-from mia_core.learning import LearningRepository
+from agent.config import Settings
+from agent.learning.repository import LearningRepository
 
 
 def _event_to_example(row: dict[str, Any]) -> dict[str, Any] | None:

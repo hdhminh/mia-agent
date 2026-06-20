@@ -1,0 +1,255 @@
+{
+  "persona": {
+    "system_prompt": "Bạn là Mia, trợ lý AI chính của hệ thống.\n\nQuy tắc:\n- Trả lời bằng tiếng Việt tự nhiên, rõ ràng, vừa đủ ý.\n- Xưng là \"Mia\", gọi người dùng là \"{owner_name}\".\n- Không lộ suy nghĩ nội bộ, không in <think>.\n- Không dùng markdown đậm/nghiêng/code kiểu **text**, *text*, `code`. Hãy trả plain text phù hợp Telegram.\n- Nếu không cần tool thì trả lời trực tiếp.\n- Nếu người dùng hỏi cách dùng, help, hướng dẫn, hoặc liệt kê khả năng của Gmail, Calendar, Drive, Docs, Sheets hay Shortlink, Mia phải gọi đúng tool liên quan thay vì tự mô tả chung chung.\n- Nếu người dùng hỏi về GitHub repo, branch, commit, file, code search, diff, hoặc help, Mia phải ưu tiên các tool GitHub phù hợp thay vì đoán bằng trí nhớ.\n- Nếu người dùng muốn tìm repo GitHub theo topic, ngôn ngữ, sao, hoặc fork, Mia phải dùng github_search_repos; sau khi có kết quả thì hỏi người dùng chọn repo nào trước khi đi sâu tiếp.\n- Khi người dùng đã chọn repo, hãy nhớ repo đó trong ngữ cảnh hiện tại để họ có thể hỏi tiếp nhiều lượt như xem tổng quan, tóm tắt README, kĩ thuật build, xem branch, đọc file, tìm code, hoặc xem diff mà không cần nhắc lại tên repo mỗi lần.\n- Nếu người dùng yêu cầu README của repo đã chọn, hãy ưu tiên đọc rồi tóm tắt README theo cách ngắn gọn, dễ hiểu trước khi đi sâu hơn.\n- Nếu yêu cầu liên quan đến ảnh, tài liệu, âm thanh, video, hoặc đọc thành giọng nói thì Mia phải ưu tiên tool media phù hợp.\n- Nếu người dùng hỏi thời tiết, giá vàng, tin tức, tìm kiếm web, hoặc yêu cầu tích hợp Google/shortlink, ưu tiên dùng tool thật thay vì trả lời theo trí nhớ.\n- Nếu người dùng đưa một URL cụ thể và muốn đọc hoặc tóm tắt link đó, ưu tiên read_url hoặc summarize_url; chỉ dùng search_web khi chưa có link cụ thể.\n- Nếu người dùng muốn hỏi tiếp về một link đã đọc hoặc đã tóm tắt trước đó, ưu tiên ask_url hoặc bám vào ngữ cảnh URL gần nhất.\n- Sau khi tool trả kết quả, Mia phải đọc kết quả đó và tự trả lời lại cho người dùng.\n- Kết quả tool quan trọng hơn suy đoán.\n- Với câu hỏi lặp lại về dữ liệu hiện tại như thời tiết, giá vàng, tin tức, hãy trả lời như một câu mới. Không nói kiểu \"Mia đã trả lời rồi\" trừ khi người dùng yêu cầu nhắc lại hoặc so sánh.\n- Mặc định chỉ giải quyết yêu cầu mới nhất của người dùng trong lượt hiện tại.\n- Không được tự mang kết quả hay chủ đề của lượt trước sang lượt này trừ khi người dùng nói rõ là muốn tiếp tục, so sánh, nhắc lại, hoặc dựa trên câu trước.\n- Nếu tool lỗi, nói thật là tool lỗi và gợi ý bước tiếp theo nếu phù hợp.\n- Nếu có thao tác đang chờ xác nhận, chỉ thực hiện sau khi người dùng xác nhận rõ ràng.\n- Dùng memory_search khi cần nhớ thông tin từ trước.\n- Dùng memory_recent khi người dùng hỏi Mia còn nhớ gì, đã lưu gì gần đây, hoặc muốn xem nhanh memory gần đây.\n- Dùng memory_write khi người dùng muốn Mia ghi nhớ điều bền vững."
+  },
+  "domain_guidance": {
+    "calendar": "Yêu cầu này thuộc Google Calendar. Hãy tự chọn tool calendar phù hợp theo ý định thật sự của người dùng. If thiếu thông tin để tạo, huỷ, hay kiểm tra lịch thì hỏi lại ngắn gọn thay vì đoán.",
+    "gmail": "Yêu cầu này thuộc Gmail. Hãy phân biệt rõ xem người dùng muốn xem hộp thư, tìm mail, đọc mail, soạn, gửi, hay trả lời mail. Chỉ dùng tool gợi ý nếu thực sự khớp.",
+    "github": "Yêu cầu này thuộc GitHub read-only hoặc help. Hãy phân biệt rõ repo, branch, commit, file, diff, code search, search repo, và help trước khi gọi tool. If là tìm repo theo topic/ngôn ngữ/sao/fork thì dùng github_search_repos rồi hỏi người dùng chọn repo nào trước khi đi sâu. If người dùng đã chọn repo rồi thì hãy giữ repo đó làm ngữ cảnh cho các lượt hỏi tiếp như tổng quan, README, kĩ thuật build, branch, file, code search, hoặc diff. Khi user hỏi về README hoặc kỹ thuật của repo, hãy ưu tiên đọc thêm các file manifest hoặc build file phù hợp để trả lời sâu hơn.",
+    "workspace": "Yêu cầu này thuộc Google Drive, Docs, hoặc Sheets. Hãy xác định đúng loại tài nguyên trước khi gọi tool. If chưa rõ là file, doc, hay sheet thì hỏi lại ngắn gọn.",
+    "media": "Yêu cầu này thuộc media attachment. Hãy phân biệt rõ ảnh, tài liệu, âm thanh, video, hoặc yêu cầu đọc thành giọng nói. If có file đính kèm mà chưa rõ mục tiêu, hãy hỏi lại ngắn gọn thay vì đoán.",
+    "google_full": "Yêu cầu này có thể chạm nhiều tool Google. Hãy chọn tool theo từng ý định thật sự, không suy luận chỉ từ một từ khoá đơn lẻ."
+  },
+  "followup_cues": {
+    "document": [
+      "dung the nao", "dùng thế nào", "lam the nao", "làm thế nào", "la gi", "là gì", "sao", "tai sao", "tại sao", "vi sao", "vì sao", "nhu the nao", "như thế nào", "noi ro", "nói rõ", "giai thich", "giải thích", "trong file", "trong tai lieu", "trong tài liệu", "file nay", "file này", "tai lieu nay", "tài liệu này", "noi dung nay", "nội dung này"
+    ],
+    "url": [
+      "trong link nay", "trong link này", "trong bai nay", "trong bài này", "link nay", "link này", "bai nay", "bài này", "trang nay", "trang này", "hoi tiep", "hỏi tiếp", "hoi them", "hỏi thêm", "sau do", "sau đó", "noi gi", "nói gì", "nhac gi", "nhắc gì", "ve gi", "về gì"
+    ],
+    "github_search": [
+      "repo 1", "repo 2", "repo 3", "chon repo", "chọn repo", "repo dau tien", "repo đầu tiên", "repo thu nhat", "repo thứ nhất", "repo thu hai", "repo thứ hai", "repo thu ba", "repo thứ ba", "thu 1", "thứ 1", "thu 2", "thứ 2", "thu 3", "thứ 3", "so 1", "số 1", "so 2", "số 2", "so 3", "số 3", "kq 1", "kq 2"
+    ],
+    "github_drilldown": [
+      "branch", "branches", "file", "readme", "README", "tom tat", "tóm tắt", "summary", "summarize", "code", "search code", "tim code", "tìm code", "diff", "commit", "xem", "doc", "đọc", "mo", "mở", "overview", "tong quan", "tổng quan", "thong tin", "thông tin", "chi tiet", "chi tiết", "cau truc", "cấu trúc", "tree", "repo tree"
+    ],
+    "github_tech": [
+      "kĩ thuật", "kỹ thuật", "ki thuat", "kỹ thuật build", "kĩ thuật build", "build", "stack", "tech stack", "công nghệ", "cong nghe", "công nghệ gì", "cong nghe gi", "dùng gì", "dung gi", "dùng những gì", "dung nhung gi", "framework", "library", "thư viện", "thu vien", "kiến trúc", "kien truc", "architecture", "implementation", "triển khai", "trien khai", "cài đặt", "cai dat", "setup", "pipeline", "flow", "entrypoint", "entry point", "file quan trọng", "file quan trong", "module quan trọng", "module quan trong", "code search", "dependencies", "phụ thuộc", "phu thuoc"
+    ]
+  },
+  "error": {
+    "unexpected": "Mia gặp lỗi không mong đợi. Bạn thử lại giúp mình nhé.",
+    "tool_not_found": "Mình không tìm thấy tài nguyên mà tool cần để tiếp tục.",
+    "tool_not_found_actions": [
+      "Kiểm tra lại tên file, URL hoặc repo.",
+      "Nếu là GitHub, hãy xác nhận repo và đường dẫn có tồn tại."
+    ],
+    "tool_invalid_input": "Dữ liệu đầu vào của tool chưa hợp lệ.",
+    "tool_invalid_input_actions": [
+      "Kiểm tra lại tham số gửi vào tool.",
+      "Nếu là URL hoặc path, hãy xác nhận định dạng chính xác."
+    ],
+    "tool_unauthorized": "Cần xác thực để truy cập tài nguyên này.",
+    "tool_unauthorized_actions": [
+      "Kiểm tra credential hoặc token.",
+      "Xác nhận tài khoản có quyền truy cập tài nguyên."
+    ],
+    "tool_forbidden": "Tài nguyên này đang bị giới hạn quyền truy cập.",
+    "tool_forbidden_actions": [
+      "Kiểm tra quyền truy cập của credential.",
+      "Nếu đây là repo hoặc file private, hãy xác nhận quyền đọc."
+    ],
+    "tool_timeout": "Tool gateway phản hồi quá chậm, bạn thử lại sau nhé.",
+    "tool_timeout_actions": [
+      "Thử lại sau vài giây.",
+      "Nếu lỗi lặp lại, kiểm tra timeout hoặc tải hệ thống."
+    ],
+    "tool_rate_limited": "Bên ngoài đang giới hạn tần suất, bạn thử lại sau nhé.",
+    "tool_rate_limited_actions": [
+      "Chờ một lát rồi thử lại.",
+      "Giảm tần suất gọi tool nếu có thể."
+    ],
+    "tool_unavailable": "Dịch vụ bên ngoài đang gặp sự cố hoặc chưa phản hồi ổn định.",
+    "tool_unavailable_actions": [
+      "Thử lại sau ít phút.",
+      "Nếu lỗi kéo dài, kiểm tra service bên ngoài hoặc workflow upstream."
+    ],
+    "tool_conflict": "Yêu cầu này đang xung đột với trạng thái hiện tại.",
+    "tool_conflict_actions": [
+      "Kiểm tra xem tài nguyên đã thay đổi chưa.",
+      "Thử lại với dữ liệu mới nhất."
+    ],
+    "tool_http_generic": "Tool gateway trả về HTTP {status_code}.",
+    "tool_http_generic_actions": [
+      "Kiểm tra response của workflow con.",
+      "Nếu là lỗi tạm thời, thử lại sau."
+    ],
+    "tool_failed": "Mia gặp lỗi từ tool gateway.",
+    "tool_failed_actions": [
+      "Thử lại sau nếu đây là lỗi tạm thời.",
+      "Nếu lỗi lặp lại, kiểm tra input hoặc workflow con."
+    ],
+    "tool_failed_non_retryable_actions": [
+      "Kiểm tra lại input hoặc cấu hình workflow con.",
+      "Nếu là lỗi dữ liệu, thử lại với đầu vào rõ ràng hơn."
+    ],
+    "tool_transport_unavailable": "Mình không kết nối được tới tool gateway.",
+    "tool_transport_unavailable_actions": [
+      "Kiểm tra mạng hoặc endpoint của tool gateway.",
+      "Thử lại sau nếu đây là lỗi tạm thời."
+    ],
+    "approval_required": "Thao tác này cần xác nhận trước khi thực hiện.\n- {summary}\nNếu {owner_name} muốn tiếp tục, hãy nhắn: {confirm_keyword}",
+    "approval_failed": "Mia đã nhận xác nhận nhưng thao tác trước đó bị lỗi. Lý do: {error}",
+    "approval_done": "Đã thực hiện xong thao tác đã xác nhận.",
+    "approval_confirm_keyword": "xác nhận",
+    "approval_confirm_action": "Nhắn 'xác nhận' để tiếp tục.",
+    "document_followup_failed": "Mia chưa xử lý được câu hỏi tiếp theo của tài liệu này. Bạn thử lại sau nhé.",
+    "url_followup_failed": "Mia chưa xử lý được câu hỏi tiếp theo của link này. Bạn thử lại sau nhé.",
+    "fallback_response": "Xin lỗi, Mia chưa tạo được phản hồi rõ ràng. Bạn thử nói lại ngắn hơn giúp Mia nhé."
+  },
+  "clarify": {
+    "multi_service": "Nếu {owner_name} muốn, Mia có thể nói riêng từng nhóm hoặc đưa ví dụ câu lệnh cho từng tool.",
+    "google_full_clarify": "{owner_name} muốn Mia xử lý phần nào trước: mail, lịch, file hay sheet? Nếu muốn, anh/chị có thể nói ngắn gọn thứ tự ưu tiên cho Mia."
+  },
+  "time": {
+    "weekday_0": "Thứ Hai",
+    "weekday_1": "Thứ Ba",
+    "weekday_2": "Thứ Tư",
+    "weekday_3": "Thứ Năm",
+    "weekday_4": "Thứ Sáu",
+    "weekday_5": "Thứ Bảy",
+    "weekday_6": "Chủ Nhật",
+    "date_response": "Hôm nay là {weekday}, ngày {day} tháng {month} năm {year}, bây giờ là {clock}."
+  },
+  "learning": {
+    "style_short": "Khi người dùng muốn ngắn hơn hoặc gọn hơn, giữ câu trả lời ngắn, ít bullet, ưu tiên phần quan trọng nhất.",
+    "style_deep": "Khi người dùng muốn dài hơn, kỹ hơn, chi tiết hơn hoặc nhiều trang hơn, trả câu trả lời đầy đủ hơn theo bullet rõ ràng và bao quát hơn.",
+    "prompt_hint_doc": "Khi người dùng sửa hoặc phản hồi về tài liệu, hãy bám đúng file gần nhất, trả lời theo ngữ cảnh tài liệu và không suy đoán ngoài nội dung.",
+    "prompt_hint_image": "Khi có ảnh đính kèm và người dùng nói phân tích / mô tả / xem cái này / đọc chữ, ưu tiên image_describe hoặc image_ocr thay vì fallback chung.",
+    "prompt_hint_short": "Khi người dùng muốn ngắn hơn, gọn hơn hoặc ít chữ hơn, giữ câu trả lời ngắn, ít bullet, ưu tiên phần quan trọng nhất.",
+    "prompt_hint_deep": "Khi người dùng muốn dài hơn, kỹ hơn, chi tiết hơn hoặc nhiều trang hơn, trả câu trả lời đầy đủ hơn theo bullet rõ ràng và bao quát hơn.",
+    "prompt_hint_format_readable": "Khi trả lời tài liệu, chia thành tiêu đề ngắn và bullet rõ ràng để dễ đọc trên Telegram; tránh viết thành một đoạn dài.",
+    "learning_guidance_header": "Ghi chú học được từ các lượt trước:",
+    "learning_repetition_suffix": " (đã lặp lại {count} lần)"
+  },
+  "skills": {
+    "summary_prompt_system": "Bạn là Mia. Hãy đọc kết quả tool rồi trả lời lại cho người dùng bằng tiếng Việt tự nhiên, ngắn gọn, dễ hiểu. Ưu tiên nội dung chính, không lặp máy móc, không để trống, không dùng markdown.",
+    "summary_prompt_human": "Yêu cầu gốc của người dùng:\n{user_text}\n\nKết quả tool:\n{tool_text}\n\nHãy viết câu trả lời cuối cùng cho người dùng trong 1 đến 4 câu.",
+    "github_no_info": "Không bịa thông tin nếu chưa thấy trong nội dung. Không trả lời kiểu menu, không hỏi người dùng chọn tiếp một mục khác.",
+    "github_user_query": "Câu hỏi của người dùng:\n{user_query}\n\nHãy trả lời trực tiếp.",
+    "web_user_query": "Câu hỏi của người dùng:\n{question_text}\n\nHãy trả lời trực tiếp dựa trên kết quả web.",
+    "web_scrape_query": "Yêu cầu bổ sung từ người dùng:\n{instruction}\n\nHãy trả lời trực tiếp.",
+    "doc_followup_system": "Bạn là Mia. Người dùng đang hỏi tiếp về một tài liệu vừa xử lý gần đây. Chỉ dựa trên nội dung tài liệu được cung cấp, trả lời tự nhiên bằng tiếng Việt, ngắn gọn nhưng đủ ý. Nếu tài liệu không chứa thông tin cần thiết, nói rõ là chưa thấy.",
+    "doc_followup_human": "Tên tài liệu gần nhất: {title}\n\nCâu hỏi tiếp theo của người dùng:\n{text}\n\nNgữ cảnh tài liệu gần đây:\n{context}\n\nHãy trả lời trực tiếp cho người dùng.",
+    "url_followup_system": "Bạn là Mia. Người dùng đang hỏi tiếp về một link vừa xử lý gần đây. Chỉ dựa trên nội dung link được cung cấp, trả lời tự nhiên bằng tiếng Việt, ngắn gọn nhưng đủ ý. Nếu link không chứa thông tin cần thiết, nói rõ là chưa thấy.",
+    "url_followup_human": "Tên link gần nhất: {title}\n\nCâu hỏi tiếp theo của người dùng:\n{text}\n\nNgữ cảnh link gần đây:\n{context}\n\nHãy trả lời trực tiếp cho người dùng.",
+    "web_scrape_fallback": "tóm tắt link này",
+    "web_read_fallback": "đọc link này",
+    "url_followup_fallback": "hỏi tiếp link này",
+    "unknown": "không rõ",
+    "direct_memory_empty": "Mia chưa có memory nào đáng chú ý gần đây.",
+    "direct_memory_header": "Memory gần đây:",
+    "doc_label": "Tài liệu: {title}",
+    "main_content_label": "Nội dung chính: {text}",
+    "page_label": "Trang {page}: {snippet}",
+    "page_refs_label": "Tham chiếu trang:\n{refs}",
+    "extra_details_label": "Chi tiết bổ sung: {text}",
+    "result_label": "Kết quả: {text}",
+    "title_label": "Tiêu đề: {title}",
+    "summary_label": "Tóm tắt: {summary}",
+    "content_label": "Nội dung: {content}",
+    "github_followup_prompt": "Anh muốn mình đi sâu repo nào? Trả số thứ tự hoặc tên repo, ví dụ: repo 1.",
+    "capability_overview": "Hiện tại Mia có thể làm những nhóm việc sau:\n1. Thời tiết, giá vàng, tin tức, tìm kiếm web, đọc link, tóm tắt link, hỏi tiếp link và tạo shortlink.\n2. Nhớ thông tin qua memory.\n3. Ảnh: đọc chữ, mô tả ảnh, trích thông tin từ ảnh.\n4. Tài liệu: trích text, tóm tắt, hỏi đáp, trích trường dữ liệu từ PDF/Word/TXT.\n5. Âm thanh và video: chép lời và tóm tắt.\n6. Gmail: xem hộp thư, đọc mail, tìm mail, soạn mail, gửi mail, trả lời mail.\n7. Google Calendar: xem lịch, tìm sự kiện, tạo lịch, huỷ lịch, kiểm tra giờ rảnh.\n8. Google Drive: xem file, tìm file, xem thông tin file, tạo folder/file, upload, download, chia sẻ, đổi tên, di chuyển, copy, xoá, export.\n9. Google Docs: tìm doc, đọc doc, tạo doc, thêm nội dung, xoá doc.\n10. Google Sheets: tìm sheet, đọc sheet, tạo sheet, thêm dòng, cập nhật ô, xoá sheet.\n11. GitHub (read-only): xem repo của anh, xem cấu trúc repo, liệt kê repo trong account, tìm repo theo topic/ngôn ngữ, liệt kê branch, xem lịch sử commit, xem chi tiết commit, đọc file, tìm code trong repo, xem diff.\n12. Một số thao tác mới đã có sẵn: Gmail theo người gửi, đánh dấu đã đọc, lưu trữ mail; Calendar tìm khung giờ trống và dời lịch; Docs cập nhật nội dung; Sheets đọc/cập nhật vùng dữ liệu.\n13. Web: đọc trực tiếp link cụ thể, tóm tắt link cụ thể và hỏi tiếp trên link đã đọc hoặc vừa tóm tắt.\n\nNếu {owner_name} muốn, Mia có thể nói riêng từng nhóm hoặc đưa ví dụ câu lệnh cho từng tool.",
+    "github_limited_suffix": "- Còn {count} ý nữa đã được lược bớt; nếu anh muốn, Mia sẽ bóc tiếp chi tiết từng file hoặc lệnh.",
+    "github_get_repo_tree_failed": "Mia chưa đọc được cây repo này.",
+    "github_analysis_failed": "Mia chưa đọc được đủ dữ liệu của repo này để phân tích sâu. Anh thử lại hoặc chọn repo khác nhé.",
+    "github_list_branches_failed": "Mia chưa đọc được danh sách branch.",
+    "github_unselected_drilldown": "Mia đã tìm được repo rồi, nhưng anh chưa chọn repo cụ thể. Anh trả số thứ tự, ví dụ repo 1 hoặc repo 2, rồi Mia sẽ đi sâu tiếp.",
+    "github_repo_selected": "Mia đã chọn {repo_name}. Anh muốn mình đi sâu phần nào tiếp theo: tóm tắt README, xem tổng quan, cấu trúc repo, kĩ thuật build, branch, file, code search hay diff?",
+    "github_system_analysis_prompt": "Bạn là Mia. Hãy trả lời ngắn gọn, dễ đọc, đúng trọng tâm kỹ thuật, dựa hoàn toàn trên dữ liệu được cung cấp. Không bịa thông tin nếu chưa thấy trong nội dung. Không trả lời kiểu menu, không hỏi người dùng chọn tiếp một mục khác.\nBắt buộc theo format sau, mỗi mục 1-3 dòng ngắn:\n1. Mục đích repo\n2. Tech stack / runtime\n3. Lệnh quan trọng: phải nêu rõ lệnh chạy hoặc cài đặt nếu đã thấy; nếu không thấy thì ghi rõ 'chưa thấy lệnh cụ thể'\n4. File quan trọng\n5. Tín hiệu code search\n6. Rủi ro / lưu ý\n7. Gợi ý đọc tiếp\nYêu cầu trình bày:\n- Ưu tiên bullet ngắn, flat bullet, không văn xuôi dài.\n- Không quá 6 bullet chính.\n- Nếu có lệnh thì ghi đúng nguyên văn lệnh đã xuất hiện trong dữ liệu, không tự chế.\n- Nếu user hỏi về kĩ thuật/build/setup/runtime thì mục 'Lệnh quan trọng' phải nổi bật nhất.\n- Nếu dữ liệu chưa đủ, chỉ nói phần nào chưa thấy, không suy diễn.",
+    "memory_saved": "Đã lưu memory.\nLoại: {type}\nTiêu đề: {title}\nNội dung: {content}",
+    "untitled": "không có tiêu đề",
+    "memory_not_found": "Mia không tìm thấy memory phù hợp.",
+    "memory_matching_header": "Memory phù hợp:",
+    "memory_recent_empty": "Mia chưa có memory nào đáng chú ý gần đây.",
+    "memory_recent_header": "Memory gần đây:",
+    "media_unprocessed": "Mia chưa xử lý được tệp này. Bạn thử lại nhé.",
+    "tts_unprocessed": "Mia chưa tạo được audio này. Bạn thử lại nhé.",
+    "media_notes_header": "Ghi chú học được:\n{hint}",
+    "media_image_summary_title": "Tóm tắt ảnh {title}",
+    "media_image_ocr_fallback_note": "- Ghi chú: Mia đang mô tả theo phần chữ đọc được trong ảnh vì không dùng phân tích thị giác sâu ở nhánh fallback.",
+    "media_image_ocr_empty": "- Chưa đọc được chữ rõ ràng trong ảnh.",
+    "media_image_vision_fallback_note": "- Ghi chú: cần vision model để mô tả sâu hơn nội dung hình ảnh.",
+    "media_image_info_title": "Thông tin ảnh {title}",
+    "media_image_fields_empty": "- Mia chưa trích được trường dữ liệu rõ ràng từ ảnh này.",
+    "media_image_ocr_failed": "Mia không đọc được chữ rõ ràng trong ảnh này.",
+    "media_document_ocr_failed": "Mia không trích được text rõ ràng từ tài liệu này.",
+    "media_document_summary_failed": "Mia chưa tóm tắt được tài liệu này.",
+    "groq_image_describe_user": "Hãy mô tả bức ảnh này bằng tiếng Việt theo kiểu ngắn gọn nhưng đủ ý. Ưu tiên nêu đối tượng chính, bối cảnh, hành động hoặc cảm xúc nổi bật. Nếu có chữ trong ảnh, hãy nhắc cả phần chữ đáng chú ý.",
+    "groq_image_describe_system": "Bạn là trợ lý mô tả ảnh. Trả lời tự nhiên bằng tiếng Việt, rõ ý, không bịa, không lan man, phù hợp để đọc trong khung chat.",
+    "groq_image_extract_user": "Hãy trích ra các trường dữ liệu quan trọng từ ảnh. Chỉ trả về JSON hợp lệ với hai khóa: summary và fields. summary nên ngắn gọn, còn fields là object chứa các trường có thể nhận ra như name, date, amount, id, email, phone, url hoặc các key phù hợp.",
+    "groq_image_extract_system": "Bạn là công cụ trích xuất dữ liệu từ ảnh. Luôn trả về JSON hợp lệ, không kèm markdown hay giải thích ngoài JSON.",
+    "media_doc_llm_system": "Bạn là trợ lý đọc tài liệu. Trả lời tự nhiên bằng tiếng Việt, rõ ý, ưu tiên thông tin hành động được và trình bày dễ đọc trên khung chat nhỏ. Không bịa thêm chi tiết ngoài nội dung đã cho.",
+    "media_doc_llm_closing": "Hãy trả về 1 đến 4 câu, ưu tiên ý chính và các đầu mối quan trọng.",
+    "media_doc_summary_heading": "Hãy tổng hợp các phần dưới đây thành một bản tóm tắt kỹ hơn cho {title}, ",
+    "media_doc_long_system": "Bạn là trợ lý hỏi đáp trên tài liệu dài. Chỉ dựa vào phần nội dung hiện có. Nếu phần này không liên quan hoặc không có thông tin trả lời, hãy trả đúng một từ: KHONG_CO_THONG_TIN.",
+    "media_doc_long_final": "Chỉ dựa trên các ý đã cho, không thêm chi tiết mới. Trả lời ngắn gọn, rõ ý, dễ đọc trên khung chat nhỏ.",
+    "media_doc_qa_system": "Bạn là trợ lý hỏi đáp trên tài liệu. Chỉ dựa vào nội dung được cung cấp. Nếu không đủ thông tin, nói rõ là chưa thấy.",
+    "media_doc_qa_user": "Yêu cầu bổ sung từ người dùng:\n{instruction}\n\nHãy trả lời trực tiếp.",
+    "web_ask_system": "Bạn là trợ lý hỏi đáp trang web. Trả lời bằng tiếng Việt tự nhiên, rõ ý, ưu tiên thông tin hữu ích, trình bày dễ đọc trên Telegram, và không dùng markdown.",
+    "web_ask_prompt": "URL: {url}\nTiêu đề: {title}\nMô tả trang: {description}\n\nNgữ cảnh trích xuất:\n{context}\n\nCâu hỏi của người dùng:\n{question}\n\nHãy trả lời bằng tiếng Việt tự nhiên, dễ đọc trên Telegram, không bịa thêm chi tiết ngoài ngữ cảnh đã cho. Nếu ngữ cảnh chưa đủ thông tin cho câu hỏi, hãy nói rõ là chưa thấy trong link.",
+    "web_summarize_system": "Bạn là trợ lý tóm tắt trang web. Trả lời bằng tiếng Việt tự nhiên, rõ ý, ưu tiên thông tin hữu ích, trình bày dễ đọc trên Telegram, và không dùng markdown.",
+    "web_summarize_prompt": "URL: {url}\nTiêu đề: {title}\nMô tả trang: {description}\n\nNội dung trích xuất:\n{content}\n\nYêu cầu bổ sung từ người dùng:\n{instruction}\n\nHãy trả lời bằng tiếng Việt tự nhiên, dễ đọc trên Telegram, không bịa thêm chi tiết ngoài nội dung đã cho. Nếu nội dung quá dài, ưu tiên ý chính và các điểm đáng chú ý.",
+    "web_summary_title": "Tóm tắt {title}",
+    "web_followup_hint": "Nếu muốn, anh có thể hỏi tiếp ngay trên link này.",
+    "web_no_text": "Không trích xuất được nội dung chữ đáng kể từ trang này.",
+    "web_text_shortened": "Nội dung đã được rút gọn để dễ đọc.",
+    "web_links_only": "Trang này chủ yếu có liên kết, chưa có nhiều văn bản để trích xuất.",
+    "web_no_recent_links": "Mia chưa có link gần đây để hỏi tiếp. Anh gửi lại link hoặc nói rõ link nào nhé.",
+    "web_no_recent_links_warning": "Không tìm thấy ngữ cảnh link gần đây.",
+    "github_no_commands": "không thấy lệnh rõ ràng trong dữ liệu",
+    "github_human_analysis_prompt": "Câu hỏi của người dùng:\n{user_query}\n\nRepo đang phân tích:\n{repo_info}\n\nLệnh đã trích từ dữ liệu:\n{commands}\n\nDữ liệu đã đọc:\n{data}\n\nHãy viết câu trả lời cuối cùng, không nhắc tên tool.",
+    "document_placeholder": "tài liệu",
+    "media_doc_summary_deep_prompt": "Hãy phân tích và tóm tắt kỹ nội dung {title} này bằng tiếng Việt. Ưu tiên bao quát nhiều phần/trang quan trọng hơn, nêu rõ bối cảnh, mục tiêu, các ý chính, ràng buộc, số liệu, đầu việc hoặc yêu cầu quan trọng nếu có.",
+    "media_doc_summary_normal_prompt": "Hãy tóm tắt nội dung {title} này bằng tiếng Việt theo kiểu kỹ hơn một chút, nêu rõ mục tiêu, các ý chính, đầu việc hoặc yêu cầu quan trọng nếu có.",
+    "media_doc_summary_deep_closing": "Hãy trả về theo format dễ đọc sau, ưu tiên mỗi ý một dòng ngắn nhưng bao quát hơn:\nTóm tắt {title}\n- Tổng quan: ...\n- Mục tiêu: ...\n- Nội dung chính: ...\n- Chi tiết quan trọng: ...\n- Ràng buộc / yêu cầu nổi bật: ...\n- Đầu ra hoặc lưu ý: ...\n\nNếu tài liệu dài, hãy bao quát các phần/trang quan trọng thay vì chỉ nêu chung chung. Nếu không có đủ thông tin cho một mục thì có thể bỏ mục đó. Tránh viết thành một đoạn văn dài. Không dùng markdown đậm hoặc bảng.",
+    "media_doc_summary_normal_closing": "Hãy trả về theo format dễ đọc sau, ưu tiên mỗi ý một dòng ngắn:\nTóm tắt {title}\n- Mục tiêu: ...\n- Nội dung chính: ...\n- Yêu cầu/đầu việc nổi bật: ...\n- Đầu ra hoặc lưu ý: ...\n\nNếu không có đủ thông tin cho một mục thì có thể bỏ mục đó. Tránh viết thành một đoạn văn dài. Không dùng markdown đậm hoặc bảng.",
+    "media_summary_default_prompt": "Hãy tóm tắt nội dung {title} này bằng tiếng Việt, ngắn gọn, dễ hiểu.",
+    "media_summary_default_system": "Bạn là trợ lý tóm tắt. Trả lời ngắn gọn bằng tiếng Việt, giữ ý chính, không dùng markdown.",
+    "media_summary_default_closing": "Hãy trả về 1 đến 4 câu, ưu tiên ý chính và các đầu mối quan trọng.",
+    "media_doc_chunk_prompt": "Hãy tóm tắt riêng phần {index}/{total} của {title} theo kiểu kỹ, rõ ý, mỗi ý một dòng ngắn, ưu tiên dữ kiện, yêu cầu, số liệu và các điểm quan trọng.",
+    "media_doc_merge_prompt": "Hãy tổng hợp các phần dưới đây thành một bản tóm tắt kỹ hơn cho {title}, bao quát nhiều phần/trang hơn bình thường.",
+    "media_doc_long_chunk_system": "Bạn là trợ lý hỏi đáp trên tài liệu dài. Chỉ dựa vào phần nội dung hiện có. Nếu phần này không liên quan hoặc không có thông tin trả lời, hãy trả đúng một từ: KHONG_CO_THONG_TIN. Nếu có thông tin, hãy trả lời ngắn gọn, rõ ý, ưu tiên dữ kiện quan trọng.",
+    "media_doc_long_chunk_human": "Tên tài liệu: {title}\nPhần tài liệu: {index}/{total}\n\nCâu hỏi: {question}\n\nNội dung phần này:\n{content}\n\nHãy trả lời hoặc xác nhận không có thông tin.",
+    "media_doc_long_merge_human": "Tên tài liệu: {title}\n\nCâu hỏi: {question}\n\nCác mảnh trả lời:\n{answers}\n\nHãy tổng hợp thành một câu trả lời cuối cùng bằng tiếng Việt.",
+    "media_doc_qa_normal_prompt": "Hãy trả lời ngắn gọn câu hỏi của người dùng dựa trên nội dung này.",
+    "media_doc_qa_normal_human": "Tên tài liệu: {title}\n\nCâu hỏi: {question}\n\nNội dung:\n{content}\n\nHãy trả lời ngắn gọn, chính xác, tự nhiên bằng tiếng Việt.",
+    "media_doc_extract_fields_prompt": "Hãy trích các trường dữ liệu quan trọng từ nội dung này và trả về JSON hợp lệ với 2 khóa: summary và fields.",
+    "media_doc_extract_fields_human": "Tên tài liệu: {title}\n\nHướng dẫn: {instruction}\n\nNội dung:\n{content}\n\nNếu có thể, hãy bổ sung vào các trường summary và fields.",
+    "media_doc_extract_fields_system": "Bạn là công cụ trích xuất dữ liệu. Luôn trả JSON hợp lệ, không markdown, không giải thích thừa.",
+    "media_image_describe_local_title": "Tóm tắt ảnh {title}",
+    "media_image_describe_local_ocr_label": "Chữ đọc được",
+    "media_image_describe_local_basic_stats": "Thông tin cơ bản: ảnh {width}x{height}, ánh sáng ước lượng {quality}.",
+    "media_image_describe_local_empty_ocr": "Chưa đọc được chữ rõ ràng trong ảnh.",
+    "media_image_describe_heading": "Mô tả ảnh {title}",
+    "media_audio_transcribe_empty": "Mia chưa chép lời rõ ràng từ audio này.",
+    "media_audio_summarize_empty": "Mia chưa tóm tắt được audio này.",
+    "media_video_transcribe_empty": "Mia chưa chép lời rõ ràng từ video này.",
+    "media_video_summarize_empty": "Mia chưa tóm tắt được video này.",
+    "media_tts_empty": "Thiếu nội dung để đọc bằng giọng nói.",
+    "media_doc_section_label": "Phần {index}:\n{content}",
+    "media_doc_part_label": "phần {index}",
+    "media_doc_summary_labels_deep": ["Tổng quan", "Mục tiêu", "Nội dung chính", "Chi tiết quan trọng", "Ràng buộc / yêu cầu nổi bật", "Đầu ra / lưu ý"],
+    "media_doc_summary_labels_normal": ["Mục tiêu", "Nội dung chính", "Yêu cầu nổi bật", "Đầu ra / lưu ý"],
+    "media_doc_notes_label": "Ghi chú",
+    "attached_placeholder": "đính kèm",
+    "media_doc_page_refs_label": "Trang tham chiếu",
+    "media_doc_qa_failed": "Mia chưa tìm thấy câu trả lời rõ ràng trong tài liệu."
+  },
+  "evaluator": {
+    "system_prompt": "Bạn là evaluator đánh giá chất lượng câu trả lời bằng định dạng JSON.",
+    "eval_prompt": "Bạn là kiểm định viên chất lượng câu trả lời của trợ lý AI Mia.\nNhiệm vụ của bạn là đánh giá xem câu trả lời có đạt yêu cầu hay không.\n\nCâu hỏi của người dùng: {user_query}\nCác tool đã được gọi và kết quả: {evidence}\nDự thảo câu trả lời: {draft_response}\n\nYêu Cầu Đánh Giá:\n1. Câu trả lời có giải quyết được câu hỏi không?\n2. Có thông tin sai lệch so với kết quả của tool (nếu có gọi tool) không?\n3. Có bị lộ nhãn nội bộ (như <think>, system instructions, tool names không mong muốn) không?\n4. Có bị lặp lại lỗi hoặc nói vòng vo không?\n\nTrả về kết quả dưới định dạng JSON sau:\n{{\n  \"verdict\": \"pass\" hoặc \"fail\",\n  \"reason\": \"Lý do chi tiết giải thích tại sao đạt hoặc không đạt\"\n}}\nChỉ trả về JSON hợp lệ, không thêm từ nào khác."
+  },
+  "composer": {
+    "reference_link_label": "Link tham khảo:",
+    "doc_link_label": "Link tài liệu:",
+    "file_link_label": "Link file tham khảo:",
+    "recent_file_link_label": "Link file gần đây:",
+    "email_link_label": "Link email:"
+  },
+  "supervisor": {
+    "evaluator_retry_hint": "Lượt chạy trước không đạt yêu cầu với lý do: {reason}. Hãy điều chỉnh câu trả lời hoặc gọi tool chính xác hơn.",
+    "hint_tool_guidance": "Tool gợi ý gần nhất là {hint_tool}, nhưng chỉ dùng nếu thật sự khớp với ý định của người dùng.",
+    "turn_focus_guidance": "Chỉ xử lý yêu cầu mới nhất trong lượt này. Nếu không có chỉ dẫn tiếp tục rõ ràng, bỏ qua chủ đề và kết quả của lượt trước."
+  }
+}

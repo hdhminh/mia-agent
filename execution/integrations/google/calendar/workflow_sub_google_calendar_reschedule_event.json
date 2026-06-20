@@ -1,0 +1,273 @@
+{
+  "name": "Sub-workflow: Google Calendar - Reschedule Event",
+  "nodes": [
+    {
+      "id": "9b3b0f07-75eb-4a11-ae43-e6d289164fdc",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1380,
+        240
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "cbf58231-a30b-495c-b0e0-945dbafa8327",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1140,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst eventId = String(source.eventId || source.id || args.eventId || args.id || payload.eventId || payload.id || '').trim();\nconst query = String(source.query || args.query || payload.query || rawText).trim();\nconst startAt = String(source.startAt || source.start || args.startAt || args.start || payload.startAt || payload.start || new Date().toISOString()).trim();\nconst endAt = String(source.endAt || source.end || args.endAt || args.end || payload.endAt || payload.end || new Date(Date.now() + 60 * 60 * 1000).toISOString()).trim();\nconst timezone = String(source.timezone || args.timezone || payload.timezone || 'Asia/Ho_Chi_Minh').trim();\nconst calendarId = String(source.calendarId || args.calendarId || payload.calendarId || 'primary').trim();\nconst hasTarget = Boolean(eventId || query);\nreturn [{ json: { ...source, payload, message, chatId, rawText, eventId, query, startAt, endAt, timezone, calendarId, hasTarget, response: hasTarget ? '' : 'Mia cần eventId hoặc query để đổi lịch.' } }];"
+      }
+    },
+    {
+      "id": "f40a3443-6872-49f3-ab70-73f074c689ed",
+      "name": "Has Direct Event ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.eventId) }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2eb81ffd-1805-4d4d-8a06-1060ccfdb3df",
+      "name": "Google Calendar Find Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        400
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || \"primary\" }}"
+        },
+        "limit": 5,
+        "options": {
+          "timeMin": "={{ $json.startAt }}",
+          "timeMax": "={{ $json.endAt }}",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "ceb04ae3-35b7-49e1-bb1b-25748102f3ea",
+      "name": "Pick Target Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        400
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.eventId || item.summary);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: 'Mia chưa tìm thấy sự kiện phù hợp để đổi lịch.' } }];\n}\nconst item = rows[0];\nreturn [{ json: { ...source, ok: true, eventId: item.id || item.eventId || '', eventSummary: item.summary || source.query || '', eventLink: item.htmlLink || item.webViewLink || '' } }];"
+      }
+    },
+    {
+      "id": "a8206fa1-bd0b-4ed8-8bc2-57e039895d30",
+      "name": "Has Search Result?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.ok) }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "53ef40f9-8743-4e3e-a7c6-687e139d27a6",
+      "name": "Update Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        120,
+        240
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{$json.calendarId || \"primary\"}}/events/{{$json.eventId}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { start: { dateTime: $json.startAt, timeZone: $json.timezone || \"Asia/Ho_Chi_Minh\" }, end: { dateTime: $json.endAt, timeZone: $json.timezone || \"Asia/Ho_Chi_Minh\" } } }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "id": "288d88a4-fbcb-4c52-a5bc-a6b701931bae",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst title = source.query || result.eventSummary || source.eventId || 'sự kiện';\nlet text = `Đã đổi lịch sự kiện: ${title}`;\nif (source.eventId || result.eventId) text += `\\nEvent ID: ${source.eventId || result.eventId}`;\ntext += `\\nThời gian mới: ${source.startAt} → ${source.endAt}`;\nif (result.eventLink) text += `\\nMở sự kiện: ${result.eventLink}`;\nreturn [{ json: { chatId: source.chatId || '', text: text.trim(), eventId: source.eventId || result.eventId || '', eventLink: result.eventLink || '' } }];"
+      }
+    },
+    {
+      "id": "a18d79f6-9b2e-4956-a371-5c312a445033",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Has Direct Event ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Direct Event ID?": {
+      "main": [
+        [
+          {
+            "node": "Update Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Calendar Find Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find Event": {
+      "main": [
+        [
+          {
+            "node": "Pick Target Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Target Event": {
+      "main": [
+        [
+          {
+            "node": "Has Search Result?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Search Result?": {
+      "main": [
+        [
+          {
+            "node": "Update Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Event": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        []
+      ]
+    },
+    "Return Error": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

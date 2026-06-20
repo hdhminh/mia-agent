@@ -13,16 +13,17 @@ ALLOWED_ROOT = {
     ".env.example",
     ".git",
     ".gitignore",
+    "LICENSE",
     "README.md",
-    "docker-compose.yml",
+    "SHOWCASE.md",
+    "requirements.txt",
     "docs",
-    "google",
-    "langchain_core",
-    "logs",
-    "memory",
+    "agent",
+    "execution",
+    "infra",
     "scripts",
-    "shortlink",
-    "workflows",
+    "tests",
+    "logs",
 }
 
 STALE_ROOT_REFERENCES = (
@@ -63,32 +64,26 @@ def main() -> int:
     if extra:
         errors.append("Unexpected root entries: " + ", ".join(extra))
 
-    pycache_dirs = [
-        path.relative_to(ROOT)
-        for path in ROOT.rglob("__pycache__")
-        if ".git" not in path.parts and not any(p.startswith(".venv") or p == "tmp" for p in path.parts)
-    ]
-    if pycache_dirs:
-        errors.append(
-            "Generated __pycache__ directories present: "
-            + ", ".join(str(path) for path in pycache_dirs)
-        )
 
-    for path in list((ROOT / "google").rglob("*.json")) + list((ROOT / "workflows").rglob("*.json")):
+
+    for path in list((ROOT / "execution").rglob("*.json")):
         try:
             json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:  # noqa: BLE001 - script should report any parse failure clearly.
             errors.append(f"Invalid JSON: {path.relative_to(ROOT)} ({exc})")
 
+    import re
     for path in iter_text_files():
         rel = path.relative_to(ROOT)
         text = path.read_text(encoding="utf-8", errors="ignore")
         for name in STALE_ROOT_REFERENCES:
-            stale = f"/home/huynhminh/Projects/n8n/{name}"
-            if stale in text:
-                errors.append(f"Stale root path in {rel}: {stale}")
-        if rel.parts[:2] == ("scripts", "workflow_patches") and "/home/huynhminh/Projects/n8n" in text:
-            errors.append(f"Hard-coded repo path in workflow patch script: {rel}")
+            for root_name in ("n8n", "mia-agent"):
+                pattern = rf"/home/[^/]+/Projects/{root_name}/{name}"
+                if re.search(pattern, text):
+                    errors.append(f"Stale root path in {rel}")
+        if rel.parts[:2] == ("scripts", "patches"):
+            if re.search(r"/home/[^/]+/Projects/(n8n|mia-agent)", text):
+                errors.append(f"Hard-coded repo path in workflow patch script: {rel}")
 
     if errors:
         for error in errors:

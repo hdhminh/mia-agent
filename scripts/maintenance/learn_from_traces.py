@@ -10,20 +10,18 @@ import sys
 from psycopg_pool import ConnectionPool
 
 ROOT = Path(__file__).resolve().parents[2]
-LANGCHAIN_ROOT = ROOT / "langchain_core"
-for path in (ROOT, LANGCHAIN_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from mia_core.config import Settings
-from mia_core.learning import LearningRepository, should_promote_candidate
-from mia_core.memory import MemoryRepository
+from agent.config import Settings
+from agent.learning.repository import LearningRepository, should_promote_candidate
+from agent.memory.repository import MemoryRepository
 from scripts.dev.eval_route_quality import CASES, _score_case
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 _SCHEMA_CANDIDATES = [
+    BASE_DIR / "infra" / "sql" / "memory_schema.sql",
     BASE_DIR / "sql" / "memory_schema.sql",
     BASE_DIR / "langchain_core" / "sql" / "memory_schema.sql",
 ]

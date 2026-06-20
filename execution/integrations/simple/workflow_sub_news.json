@@ -1,0 +1,305 @@
+{
+  "name": "Sub-workflow: Tin Tức",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-news",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,12,18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule-news",
+      "name": "Lịch Tin (6,12,18)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\nconst args = source.payload?.args || source.args || {};\nconst msg = source.message || source.body?.message || {};\nconst directChatId = String(source.chatId || msg.chat?.id || '').trim();\nconst deliveryMode = String(source.deliveryMode || source.payload?.deliveryMode || '').trim().toLowerCase();\nconst scheduledFallbackChatId = String($env.TELEGRAM_ADMIN_CHAT_ID || '').trim();\nconst rawText = String(msg.text || source.text || source.rawText || source.query || '').trim();\nconst normalizedText = rawText\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd');\nconst explicitTopic = String(args.topic || '').trim();\n\nlet chatId = '';\nlet isAuto = false;\n\nif (directChatId) {\n  chatId = directChatId;\n} else if (deliveryMode === 'return') {\n  chatId = '';\n} else {\n  chatId = scheduledFallbackChatId;\n  isAuto = Boolean(chatId);\n}\n\nlet topics = [];\nif (explicitTopic) {\n  topics = [explicitTopic];\n} else if (isAuto) {\n  topics = ['kinh-doanh', 'the-gioi', 'so-hoa'];\n} else {\n  if (normalizedText.includes('kinhdoanh') || normalizedText.includes('business')) topics.push('kinh-doanh');\n  if (normalizedText.includes('thegioi') || normalizedText.includes('world')) topics.push('the-gioi');\n  if (normalizedText.includes('congnghe') || normalizedText.includes('tech') || normalizedText.includes('sohoa')) topics.push('so-hoa');\n  if (normalizedText.includes('thoisu') || normalizedText.includes('news')) topics.push('thoi-su');\n  if (normalizedText.includes('suckhoe') || normalizedText.includes('health')) topics.push('suc-khoe');\n  if (normalizedText.includes('thethao') || normalizedText.includes('sport')) topics.push('the-thao');\n  if (normalizedText.includes('giaitri') || normalizedText.includes('entertainment')) topics.push('giai-tri');\n  if (normalizedText.includes('phapluat') || normalizedText.includes('law')) topics.push('phap-luat');\n  if (normalizedText.includes('giaoduc') || normalizedText.includes('education')) topics.push('giao-duc');\n  if (normalizedText.includes('doisong') || normalizedText.includes('life')) topics.push('doi-song');\n  if (normalizedText.includes('xe') || normalizedText.includes('car')) topics.push('xe');\n  if (normalizedText.includes('dulich') || normalizedText.includes('travel')) topics.push('du-lich');\n  if (normalizedText.includes('khoahoc') || normalizedText.includes('science')) topics.push('khoa-hoc');\n\n  if (topics.length === 0) topics = ['kinh-doanh', 'the-gioi', 'so-hoa'];\n}\n\nconst topicNames = {\n  'kinh-doanh': 'Kinh doanh', 'the-gioi': 'Thế giới', 'so-hoa': 'Công nghệ',\n  'thoi-su': 'Thời sự', 'suc-khoe': 'Sức khỏe', 'the-thao': 'Thể thao',\n  'giai-tri': 'Giải trí', 'phap-luat': 'Pháp luật', 'giao-duc': 'Giáo dục',\n  'doi-song': 'Đời sống', 'xe': 'Xe', 'du-lich': 'Du lịch', 'khoa-hoc': 'Khoa học'\n};\n\nconst feedMap = {\n  'kinh-doanh': 'https://vnexpress.net/rss/kinh-doanh.rss',\n  'the-gioi': 'https://vnexpress.net/rss/the-gioi.rss',\n  'so-hoa': 'https://vnexpress.net/rss/so-hoa.rss',\n  'thoi-su': 'https://vnexpress.net/rss/thoi-su.rss',\n  'suc-khoe': 'https://vnexpress.net/rss/suc-khoe.rss',\n  'the-thao': 'https://vnexpress.net/rss/the-thao.rss',\n  'giai-tri': 'https://vnexpress.net/rss/giai-tri.rss',\n  'phap-luat': 'https://vnexpress.net/rss/phap-luat.rss',\n  'giao-duc': 'https://vnexpress.net/rss/giao-duc.rss',\n  'doi-song': 'https://vnexpress.net/rss/doi-song.rss',\n  'xe': 'https://vnexpress.net/rss/oto-xe-may.rss',\n  'du-lich': 'https://vnexpress.net/rss/du-lich.rss',\n  'khoa-hoc': 'https://vnexpress.net/rss/khoa-hoc.rss'\n};\n\nreturn topics.map((topic) => ({\n  json: {\n    ...source,\n    chatId,\n    isAuto,\n    text: rawText,\n    rawText,\n    topic,\n    url: feedMap[topic] || feedMap['kinh-doanh'],\n    topics,\n    topicNames,\n    feedMap\n  }\n}));"
+      },
+      "id": "code-prepare-news",
+      "name": "Chuẩn bị URL News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "responsePropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "fetch-news-rss",
+      "name": "Tải XML RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "xml-to-json-news",
+      "name": "XML to JSON",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.sentUrls = staticData.sentUrls || [];\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\n\nlet allItems = [];\nlet chatId = '';\nlet isAuto = false;\n\nfor (const [index, item] of $input.all().entries()) {\n  const source = $('Chuẩn bị URL News').all()[index].json || {};\n  chatId = source.chatId || '';\n  isAuto = Boolean(source.isAuto);\n  const topic = source.topic || 'Tin tức';\n  let articles = item.json.rss?.channel?.item || [];\n  if (!Array.isArray(articles)) articles = [articles];\n\n  for (const article of articles) {\n    if (!article.title || !article.link) continue;\n    let pubDate = 0;\n    try { pubDate = new Date(article.pubDate).getTime(); } catch (error) {}\n    allItems.push({\n      title: String(article.title).trim(),\n      link: String(article.link).trim(),\n      pubDate,\n      topic,\n    });\n  }\n}\n\nallItems.sort((a, b) => b.pubDate - a.pubDate);\n\nconst finalItems = [];\nfor (const article of allItems) {\n  if (isAuto && staticData.sentUrls.includes(article.link)) continue;\n  finalItems.push(article);\n  if (finalItems.length >= 3) break;\n}\n\nif (isAuto) {\n  for (const article of finalItems) staticData.sentUrls.push(article.link);\n  if (staticData.sentUrls.length > 200) staticData.sentUrls = staticData.sentUrls.slice(-200);\n}\n\nif (finalItems.length === 0) {\n  return [{ json: { text: `Hiện chưa có bài mới nổi bật để Mia gửi ${owner}.`, chatId } }];\n}\n\nconst topicLine = [...new Set(finalItems.map((item) => item.topic))].slice(0, 2).join(', ');\nlet text = topicLine ? `Mia điểm nhanh vài tin nổi bật về ${topicLine}:` : `Mia điểm nhanh vài tin nổi bật cho ${owner}:`;\n\nfor (let i = 0; i < finalItems.length; i += 1) {\n  const item = finalItems[i];\n  text += `\\n- ${item.title}`;\n}\n\ntext += '\\n\\nĐọc thêm:';\nfor (let i = 0; i < finalItems.length; i += 1) {\n  const item = finalItems[i];\n  text += `\\n${i + 1}. ${item.link}`;\n}\n\nreturn [{ json: { text: text.trim(), chatId } }];"
+      },
+      "id": "code-format-news-2",
+      "name": "Format Tin Tức",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6cd3b7d-dc35-4b20-ad0c-0d85f05211e3",
+      "name": "Gửi Telegram Trực Tiếp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
+      },
+      "id": "b77cc346-475e-4cc4-bbc4-20755a229890",
+      "name": "ACK Tool Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "30c8ca08-afee-4689-b568-da473d97bebb",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "549640bf-9ad3-40f8-afbf-727b59990e4e",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Tin Tức",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị URL News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lịch Tin (6,12,18)": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị URL News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn bị URL News": {
+      "main": [
+        [
+          {
+            "node": "Tải XML RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tải XML RSS": {
+      "main": [
+        [
+          {
+            "node": "XML to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML to JSON": {
+      "main": [
+        [
+          {
+            "node": "Format Tin Tức",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Tin Tức": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram Trực Tiếp": {
+      "main": [
+        [
+          {
+            "node": "ACK Tool Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
+      "main": [
+        []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

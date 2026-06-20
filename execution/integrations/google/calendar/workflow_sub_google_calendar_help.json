@@ -1,0 +1,51 @@
+{
+  "name": "Sub-workflow: Google Calendar - Help",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d1344a4b-24f1-4b4b-ade2-7f3a3259a9a5",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\n\nconst msg =\n  source.message ||\n  source.body?.message ||\n  source.payload?.message ||\n  {};\n\nconst chatId =\n  source.chatId ||\n  msg.chat?.id ||\n  source.payload?.chatId ||\n  source.body?.chatId ||\n  '';\n\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\n\nconst text = [\n  `Mia có thể hỗ trợ Google Calendar cho ${owner} ở các việc như xem lịch, tìm sự kiện, tạo lịch, huỷ lịch và kiểm tra giờ rảnh.`,\n  '',\n  `${owner} thử vài câu kiểu này là được:`,\n  '- lịch hôm nay',\n  '- lịch ngày mai',\n  '- tìm lịch họp khách',\n  '- tạo lịch họp team lúc 15h mai',\n  '- huỷ lịch phỏng vấn ngày mai',\n  '- kiểm tra lịch rảnh 9h-10h mai',\n].join('\\n');\n\nreturn [{ json: { chatId, text } }];"
+      },
+      "id": "acf1e653-553e-4011-95ef-ec7e199aca84",
+      "name": "Huong Dan Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -144
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Huong Dan Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Huong Dan Calendar": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

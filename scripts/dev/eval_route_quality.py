@@ -8,13 +8,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
-LANGCHAIN_ROOT = ROOT / "langchain_core"
-for path in (ROOT, LANGCHAIN_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from mia_core.router import route_request
+from agent.brain.router import route_request
 
 
 @dataclass(frozen=True)

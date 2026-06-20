@@ -1,0 +1,410 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4759b07a-3769-49cb-9382-2770a292b3a0",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst args = payload.args || source.args || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst deliveryMode = String(source.deliveryMode || payload.deliveryMode || (chatId ? 'telegram' : 'return')).trim() || 'return';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || payload.query || '').trim();\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction escapeSql(value = '') {\n  return String(value || '').replace(/'/g, \"''\");\n}\n\nfunction parseDuration(value) {\n  const text = normalize(value);\n  if (!text) return null;\n  if (/\\b(vinh vien|khong het han|forever)\\b/.test(text)) {\n    return { forever: true, ms: null, label: 'vĩnh viễn' };\n  }\n  const compact = text.match(/(\\d+)\\s*(h|d)\\b/);\n  if (compact) {\n    const amount = Number(compact[1]);\n    const unit = compact[2];\n    if (unit === 'h') return { forever: false, ms: amount * 3600 * 1000, label: `${amount}h` };\n    if (unit === 'd') return { forever: false, ms: amount * 24 * 3600 * 1000, label: `${amount}d` };\n  }\n  const verbose = text.match(/(\\d+)\\s*(gio|ngay|tuan|thang|hour|day|week|month)\\b/);\n  if (verbose) {\n    const amount = Number(verbose[1]);\n    const unit = verbose[2];\n    if (unit === 'gio' || unit === 'hour') return { forever: false, ms: amount * 3600 * 1000, label: `${amount} giờ` };\n    if (unit === 'ngay' || unit === 'day') return { forever: false, ms: amount * 24 * 3600 * 1000, label: `${amount} ngày` };\n    if (unit === 'tuan' || unit === 'week') return { forever: false, ms: amount * 7 * 24 * 3600 * 1000, label: `${amount} tuần` };\n    if (unit === 'thang' || unit === 'month') return { forever: false, ms: amount * 30 * 24 * 3600 * 1000, label: `${amount} tháng` };\n  }\n  return null;\n}\n\nfunction safeParseHttpUrl(value) {\n  const input = String(value || '').trim();\n  if (!input) return null;\n  if (typeof URL === 'function') {\n    try {\n      const parsed = new URL(input);\n      const protocol = String(parsed.protocol || '').toLowerCase();\n      if (protocol !== 'http:' && protocol !== 'https:') return null;\n      if (!parsed.hostname) return null;\n      return {\n        href: parsed.toString(),\n        host: parsed.host,\n        hostname: parsed.hostname,\n        protocol,\n      };\n    } catch (error) {}\n  }\n  const match = input.match(/^(https?):\\/\\/([^\\s/?#]+)([^\\s]*)?$/i);\n  if (!match) return null;\n  const protocol = `${match[1].toLowerCase()}:`;\n  const host = match[2];\n  const path = match[3] || '';\n  const hostname = host.replace(/:\\d+$/, '');\n  if (!hostname) return null;\n  return {\n    href: `${protocol}//${host}${path}`,\n    host,\n    hostname: hostname.toLowerCase(),\n    protocol,\n  };\n}\n\nfunction isPrivateHost(hostname) {\n  const host = String(hostname || '').toLowerCase();\n  if (!host) return true;\n  if (host === 'localhost' || host === '0.0.0.0' || host === '127.0.0.1' || host === '::1') return true;\n  if (host.endsWith('.local')) return true;\n  if (/^10\\./.test(host)) return true;\n  if (/^192\\.168\\./.test(host)) return true;\n  if (/^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host)) return true;\n  return false;\n}\n\nfunction hashHex(input) {\n  let h1 = 0xdeadbeef ^ input.length;\n  let h2 = 0x41c6ce57 ^ input.length;\n  for (let index = 0; index < input.length; index += 1) {\n    const codePoint = input.charCodeAt(index);\n    h1 = Math.imul(h1 ^ codePoint, 2654435761);\n    h2 = Math.imul(h2 ^ codePoint, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return `${(h2 >>> 0).toString(16).padStart(8, '0')}${(h1 >>> 0).toString(16).padStart(8, '0')}`;\n}\n\nconst helpText = [\n  'Mia có thể rút gọn link như sau:',\n  '- rút gọn link https://example.com',\n  '- rút gọn link https://example.com trong 7 ngày',\n  '- short link https://example.com 24h',\n  '- tạo link ngắn https://example.com vĩnh viễn',\n  '',\n  'Mặc định link sống 30 ngày.',\n  'Hỗ trợ TTL: 1h, 24h, 7d, 30d, 1 tuần, 1 tháng, vĩnh viễn.',\n].join('\\n');\n\nconst normalized = normalize(rawText);\nconst argUrl = String(args.url || '').trim();\nconst argTtl = String(args.ttl || '').trim();\n\nif ((!rawText && !argUrl) || /\\b(shortlink help|short link help|help shortlink|huong dan shortlink)\\b/.test(normalized)) {\n  return [{ json: { chatId, deliveryMode, ok: false, responseText: helpText } }];\n}\n\nconst rawUrl = argUrl || String((rawText.match(/https?:\\/\\/[^\\s<>\"']+/i) || [])[0] || '').replace(/[),.;!?]+$/, '').trim();\nif (!rawUrl) {\n  return [{ json: { chatId, deliveryMode, ok: false, responseText: 'Thiếu URL. Ví dụ: rút gọn link https://example.com trong 7 ngày.' } }];\n}\n\nconst parsedUrl = safeParseHttpUrl(rawUrl);\nif (!parsedUrl) {\n  return [{ json: { chatId, deliveryMode, ok: false, responseText: 'URL không hợp lệ. Chỉ nhận http:// hoặc https://.' } }];\n}\n\nconst allowLocal = String($env.SHORTLINK_ALLOW_LOCAL || 'false').toLowerCase() === 'true';\nif (!allowLocal && isPrivateHost(parsedUrl.hostname)) {\n  return [{ json: { chatId, deliveryMode, ok: false, responseText: 'Không cho phép URL nội bộ hoặc local.' } }];\n}\n\nconst ttlSource = argTtl || rawText.replace(rawUrl, ' ').trim();\nconst requestedTtl = parseDuration(ttlSource);\nconst defaultTtl = parseDuration($env.SHORTLINK_DEFAULT_TTL || '30d') || { forever: false, ms: 30 * 24 * 3600 * 1000, label: '30d' };\nconst maxDays = Number($env.SHORTLINK_MAX_TTL_DAYS || 365) || 365;\nconst maxMs = maxDays * 24 * 3600 * 1000;\nlet ttl = requestedTtl || defaultTtl;\nlet clampMessage = '';\n\nif (!ttl.forever && ttl.ms > maxMs) {\n  ttl = { forever: false, ms: maxMs, label: `${maxDays} ngày` };\n  clampMessage = `TTL vượt giới hạn nên Mia đã giảm còn ${maxDays} ngày.`;\n}\n\nconst expiresAt = ttl.forever ? null : new Date(Date.now() + ttl.ms);\nconst expiresAtIso = expiresAt ? expiresAt.toISOString() : null;\nconst expiresAtSql = expiresAtIso ? `'${escapeSql(expiresAtIso)}'::timestamptz` : 'NULL';\nconst expiresAtDisplay = expiresAt ? expiresAt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : 'vĩnh viễn';\nconst publicBaseUrl = String($env.SHORTLINK_PUBLIC_BASE_URL || 'https://go.example.com').replace(/\\/+$/, '');\nconst digest = hashHex(`${parsedUrl.href}|${publicBaseUrl}`);\nconst candidateId8 = digest.slice(0, 8);\nconst candidateId10 = digest.slice(0, 10);\nconst candidateId12 = digest.slice(0, 12);\nconst lookupSql = `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE long_url = '${escapeSql(parsedUrl.href)}' OR id IN ('${candidateId8}', '${candidateId10}', '${candidateId12}') ORDER BY created_at DESC;`;\n\nreturn [{\n  json: {\n    chatId,\n    deliveryMode,\n    ok: true,\n    longUrl: parsedUrl.href,\n    host: parsedUrl.host,\n    publicBaseUrl,\n    expiresAtIso,\n    expiresAtSql,\n    expiresAtDisplay,\n    requestedTtlLabel: requestedTtl ? requestedTtl.label : defaultTtl.label,\n    effectiveTtlLabel: ttl.forever ? 'vĩnh viễn' : ttl.label,\n    clampMessage,\n    candidateId8,\n    candidateId10,\n    candidateId12,\n    lookupSql\n  }\n}];"
+      },
+      "id": "56db1134-d4df-4474-8210-9b366ef6b6e7",
+      "name": "Prepare Shortlink Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "7406bb5f-437a-4bd9-aded-6483080bf360",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.lookupSql }}",
+        "options": {}
+      },
+      "id": "079679b2-8d0d-47fb-b345-21a409eb69d1",
+      "name": "Lookup Existing Links",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        112
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Shortlink Request').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => row.id || row.long_url);\n\nfunction escapeSql(value = '') {\n  return String(value || '').replace(/'/g, \"''\");\n}\n\nfunction isExpired(row) {\n  return Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());\n}\n\nconst sameUrl = rows.find((row) => row.long_url === source.longUrl);\nconst byId = new Map(rows.filter((row) => row.id).map((row) => [row.id, row]));\nconst candidates = [source.candidateId8, source.candidateId10, source.candidateId12];\nlet selectedId = '';\nlet persistSql = '';\nlet shortUrl = '';\n\nif (sameUrl) {\n  selectedId = sameUrl.id;\n  shortUrl = sameUrl.short_url || `${source.publicBaseUrl}/${selectedId}`;\n  if (isExpired(sameUrl)) {\n    persistSql = `UPDATE short_links SET expires_at = ${source.expiresAtSql}, updated_at = now() WHERE id = '${escapeSql(selectedId)}' RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;`;\n  } else {\n    persistSql = `SELECT id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at FROM short_links WHERE id = '${escapeSql(selectedId)}' LIMIT 1;`;\n  }\n} else {\n  const freeCandidate = candidates.find((id) => !byId.has(id));\n  if (!freeCandidate) {\n    return [{ json: { chatId: source.chatId || '', ok: false, responseText: 'Không tạo được short link vì tất cả candidate ID đều bị trùng. Bạn thử lại sau nhé.' } }];\n  }\n  selectedId = freeCandidate;\n  shortUrl = `${source.publicBaseUrl}/${selectedId}`;\n  persistSql = `INSERT INTO short_links (id, long_url, short_url, host, expires_at, created_at, updated_at) VALUES ('${selectedId}', '${escapeSql(source.longUrl)}', '${escapeSql(shortUrl)}', '${escapeSql(source.host)}', ${source.expiresAtSql}, now(), now()) RETURNING id, long_url, short_url, host, clicks, created_at, expires_at, updated_at, last_clicked_at;`;\n}\n\nreturn [{\n  json: {\n    ...source,\n    ok: true,\n    id: selectedId,\n    shortUrl,\n    persistSql\n  }\n}];"
+      },
+      "id": "1c829822-385d-4027-83fc-c3420623221a",
+      "name": "Decide Final Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "20511fcb-2bfb-414e-a5c4-0896ac89b6a3",
+      "name": "Can Persist?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.persistSql }}",
+        "options": {}
+      },
+      "id": "da1c9149-3b25-45bf-9023-02355f5931f4",
+      "name": "Persist Short Link",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "XIYO79FxACZ0XHMP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Decide Final Record').item.json || $('Prepare Shortlink Request').item.json || {};\nconst row = $input.item.json || {};\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\n\nconst shortUrl = row.short_url || source.shortUrl || '';\nconst longUrl = row.long_url || source.longUrl || '';\nconst expiresAt = row.expires_at ? new Date(row.expires_at) : null;\nconst expiresAtDisplay = expiresAt\n      ? expiresAt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false })\n      : source.expiresAtDisplay || 'vĩnh viễn';\n\nlet text = `Mia đã rút gọn link xong rồi ${owner}.`;\nif (shortUrl) text += `\\nLink ngắn: ${shortUrl}`;\nif (expiresAtDisplay) text += `\\nHết hạn: ${expiresAtDisplay}`;\nif (longUrl) text += `\\nLink gốc: ${longUrl}`;\nif (source.clampMessage) text += `\\nLưu ý: ${source.clampMessage}`;\n\nreturn [{ json: {\n  chatId: source.chatId || '',\n  text,\n  result: {\n    id: row.id || source.id || '',\n    short_url: shortUrl,\n    long_url: longUrl,\n    host: row.host || source.host || '',\n    expires_at: row.expires_at || source.expiresAtIso || null,\n    expires_at_display: expiresAtDisplay,\n    requested_ttl: source.requestedTtlLabel || '',\n    effective_ttl: source.effectiveTtlLabel || ''\n  }\n} }];"
+      },
+      "id": "dc0084c1-db3b-408b-8266-4ecaa841ce32",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || $('Prepare Shortlink Request').item.json || {};\nreturn [{ json: { chatId: source.chatId || '', text: String(source.responseText || 'Không thể xử lý short link.') } }];"
+      },
+      "id": "0864164d-db82-4a41-bb13-cc6a1e729ae4",
+      "name": "Format Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "shortlink-has-chatid",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        496,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "249a524f-21d1-45ee-854b-dcee71976bdf",
+      "name": "Gửi Telegram Trực Tiếp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        752,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
+      },
+      "id": "b047f899-8530-4648-8221-aad1b8fa19b1",
+      "name": "ACK Tool Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "shortlink-keep-text",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-wf",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Shortlink Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Shortlink Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Existing Links",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Existing Links": {
+      "main": [
+        [
+          {
+            "node": "Decide Final Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Final Record": {
+      "main": [
+        [
+          {
+            "node": "Can Persist?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Persist?": {
+      "main": [
+        [
+          {
+            "node": "Persist Short Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Short Link": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Response": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram Trực Tiếp": {
+      "main": [
+        [
+          {
+            "node": "ACK Tool Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
+      "main": [
+        []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

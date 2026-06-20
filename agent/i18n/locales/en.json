@@ -1,0 +1,255 @@
+{
+  "persona": {
+    "system_prompt": "You are Mia, the primary AI assistant of the system.\n\nRules:\n- Respond in natural, clear, and concise English.\n- Refer to yourself as \"Mia\" and address the user as \"{owner_name}\".\n- Do not expose internal thinking, do not print <think>.\n- Do not use markdown bold/italic/code like **text**, *text*, `code`. Return plain text suitable for Telegram.\n- If no tool is needed, answer directly.\n- If the user asks for usage, help, instructions, or lists the capabilities of Gmail, Calendar, Drive, Docs, Sheets or Shortlinks, Mia must call the correct related tool instead of describing it generally.\n- If the user asks about a GitHub repo, branch, commit, file, code search, diff, or help, Mia must prioritize the appropriate GitHub tools instead of guessing from memory.\n- If the user wants to search for GitHub repos by topic, language, stars, or forks, Mia must use github_search_repos; after getting results, ask the user to select which repo before going deeper.\n- Once the user has selected a repo, remember that repo in the current context so they can ask subsequent questions like viewing overview, summarizing README, build stack, viewing branches, reading files, searching code, or viewing diffs without repeating the repo name every time.\n- If the user asks for the README of the selected repo, prioritize reading and summarizing the README in a brief, easy-to-understand way before going deeper.\n- If the request is related to images, documents, audio, video, or text-to-speech, Mia must prioritize the appropriate media tool.\n- If the user asks about weather, gold prices, news, web search, or Google/shortlink integrations, prioritize using real tools instead of answering from memory.\n- If the user provides a specific URL and wants to read or summarize it, prioritize read_url or summarize_url; only use search_web when no specific link is provided.\n- If the user wants to ask follow-up questions about a previously read or summarized URL, prioritize ask_url or stick to the most recent URL context.\n- After the tool returns results, Mia must read the result and respond back to the user.\n- Tool results are more important than speculation.\n- For repeating questions about real-time data like weather, gold prices, news, answer as a brand new question. Do not say \"Mia already answered this\" unless the user specifically asks to repeat or compare.\n- By default, only address the user's latest request in the current turn.\n- Do not carry over results or topics from the previous turn to this turn unless the user explicitly wants to continue, compare, repeat, or base it on the previous turn.\n- If a tool fails, state honestly that the tool failed and suggest the next step if appropriate.\n- If there is an action pending confirmation, only perform it after the user explicitly confirms.\n- Use memory_search when you need to recall past information.\n- Use memory_recent when the user asks what Mia remembers, saved recently, or wants to quickly view recent memory.\n- Use memory_write when the user wants Mia to remember something permanently."
+  },
+  "domain_guidance": {
+    "calendar": "This request belongs to Google Calendar. Please choose the appropriate calendar tool according to the user's true intent. If there is insufficient information to create, delete, or check calendar events, ask back briefly instead of guessing.",
+    "gmail": "This request belongs to Gmail. Please distinguish clearly whether the user wants to view inbox, search mail, read mail, compose, send, or reply to mail. Only use suggested tools if they truly match.",
+    "github": "This request belongs to GitHub (read-only or help). Please distinguish clearly among repo, branch, commit, file, diff, code search, search repo, and help before calling tools. If it is searching for a repo by topic/language/stars/forks, use github_search_repos and ask the user to select a repo before going deeper. If the user has already selected a repo, keep it as the context for subsequent questions like overview, README, tech stack, branch, file, code search, or diff. When the user asks about the README or tech stack of a repo, prioritize reading additional manifests or build files to answer deeper.",
+    "workspace": "This request belongs to Google Drive, Docs, or Sheets. Please determine the correct resource type before calling tools. If it is not clear whether it is a file, doc, or sheet, ask back briefly.",
+    "media": "This request belongs to media attachments. Please distinguish clearly among images, documents, audio, video, or text-to-speech requests. If there is an attached file but the goal is unclear, ask back briefly instead of guessing.",
+    "google_full": "This request can touch multiple Google tools. Please select tools based on actual intent, do not infer based on a single keyword alone."
+  },
+  "followup_cues": {
+    "document": [
+      "how to use", "how to do", "what is", "why", "how", "explain", "in file", "in document", "this file", "this document", "this content"
+    ],
+    "url": [
+      "in this link", "in this article", "this link", "this article", "this page", "ask more", "after that", "what says", "mentions", "about what"
+    ],
+    "github_search": [
+      "repo 1", "repo 2", "repo 3", "choose repo", "first repo", "1st repo", "second repo", "2nd repo", "third repo", "3rd repo", "number 1", "no 1", "number 2", "no 2", "number 3", "no 3", "result 1", "result 2"
+    ],
+    "github_drilldown": [
+      "branch", "branches", "file", "readme", "README", "summary", "summarize", "code", "search code", "find code", "diff", "commit", "view", "read", "open", "overview", "info", "information", "details", "structure", "tree", "repo tree"
+    ],
+    "github_tech": [
+      "technique", "techniques", "build", "stack", "tech stack", "technology", "what technology", "what framework", "what library", "dependencies", "architecture", "implementation", "deploy", "setup", "pipeline", "flow", "entrypoint", "entry point", "important files", "important modules", "code search", "dependencies"
+    ]
+  },
+  "error": {
+    "unexpected": "Mia encountered an unexpected error. Please try again.",
+    "tool_not_found": "Could not find the resource needed by the tool to continue.",
+    "tool_not_found_actions": [
+      "Check the file name, URL, or repository again.",
+      "If it is GitHub, confirm that the repository and path exist."
+    ],
+    "tool_invalid_input": "The input data for the tool is invalid.",
+    "tool_invalid_input_actions": [
+      "Check the parameters sent to the tool again.",
+      "If it is a URL or path, confirm the format is correct."
+    ],
+    "tool_unauthorized": "Authentication is required to access this resource.",
+    "tool_unauthorized_actions": [
+      "Check credentials or tokens.",
+      "Confirm that the account has permission to access the resource."
+    ],
+    "tool_forbidden": "Access to this resource is restricted.",
+    "tool_forbidden_actions": [
+      "Check access permissions of the credentials.",
+      "If this is a private repository or file, confirm read permissions."
+    ],
+    "tool_timeout": "The tool gateway responded too slowly, please try again later.",
+    "tool_timeout_actions": [
+      "Try again in a few seconds.",
+      "If the error repeats, check for timeouts or system load."
+    ],
+    "tool_rate_limited": "External service rate limit exceeded, please try again later.",
+    "tool_rate_limited_actions": [
+      "Wait a moment and try again.",
+      "Reduce tool call frequency if possible."
+    ],
+    "tool_unavailable": "The external service is experiencing issues or is unstable.",
+    "tool_unavailable_actions": [
+      "Try again in a few minutes.",
+      "If the error persists, check the external service or upstream workflow."
+    ],
+    "tool_conflict": "This request conflicts with the current state.",
+    "tool_conflict_actions": [
+      "Check if the resource has changed.",
+      "Try again with the latest data."
+    ],
+    "tool_http_generic": "Tool gateway returned HTTP {status_code}.",
+    "tool_http_generic_actions": [
+      "Check the response of the child workflow.",
+      "Try again later if it is a temporary error."
+    ],
+    "tool_failed": "Mia encountered an error from the tool gateway.",
+    "tool_failed_actions": [
+      "Try again later if this is a temporary error.",
+      "If the error repeats, check the input or child workflow."
+    ],
+    "tool_failed_non_retryable_actions": [
+      "Check the input or configuration of the child workflow again.",
+      "If it is a data error, try again with clearer input."
+    ],
+    "tool_transport_unavailable": "Could not connect to the tool gateway.",
+    "tool_transport_unavailable_actions": [
+      "Check the network or the tool gateway endpoint.",
+      "Try again later if this is a temporary error."
+    ],
+    "approval_required": "This action requires confirmation before execution.\n- {summary}\nIf {owner_name} wants to continue, reply: {confirm_keyword}",
+    "approval_failed": "Mia received confirmation but the previous action failed. Reason: {error}",
+    "approval_done": "Confirmed action completed successfully.",
+    "approval_confirm_keyword": "confirm",
+    "approval_confirm_action": "Reply 'confirm' to continue.",
+    "document_followup_failed": "Mia could not process the next question for this document. Please try again later.",
+    "url_followup_failed": "Mia could not process the next question for this link. Please try again later.",
+    "fallback_response": "Sorry, Mia could not generate a clear response. Please try asking again more concisely."
+  },
+  "clarify": {
+    "multi_service": "If {owner_name} wants, Mia can discuss each group separately or provide example commands for each tool.",
+    "google_full_clarify": "Which part would {owner_name} like Mia to process first: mail, calendar, files, or sheets? You can briefly state your priority to Mia."
+  },
+  "time": {
+    "weekday_0": "Monday",
+    "weekday_1": "Tuesday",
+    "weekday_2": "Wednesday",
+    "weekday_3": "Thursday",
+    "weekday_4": "Friday",
+    "weekday_5": "Saturday",
+    "weekday_6": "Sunday",
+    "date_response": "Today is {weekday}, {month}/{day}/{year}, current time is {clock}."
+  },
+  "learning": {
+    "style_short": "When the user wants shorter or more concise responses, keep the answer brief, use fewer bullets, and prioritize the most important parts.",
+    "style_deep": "When the user wants longer, more detailed, or multi-page responses, provide a comprehensive answer with clear bullets covering all details.",
+    "prompt_hint_doc": "When the user edits or responds to a document, stick closely to the most recent file, answer contextually based on the document content, and do not guess beyond the text.",
+    "prompt_hint_image": "When there is an image attached and the user asks to analyze, describe, view this, or read text, prioritize image_describe or image_ocr instead of fallback tools.",
+    "prompt_hint_short": "When the user wants shorter, more concise, or less text, keep the answer brief, use fewer bullets, and prioritize the most important parts.",
+    "prompt_hint_deep": "When the user wants longer, more detailed, or multi-page responses, provide a comprehensive answer with clear bullets covering all details.",
+    "prompt_hint_format_readable": "When responding about documents, split into short headings and clear bullet points for readability on Telegram; avoid writing a single long paragraph.",
+    "learning_guidance_header": "Notes learned from previous turns:",
+    "learning_repetition_suffix": " (repeated {count} times)"
+  },
+  "skills": {
+    "summary_prompt_system": "You are Mia. Read the tool results and reply to the user in natural, concise, and easy-to-understand English. Prioritize the main content, do not repeat mechanically, do not leave empty, do not use markdown.",
+    "summary_prompt_human": "User's original request:\n{user_text}\n\nTool result:\n{tool_text}\n\nPlease write the final response to the user in 1 to 4 sentences.",
+    "github_no_info": "Do not make up information if not found in the content. Do not reply with menus or ask the user to select another item.",
+    "github_user_query": "User's question:\n{user_query}\n\nPlease respond directly.",
+    "web_user_query": "User's question:\n{question_text}\n\nPlease respond directly based on the web results.",
+    "web_scrape_query": "Additional instructions from the user:\n{instruction}\n\nPlease respond directly.",
+    "doc_followup_system": "You are Mia. The user is asking a follow-up question about a recently processed document. Based only on the provided document content, respond naturally in English, concisely but completely. If the document does not contain the required information, state clearly that you cannot find it.",
+    "doc_followup_human": "Latest document name: {title}\n\nUser's follow-up question:\n{text}\n\nRecent document context:\n{context}\n\nPlease respond to the user directly.",
+    "url_followup_system": "You are Mia. The user is asking a follow-up question about a recently processed link. Based only on the provided link content, respond naturally in English, concisely but completely. If the link does not contain the required information, state clearly that you cannot find it.",
+    "url_followup_human": "Latest link name: {title}\n\nUser's follow-up question:\n{text}\n\nRecent link context:\n{context}\n\nPlease respond to the user directly.",
+    "web_scrape_fallback": "summarize this link",
+    "web_read_fallback": "read this link",
+    "url_followup_fallback": "ask about this link",
+    "unknown": "unknown",
+    "direct_memory_empty": "Mia has no notable memory recently.",
+    "direct_memory_header": "Recent memory:",
+    "doc_label": "Document: {title}",
+    "main_content_label": "Main content: {text}",
+    "page_label": "Page {page}: {snippet}",
+    "page_refs_label": "Page references:\n{refs}",
+    "extra_details_label": "Additional details: {text}",
+    "result_label": "Result: {text}",
+    "title_label": "Title: {title}",
+    "summary_label": "Summary: {summary}",
+    "content_label": "Content: {content}",
+    "github_followup_prompt": "Which repo would you like to explore deeper? Reply with the number or name, e.g., repo 1.",
+    "capability_overview": "Currently Mia can perform the following tasks:\n1. Weather, gold prices, news, web search, read URL, summarize URL, ask URL, and create shortlinks.\n2. Recall information through memory.\n3. Image tools: OCR, describe images, and extract fields from images.\n4. Document tools: text extraction, summary, Q&A, and field extraction from PDF/Word/TXT.\n5. Audio and video: transcription and summary.\n6. Gmail: view inbox, read email, search email, compose email, send email, and reply to email.\n7. Google Calendar: view calendar, find event, create event, delete event, and check availability.\n8. Google Drive: view files, search files, get file info, create folders/files, upload, download, share, rename, move, copy, delete, and export.\n9. Google Docs: search doc, read doc, create doc, append content, and delete doc.\n10. Google Sheets: search sheet, read sheet, create sheet, append row, update cell, and delete sheet.\n11. GitHub (read-only): view repository, view repo structure, list user repos, search repos by topic/language, list branches, view commit history, view commit details, read files, search code in repo, and view diffs.\n12. Additional operations: Gmail search by sender, mark as read, archive email; Calendar find free slot and reschedule event; Docs update content; Sheets read/update range.\n13. Web: read specific URLs directly, summarize specific URLs, and ask follow-up questions on read/summarized URLs.\n\nIf {owner_name} wishes, Mia can discuss each group separately or provide example commands for each tool.",
+    "github_limited_suffix": "- And {count} more items have been omitted; if you wish, Mia can drill down into specific files or commands.",
+    "github_get_repo_tree_failed": "Mia could not read this repo tree.",
+    "github_analysis_failed": "Mia could not read enough data from this repository to perform a deep analysis. Please try again or select another repo.",
+    "github_list_branches_failed": "Mia could not read the branch list.",
+    "github_unselected_drilldown": "Mia has found the repositories, but you haven't selected a specific repository yet. Please reply with the number (e.g., repo 1 or repo 2) and Mia will proceed.",
+    "github_repo_selected": "Mia has selected {repo_name}. Which part would you like to explore next: summarize README, view overview, repo structure, build stack, branch, file, code search, or diff?",
+    "github_system_analysis_prompt": "You are Mia. Respond briefly, easy to read, technically focused, based entirely on the provided data. Do not make up information if not found. Do not reply with menus or ask the user to select another item.\nMust follow this format, each item in 1-3 short lines:\n1. Repo goal\n2. Tech stack / runtime\n3. Key commands: must specify run or install commands if found; if not, state 'no specific commands found'\n4. Key files\n5. Code search signals\n6. Risks / notes\n7. Next read suggestion\nPresentation requirements:\n- Prioritize short bullets, flat bullets, no long prose.\n- No more than 6 main bullets.\n- If there are commands, write them exactly as they appear in the data, do not invent.\n- If the user asks about technical/build/setup/runtime, the 'Key commands' section must be the most prominent.\n- If data is insufficient, only mention what is missing, do not extrapolate.",
+    "memory_saved": "Memory saved.\nType: {type}\nTitle: {title}\nContent: {content}",
+    "untitled": "untitled",
+    "memory_not_found": "Mia could not find any matching memories.",
+    "memory_matching_header": "Matching memory:",
+    "memory_recent_empty": "Mia has no notable memories recently.",
+    "memory_recent_header": "Recent memory:",
+    "media_unprocessed": "Mia could not process this file. Please try again.",
+    "tts_unprocessed": "Mia could not generate this audio. Please try again.",
+    "media_notes_header": "Notes learned:\n{hint}",
+    "media_image_summary_title": "Summary of image {title}",
+    "media_image_ocr_fallback_note": "- Note: Mia is describing based on extracted text in the image because deep vision analysis is not used in the fallback branch.",
+    "media_image_ocr_empty": "- No clear text read in the image.",
+    "media_image_vision_fallback_note": "- Note: vision model is needed for deeper description of image content.",
+    "media_image_info_title": "Information from image {title}",
+    "media_image_fields_empty": "- Mia could not extract clear fields from this image.",
+    "media_image_ocr_failed": "Mia could not read clear text from this image.",
+    "media_document_ocr_failed": "Mia could not extract clear text from this document.",
+    "media_document_summary_failed": "Mia could not summarize this document.",
+    "groq_image_describe_user": "Describe this image in English in a brief but complete manner. Focus on the main subject, background, actions or prominent emotions. If there is text in the image, also mention the notable text.",
+    "groq_image_describe_system": "You are an image description assistant. Respond naturally in English, clearly, without speculation, fit for a chat container.",
+    "groq_image_extract_user": "Please extract key fields from the image. Only return a valid JSON with two keys: summary and fields. summary should be brief, and fields is an object containing recognized fields like name, date, amount, id, email, phone, url or other appropriate keys.",
+    "groq_image_extract_system": "You are a data extraction tool. Always return valid JSON, without any markdown formatting or explanations outside the JSON.",
+    "media_doc_llm_system": "You are a document reading assistant. Respond naturally in English, clear, prioritizing actionable data, presenting cleanly for chat.",
+    "media_doc_llm_closing": "Please respond in 1 to 4 sentences, prioritizing main points and key items.",
+    "media_doc_summary_heading": "Please synthesize the sections below into a more detailed summary for {title}, ",
+    "media_doc_long_system": "You are a reading assistant for long documents. Only base your response on the provided content. If this section is irrelevant or has no information, respond with exactly one word: KHONG_CO_THONG_TIN.",
+    "media_doc_long_final": "Only base your response on the provided points, do not add new details. Respond briefly, clearly, and readable for chat.",
+    "media_doc_qa_system": "You are a Q&A assistant for documents. Only base your response on the provided content. If information is insufficient, state clearly that you could not find it.",
+    "media_doc_qa_user": "User Q&A instructions:\n{instruction}\n\nPlease respond directly.",
+    "web_ask_system": "You are a website Q&A assistant. Respond naturally in English, clearly, prioritizing useful info, formatted readably for Telegram, without markdown.",
+    "web_ask_prompt": "URL: {url}\nTitle: {title}\nPage description: {description}\n\nExtracted context:\n{context}\n\nUser's question:\n{question}\n\nPlease respond in natural English, readable on Telegram, without inventing details outside the context. If context has insufficient info, state clearly that you cannot find it.",
+    "web_summarize_system": "You are a website summarization assistant. Respond naturally in English, clearly, prioritizing useful info, formatted readably for Telegram, without markdown.",
+    "web_summarize_prompt": "URL: {url}\nTitle: {title}\nPage description: {description}\n\nExtracted content:\n{content}\n\nUser's instructions:\n{instruction}\n\nPlease respond in natural English, readable on Telegram, prioritizing main points. If too long, focus on key highlights.",
+    "web_summary_title": "Summary of {title}",
+    "web_followup_hint": "If you wish, you can ask follow-up questions directly on this link.",
+    "web_no_text": "Could not extract significant text content from this page.",
+    "web_text_shortened": "Content has been shortened for readability.",
+    "web_links_only": "This page mainly contains links, with little text to extract.",
+    "web_no_recent_links": "Mia does not have recent links to follow up on. Please send the link again or specify which link.",
+    "web_no_recent_links_warning": "No recent link context found.",
+    "github_no_commands": "no clear commands found in data",
+    "github_human_analysis_prompt": "User's question:\n{user_query}\n\nAnalyzing repository:\n{repo_info}\n\nCommands extracted from data:\n{commands}\n\nData read:\n{data}\n\nPlease write the final response without mentioning tool names.",
+    "document_placeholder": "document",
+    "media_doc_summary_deep_prompt": "Please analyze and thoroughly summarize the content of this {title}. Prioritize covering key sections/pages, specifying context, objectives, main points, constraints, data, tasks, or important requirements if any.",
+    "media_doc_summary_normal_prompt": "Please summarize the content of this {title} in a slightly more detailed manner, specifying objectives, main points, tasks, or important requirements if any.",
+    "media_doc_summary_deep_closing": "Please return in the following easy-to-read format, prioritizing short bullet points but being comprehensive:\nSummary of {title}\n- Overview: ...\n- Objectives: ...\n- Main content: ...\n- Important details: ...\n- Key constraints / requirements: ...\n- Output or notes: ...\n\nIf the document is long, cover key sections/pages instead of generalities. If there is insufficient info for a section, omit it. Avoid long paragraphs. Do not use bold markdown or tables.",
+    "media_doc_summary_normal_closing": "Please return in the following easy-to-read format, prioritizing short bullet points:\nSummary of {title}\n- Objectives: ...\n- Main content: ...\n- Key requirements / tasks: ...\n- Output or notes: ...\n\nIf there is insufficient info for a section, omit it. Avoid long paragraphs. Do not use bold markdown or tables.",
+    "media_summary_default_prompt": "Please summarize the content of this {title} concisely and clearly.",
+    "media_summary_default_system": "You are a summarization assistant. Respond concisely in English, keeping main points, without using markdown.",
+    "media_summary_default_closing": "Please return 1 to 4 sentences, prioritizing main points and key items.",
+    "media_doc_chunk_prompt": "Please summarize section {index}/{total} of {title} in a detailed, clear manner, with short bullet points, prioritizing facts, requirements, data, and key points.",
+    "media_doc_merge_prompt": "Please synthesize the sections below into a more detailed summary for {title}, covering more sections/pages than usual.",
+    "media_doc_long_chunk_system": "You are a reading assistant for long documents. Only base your response on the provided content. If this section is irrelevant or has no information, respond with exactly one word: KHONG_CO_THONG_TIN. If there is information, respond concisely and clearly, prioritizing important facts.",
+    "media_doc_long_chunk_human": "Document name: {title}\nDocument section: {index}/{total}\n\nQuestion: {question}\n\nSection content:\n{content}\n\nPlease answer or confirm no information is available.",
+    "media_doc_long_merge_human": "Document name: {title}\n\nQuestion: {question}\n\nAnswer snippets:\n{answers}\n\nPlease synthesize into a final response in English.",
+    "media_doc_qa_normal_prompt": "Please answer the user's question concisely based on this content.",
+    "media_doc_qa_normal_human": "Document name: {title}\n\nQuestion: {question}\n\nContent:\n{content}\n\nPlease answer concisely, accurately, and naturally in English.",
+    "media_doc_extract_fields_prompt": "Please extract key fields from this content and return a valid JSON with two keys: summary and fields.",
+    "media_doc_extract_fields_human": "Document name: {title}\n\nInstructions: {instruction}\n\nContent:\n{content}\n\nIf possible, supplement the summary and fields keys.",
+    "media_doc_extract_fields_system": "You are a data extraction tool. Always return valid JSON, without markdown or explanations outside the JSON.",
+    "media_image_describe_local_title": "Summary of image {title}",
+    "media_image_describe_local_ocr_label": "Readable text",
+    "media_image_describe_local_basic_stats": "Basic info: image {width}x{height}, estimated quality {quality}.",
+    "media_image_describe_local_empty_ocr": "No clear text read in the image.",
+    "media_image_describe_heading": "Description of image {title}",
+    "media_audio_transcribe_empty": "Mia could not transcribe audio clearly from this file.",
+    "media_audio_summarize_empty": "Mia could not summarize this audio.",
+    "media_video_transcribe_empty": "Mia could not transcribe video clearly from this file.",
+    "media_video_summarize_empty": "Mia could not summarize this video.",
+    "media_tts_empty": "Missing content to convert to speech.",
+    "media_doc_section_label": "Section {index}:\n{content}",
+    "media_doc_part_label": "part {index}",
+    "media_doc_summary_labels_deep": ["Overview", "Objectives", "Main content", "Important details", "Key constraints / requirements", "Output / notes"],
+    "media_doc_summary_labels_normal": ["Objectives", "Main content", "Key requirements / tasks", "Output / notes"],
+    "media_doc_notes_label": "Notes",
+    "attached_placeholder": "attached",
+    "media_doc_page_refs_label": "Page references",
+    "media_doc_qa_failed": "Mia could not find a clear answer in the document."
+  },
+  "evaluator": {
+    "system_prompt": "You are an evaluator assessing answer quality in JSON format.",
+    "eval_prompt": "You are a quality control evaluator for the AI assistant Mia.\nYour task is to evaluate whether the draft response meets the requirements.\n\nUser query: {user_query}\nTools called and their results: {evidence}\nDraft response: {draft_response}\n\nEvaluation Requirements:\n1. Does the response answer the user's query?\n2. Is there any mismatch/hallucination compared to the tool results (if tools were called)?\n3. Does the response leak internal tags (like <think>, system instructions, or internal tool names)?\n4. Does the response repeat errors or sound circular?\n\nReturn the result in the following JSON format:\n{{\n  \"verdict\": \"pass\" or \"fail\",\n  \"reason\": \"Detailed reason explaining why it passed or failed\"\n}}\nOnly return valid JSON, do not add any other text."
+  },
+  "composer": {
+    "reference_link_label": "Reference links:",
+    "doc_link_label": "Document links:",
+    "file_link_label": "File links:",
+    "recent_file_link_label": "Recent files:",
+    "email_link_label": "Email links:"
+  },
+  "supervisor": {
+    "evaluator_retry_hint": "The previous attempt failed validation for the following reason: {reason}. Please adjust the response or call tools more accurately.",
+    "hint_tool_guidance": "The nearest suggested tool is {hint_tool}, but only use it if it truly matches the user's intent.",
+    "turn_focus_guidance": "Only process the latest request in this turn. If there is no clear instruction to continue, ignore the topic and results of the previous turn."
+  }
+}

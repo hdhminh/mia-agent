@@ -1,0 +1,260 @@
+{
+  "name": "Sub-workflow: Tìm Kiếm Web",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-search",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet query = String(args.query || '').trim();\nif (!query) {\n  query = rawText\n    .replace(/^(tim|tìm|tim kiem|tìm kiếm|timkiem|search|tra cuu|tra cứu|google|duckduckgo)\\s*/i, '')\n    .replace(/^(ve|về|thong tin ve|thông tin về|cho toi biet ve|cho tôi biết về|noi ve|nói về)\\s*/i, '')\n    .trim();\n}\n\nif (!query) query = 'n8n automation';\n\nreturn [{ json: { chatId, query, rawText } }];"
+      },
+      "id": "code-prepare-search",
+      "name": "Chuẩn Bị Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://html.duckduckgo.com/html/?q={{ encodeURIComponent($json.query) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "responsePropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "duckduckgo-html",
+      "name": "DuckDuckGo HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Query').item.json || {};\nconst html = String($json.data || '');\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\n\nconst decodeHtml = (value = '') => String(value)\n  .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))\n  .replace(/&#(\\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))\n  .replace(/&amp;/g, '&')\n  .replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\")\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst cleanText = (value = '') => decodeHtml(String(value).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim());\n\nconst extractUrl = (href = '') => {\n  const normalized = decodeHtml(href);\n  const match = normalized.match(/[?&]uddg=([^&]+)/);\n  if (match) {\n    try {\n      return decodeURIComponent(match[1]);\n    } catch (error) {}\n  }\n  if (normalized.startsWith('//')) return `https:${normalized}`;\n  return normalized;\n};\n\nconst results = [];\nconst resultRegex = /<a[^>]*class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet match;\nwhile ((match = resultRegex.exec(html)) !== null && results.length < 3) {\n  const url = extractUrl(match[1]);\n  const title = cleanText(match[2]);\n  if (!url || !title) continue;\n  if (results.some((item) => item.url === url)) continue;\n  results.push({ url, title });\n}\n\nlet text = `Mia thấy vài kết quả khá khớp với \"${source.query}\".`;\nif (results.length > 0) {\n  for (let i = 0; i < results.length; i += 1) {\n    const item = results[i];\n    text += `\\n- ${item.title}`;\n  }\n  text += '\\n\\nLink tham khảo:';\n  for (let i = 0; i < results.length; i += 1) {\n    const item = results[i];\n    text += `\\n${i + 1}. ${item.url}`;\n  }\n} else {\n  text += `\\nMia chưa thấy kết quả nào đủ rõ. ${owner} thử đổi từ khóa cụ thể hơn nhé.`;\n}\n\nreturn [{ json: { chatId: source.chatId || '', text: text.trim() } }];"
+      },
+      "id": "code-format-search",
+      "name": "Tổng Hợp Kết Quả",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "520e23f5-e197-46f1-99e5-7564a9f1836f",
+      "name": "Gửi Telegram Trực Tiếp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
+      },
+      "id": "738a8050-4422-4fe2-a3dd-e350f72e384c",
+      "name": "ACK Tool Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "30be2dea-2ba8-470e-b468-6ee160d565f5",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "3d01da4c-3276-42fd-9a8a-1a3f840152f9",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Tìm Kiếm Web",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Query": {
+      "main": [
+        [
+          {
+            "node": "DuckDuckGo HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DuckDuckGo HTML": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Kết Quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Kết Quả": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram Trực Tiếp": {
+      "main": [
+        [
+          {
+            "node": "ACK Tool Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
+      "main": [
+        []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

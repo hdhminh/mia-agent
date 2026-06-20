@@ -1,0 +1,253 @@
+{
+  "name": "Sub-workflow: Thời Tiết",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-sub-weather",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst args = payload.payload?.args || payload.args || {};\nconst msg = payload.message || payload.body?.message || payload || {};\n\nconst chatId = String(payload.chatId || msg.chat?.id || '').trim();\nconst rawText = String(msg.text || payload.text || payload.query || '').trim();\n\nlet location = String(args.location || '').trim();\nif (!location) {\n  location = rawText\n    .replace(/^(thoi tiet|thời tiết|weather|nhiet do|nhiệt độ|troi|trời|du bao thoi tiet|dự báo thời tiết)\\s*/i, '')\n    .replace(/^(tai|tại|o|ở|cho|cho toi|cho tôi|hom nay|hôm nay)\\s*/i, '')\n    .trim();\n}\n\nif (!location) location = 'Ho Chi Minh City';\n\nreturn [{ json: { chatId, rawText, location } }];"
+      },
+      "id": "code-prepare-weather",
+      "name": "Chuẩn Bị Địa Điểm",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        430,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://wttr.in/{{ encodeURIComponent($json.location) }}?format=j1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-weather",
+      "name": "Lấy Dữ Liệu Thời Tiết",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuẩn Bị Địa Điểm').item.json || {};\nconst raw = $json?.data ?? $json;\nconst data = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});\n\nconst current = Array.isArray(data.current_condition) ? data.current_condition[0] || {} : {};\nconst today = Array.isArray(data.weather) ? data.weather[0] || {} : {};\nconst desc = String(current.weatherDesc?.[0]?.value || '').trim();\nconst tempC = current.temp_C || '';\nconst feelsLike = current.FeelsLikeC || '';\nconst humidity = current.humidity || '';\nconst windKmph = current.windspeedKmph || '';\nconst maxTemp = today.maxtempC || '';\nconst minTemp = today.mintempC || '';\nconst rainMm = current.precipMM || '';\n\nconst translateDesc = (value = '') => {\n  const key = String(value).trim().toLowerCase();\n  const dict = {\n    clear: 'quang mây',\n    sunny: 'nắng đẹp',\n    'partly cloudy': 'có mây nhẹ',\n    cloudy: 'nhiều mây',\n    overcast: 'âm u',\n    mist: 'có sương mỏng',\n    fog: 'có sương mù',\n    haze: 'trời hơi mờ',\n    rain: 'có mưa',\n    'light rain': 'mưa nhẹ',\n    'moderate rain': 'mưa vừa',\n    'heavy rain': 'mưa to',\n    thunderstorm: 'có dông',\n  };\n  return dict[key] || key;\n};\n\nconst location = String(source.location || 'đó').trim();\nconst parts = [];\n\nif (desc) {\n  parts.push(`Hiện tại ở ${location}, trời ${translateDesc(desc)}.`);\n} else {\n  parts.push(`Hiện tại ở ${location}, Mia đã lấy được thông tin thời tiết mới nhất.`);\n}\n\nif (tempC !== '') {\n  let line = `Nhiệt độ khoảng ${tempC}°C`;\n  if (feelsLike !== '') line += `, cảm giác như ${feelsLike}°C`;\n  parts.push(`${line}.`);\n}\n\nconst details = [];\nif (humidity !== '') details.push(`độ ẩm ${humidity}%`);\nif (windKmph !== '') details.push(`gió ${windKmph} km/h`);\nif (rainMm !== '' && rainMm !== '0.0') details.push(`mưa ${rainMm} mm`);\nif (minTemp !== '' || maxTemp !== '') details.push(`trong ngày dao động từ ${minTemp || '?'}°C đến ${maxTemp || '?'}°C`);\nif (details.length) parts.push(`Mia ghi nhận ${details.join(', ')}.`);\n\nreturn [{ json: { chatId: source.chatId || '', text: parts.join(' ').trim() } }];"
+      },
+      "id": "code-format-weather",
+      "name": "Tổng Hợp Thời Tiết",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        930,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2d8fde8d-ca35-4923-a03f-ed0c70882d2b",
+      "name": "Gửi Telegram Trực Tiếp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
+      },
+      "id": "60547538-9ef6-4594-a206-b9af93d97d14",
+      "name": "ACK Tool Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a8fd24bc-060b-4f62-be65-3777feb43c57",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "e53474c8-9093-416a-aee3-6009067897d4",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-Sub-workflow: Thời Tiết",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Bị Địa Điểm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Bị Địa Điểm": {
+      "main": [
+        [
+          {
+            "node": "Lấy Dữ Liệu Thời Tiết",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy Dữ Liệu Thời Tiết": {
+      "main": [
+        [
+          {
+            "node": "Tổng Hợp Thời Tiết",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng Hợp Thời Tiết": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram Trực Tiếp": {
+      "main": [
+        [
+          {
+            "node": "ACK Tool Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
+      "main": [
+        []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "name": "Sub-workflow: Google Calendar - Find Free Slot",
+  "nodes": [
+    {
+      "id": "104a4283-7b8a-46a1-ac9f-f1d8259cc823",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        240
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ffcc130f-dfef-400a-8a27-a6988bcd8863",
+      "name": "Prepare Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -940,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst startAt = String(source.startAt || source.start || args.startAt || args.start || payload.startAt || payload.start || new Date().toISOString()).trim();\nconst endAt = String(source.endAt || source.end || args.endAt || args.end || payload.endAt || payload.end || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()).trim();\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || args.durationMinutes || payload.durationMinutes || 60) || 60, 1440));\nconst calendarId = String(source.calendarId || args.calendarId || payload.calendarId || 'primary').trim();\nreturn [{ json: { ...source, payload, message, chatId, rawText, startAt, endAt, durationMinutes, calendarId, hasTarget: true } }];"
+      }
+    },
+    {
+      "id": "ccc55bb2-7d9a-48ef-8992-6cf003c70fa0",
+      "name": "Google Calendar Busy Check",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        240
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || \"primary\" }}"
+        },
+        "limit": 100,
+        "options": {
+          "timeMin": "={{ $json.startAt }}",
+          "timeMax": "={{ $json.endAt }}"
+        }
+      },
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "25f1770e-fd9c-4ec0-b8f5-39a5c1774cd1",
+      "name": "Find Free Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst events = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.start || item.end);\nconst windowStart = new Date(source.startAt || Date.now());\nconst windowEnd = new Date(source.endAt || Date.now() + 24 * 60 * 60 * 1000);\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || 60) || 60, 1440));\nconst durationMs = durationMinutes * 60 * 1000;\nconst stepMs = 15 * 60 * 1000;\n\nconst busy = events\n  .map((ev) => {\n    const startRaw = ev.start?.dateTime || ev.start?.date || ev.start || ev.startAt || '';\n    const endRaw = ev.end?.dateTime || ev.end?.date || ev.end || ev.endAt || '';\n    return { start: new Date(startRaw), end: new Date(endRaw) };\n  })\n  .filter((ev) => Number.isFinite(ev.start.getTime()) && Number.isFinite(ev.end.getTime()))\n  .sort((a, b) => a.start - b.start);\n\nfunction overlaps(candidateStart, candidateEnd, interval) {\n  return candidateStart < interval.end && candidateEnd > interval.start;\n}\n\nconst slots = [];\nfor (let cursor = new Date(windowStart); cursor.getTime() + durationMs <= windowEnd.getTime(); cursor = new Date(cursor.getTime() + stepMs)) {\n  const candidateEnd = new Date(cursor.getTime() + durationMs);\n  const conflict = busy.some((interval) => overlaps(cursor, candidateEnd, interval));\n  if (!conflict) {\n    slots.push({ start: cursor.toISOString(), end: candidateEnd.toISOString() });\n  }\n  if (slots.length >= 8) break;\n}\n\nreturn [{ json: { ...source, ok: true, slots } }];"
+      }
+    },
+    {
+      "id": "679244eb-1a31-4811-8ea8-42f9238cb302",
+      "name": "Format Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst slots = ($json.slots || []).slice(0, 3);\nconst tz = 'Asia/Ho_Chi_Minh';\nconst formatter = new Intl.DateTimeFormat('vi-VN', {\n  timeZone: tz,\n  hour: '2-digit',\n  minute: '2-digit',\n  day: '2-digit',\n  month: '2-digit',\n  year: 'numeric',\n});\n\nconst lines = [];\nif (!slots.length) {\n  lines.push('Mia chưa tìm thấy khung giờ rảnh phù hợp trong khoảng bạn yêu cầu.');\n} else {\n  lines.push('Các khung giờ rảnh gợi ý:');\n  slots.forEach((slot, index) => {\n    lines.push(`${index + 1}. ${formatter.format(new Date(slot.start))} → ${formatter.format(new Date(slot.end))}`);\n  });\n}\nif (source.calendarId) lines.push(`Calendar: ${source.calendarId}`);\nif (source.startAt && source.endAt) lines.push(`Khoảng kiểm tra: ${source.startAt} - ${source.endAt}`);\nreturn [{ json: { chatId: source.chatId || '', text: lines.join('\\n').trim(), slots } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Busy Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Busy Check": {
+      "main": [
+        [
+          {
+            "node": "Find Free Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Free Slots": {
+      "main": [
+        [
+          {
+            "node": "Format Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Action": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

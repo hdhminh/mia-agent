@@ -1,0 +1,226 @@
+{
+  "name": "Sub-workflow: Google Calendar - Delete Event",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "25819630-af06-4bbf-8c1a-58d371397f4a",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst raw = String(source.rawText || source.text || source.query || args.query || args.eventId || message.text || payload.text || '').trim();\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst calendarId = source.calendarId || args.calendarId || payload.calendarId || 'primary';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D');\n}\nfunction pad(n) { return String(n).padStart(2, '0'); }\nfunction iso(d, hour = d.getHours(), minute = d.getMinutes(), second = 0) {\n  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(hour)}:${pad(minute)}:${pad(second)}+07:00`;\n}\nfunction startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }\nfunction endOfDay(d) { const x = new Date(d); x.setHours(23, 59, 59, 0); return x; }\nfunction addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }\nfunction nextWeekday(base, targetDow, nextWeek = false) {\n  const d = startOfDay(base);\n  let diff = (targetDow - d.getDay() + 7) % 7;\n  if (diff === 0) diff = 7;\n  if (nextWeek) diff += 7;\n  d.setDate(d.getDate() + diff);\n  return d;\n}\n\nconst text = normalize(source.text || source.query || args.query || raw);\nconst directEventId = String(source.eventId || args.eventId || '').trim();\nconst now = new Date();\nlet afterDate = now;\nlet beforeDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30);\n\nif (/hom nay/.test(text)) {\n  afterDate = startOfDay(now);\n  beforeDate = endOfDay(now);\n} else if (/ngay mai|mai/.test(text)) {\n  afterDate = startOfDay(addDays(now, 1));\n  beforeDate = endOfDay(afterDate);\n} else {\n  const weekdayMatch = text.match(/thu\\s*(2|3|4|5|6|7)|chu nhat/);\n  if (weekdayMatch) {\n    const targetDow = weekdayMatch[1] ? Number(weekdayMatch[1]) - 1 : 0;\n    const targetDate = nextWeekday(now, targetDow, /tuan sau/.test(text));\n    afterDate = startOfDay(targetDate);\n    beforeDate = endOfDay(targetDate);\n  }\n}\n\nconst explicitQuery = String(source.query || args.query || '').trim();\nconst query = (explicitQuery || raw)\n  .replace(/^(xoa lich|xóa lịch|huy lich|huỷ lịch|hủy lịch|xoa su kien|xóa sự kiện|huy su kien|hủy sự kiện|delete event|cancel event)\\s*/i, '')\n  .replace(/\\b(hom nay|ngay mai|mai|ngay kia|tuan sau|tuan nay|cuoi tuan nay|cuoi tuan sau|thu\\s*[2-7]|chu nhat)\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\nconst hasDeleteQuery = Boolean(query);\nconst guidance = '🗑 <b>Xoá lịch</b>\\n\\nBạn hãy nói rõ tên lịch cần xoá, ví dụ:\\n- xoá lịch họp team chiều mai\\n- huỷ lịch gặp khách thứ 2\\n- delete event demo sản phẩm';\n\n\n\n// Stage 11 exact-id safety guard\nconst __stage11Pick = (...values) => {\n  for (const value of values) {\n    if (Array.isArray(value) && value.length) return value;\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n    if (typeof value === 'boolean') return value;\n  }\n  return '';\n};\nconst __stage11Source = source || {};\nconst __stage11Args = args || __stage11Source.args || __stage11Source.payload?.args || {};\nconst __stage11Payload = typeof payload !== 'undefined' ? payload : (__stage11Source.payload || {});\nconst __stage11IdFields = [\"eventId\"];\nconst __stage11AlsoFields = [];\nconst __stage11HasId = Boolean(__stage11Pick(...__stage11IdFields.map((field) =>\n  __stage11Source[field] || __stage11Args[field] || __stage11Payload[field]\n)));\nconst __stage11HasAlso = __stage11AlsoFields.length === 0 || Boolean(__stage11Pick(...__stage11AlsoFields.map((field) =>\n  __stage11Source[field] || __stage11Args[field] || __stage11Payload[field]\n)));\nconst __stage11Allowed = __stage11HasId && __stage11HasAlso;\nconst __stage11Response = __stage11Allowed ? '' : \"Mia chưa xoá lịch vì hành động này cần eventId cụ thể. Bạn hãy tìm lịch trước, chọn đúng sự kiện, rồi gửi lại kèm eventId nhé.\";\n\nreturn [{ json: { ...source, payload, message, rawText: raw, text, chatId, calendarId, directEventId, query: hasDeleteQuery ? query : '__missing_delete_target__', hasDeleteQuery: Boolean(hasDeleteQuery && __stage11Allowed), after: iso(afterDate, afterDate.getHours(), afterDate.getMinutes(), 0), before: iso(beforeDate, beforeDate.getHours(), beforeDate.getMinutes(), 59), response: __stage11Response ? __stage11Response : hasDeleteQuery || directEventId ? '' : guidance } }];"
+      },
+      "id": "07f92016-bf8c-4877-b805-344c8ee553c0",
+      "name": "Chuan Bi Xoa Lich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $json.calendarId && $json.calendarId !== 'primary' ? $json.calendarId : 'primary' }}",
+          "mode": "id"
+        },
+        "limit": 5,
+        "options": {
+          "timeMin": "={{ $json.after }}",
+          "timeMax": "={{ $json.before }}",
+          "query": "={{ $json.query }}"
+        }
+      },
+      "id": "1c567dbb-e7e3-4761-a00b-39620d77dd43",
+      "name": "Google Calendar Find Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        48
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nif (source.directEventId) {\n  return [{ json: { ...source, canDelete: true, eventId: source.directEventId, summary: source.query || 'Sự kiện đã chọn', start: '', end: '' } }];\n}\nif (!source.hasDeleteQuery) {\n  return [{ json: { ...source, canDelete: false } }];\n}\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && event.id);\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || '',\n    end: event.end?.dateTime || event.end?.date || ''\n  }\n}];"
+      },
+      "id": "aa3ed762-0e89-49a0-8bdb-1abd1180f01d",
+      "name": "Chon Lich Can Xoa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.canDelete }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a21e5de4-0fc5-4dda-83f1-085750bc89e9",
+      "name": "Tim Thay Lich De Xoa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        },
+        "eventId": "={{ $json.eventId }}",
+        "options": {}
+      },
+      "id": "2f730cec-e1b0-4981-b6d0-4e0e481d7763",
+      "name": "Google Calendar Delete",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1Lgsbjfibo4xVURe",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);\n}\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);\n}\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} → ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\nconst source = $('Chon Lich Can Xoa').item.json;\nlet text = '🗑 <b>Đã xoá lịch</b>\\n\\n';\ntext += `📝 <b>${source.summary}</b>\\n`;\ntext += `🕒 ${formatRange(source.start, source.end)}`;\nreturn [{ json: { chatId: source.chatId, text } }];"
+      },
+      "id": "87cd963e-77ee-4d12-8754-fa44c36f8fd7",
+      "name": "Format Ket Qua Xoa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target =\n  source.query ||\n  source.docName ||\n  source.sheetName ||\n  source.fileName ||\n  source.folderName ||\n  source.targetName ||\n  source.title ||\n  source.summary ||\n  source.rawText ||\n  source.text ||\n  '';\n\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];\n"
+      },
+      "id": "return-empty-branch",
+      "name": "Return Empty Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        208
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Xoa Lich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Xoa Lich": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Find Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Find Delete": {
+      "main": [
+        [
+          {
+            "node": "Chon Lich Can Xoa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Lich Can Xoa": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Lich De Xoa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Lich De Xoa?": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Delete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Empty Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Delete": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Xoa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Xoa": {
+      "main": [
+        []
+      ]
+    }
+  }
+}

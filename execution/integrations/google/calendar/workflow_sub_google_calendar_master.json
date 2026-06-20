@@ -1,0 +1,370 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "77ee0e3a-c55f-4530-b5b6-682913be5edc",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4352,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Execute Workflow Trigger').item.json || {};\nconst msg = payload.message || payload.body?.message || payload;\nconst rawText = String(msg?.text || payload.text || '' || payload.query || '').trim();\nconst chatId = msg?.chat?.id || payload.chatId || '';\nconst calendarId = payload.calendarId || 'primary';\n\nfunction normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u0111/g, 'd')\n    .replace(/\\u0110/g, 'D')\n    .trim();\n}\n\nconst text = normalize(rawText);\nlet action = 'help';\n\nif (/\\b(calendar help|lich help|huong dan calendar|huong dan lich|google calendar help|help calendar)\\b/.test(text)) {\n  action = 'help';\n} else if (/\\b(xoa lich|huy lich|delete event|cancel event)\\b/.test(text)) {\n  action = 'delete_event';\n} else if (/\\b(kiem tra lich ranh|check lich ranh|co ranh|freebusy|availability|ranh luc)\\b/.test(text)) {\n  action = 'check_availability';\n} else if (/\\b(tao lich|dat lich|them lich|tao su kien|dat su kien|book lich|create event)\\b/.test(text)) {\n  action = 'create_event';\n} else if (/\\b(lich ngay mai|ngay mai toi co gi|mai toi co gi|list tomorrow|tomorrow schedule)\\b/.test(text)) {\n  action = 'list_tomorrow';\n} else if (/\\b(lich hom nay|hom nay toi co gi|xem lich hom nay|today schedule|list today)\\b/.test(text)) {\n  action = 'list_today';\n} else if (/\\b(lich|su kien|meeting|hop|calendar|tuan sau|cuoi tuan nay|thu [2-7]|chu nhat)\\b/.test(text)) {\n  action = 'find_event';\n}\n\nreturn [{ json: { payload, message: msg, chatId, rawText, text, action, calendarId } }];"
+      },
+      "id": "eddc550f-0464-46d8-9811-5ccc5a34bfa5",
+      "name": "Chuan Bi Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowMap = {\n  create_event: 'Sub-workflow: Google Calendar - Create Event',\n  list_today: 'Sub-workflow: Google Calendar - List Today',\n  list_tomorrow: 'Sub-workflow: Google Calendar - List Tomorrow',\n  find_event: 'Sub-workflow: Google Calendar - Find Event',\n  delete_event: 'Sub-workflow: Google Calendar - Delete Event',\n  check_availability: 'Sub-workflow: Google Calendar - Check Availability',\n  help: 'Sub-workflow: Google Calendar - Help'\n};\n\nconst workflowName = workflowMap[$json.action] || workflowMap.help;\nreturn [{ json: { ...$json, workflowName } }];"
+      },
+      "id": "07413559-39d1-40bd-bec1-5d7532fc0c3c",
+      "name": "Chon Workflow Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3856,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/api/v1/workflows?limit=250&name={{ encodeURIComponent($json.workflowName) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4374eaf8-a6f9-4ec2-951a-b5bf12ed0eb3",
+      "name": "Lookup Calendar Workflow ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -3568,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.item.json.data || [];\nconst source = $('Chon Workflow Calendar').item.json;\nconst found = workflows.find((workflow) => workflow.name === source.workflowName);\n\nif (!found) {\n  return [{\n    json: {\n      ...source,\n      hasWorkflow: false,\n      response: `Khong tim thay workflow con: ${source.workflowName}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...source,\n    hasWorkflow: true,\n    workflowId: found.id\n  }\n}];"
+      },
+      "id": "e5b77ffd-5b9e-443c-ab17-761751adf534",
+      "name": "Extract Calendar Workflow ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3328,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasWorkflow }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a7ceb6d7-2cba-47fd-80e0-5bb3e8af64c7",
+      "name": "Tim Thay Workflow Calendar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflowId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "c44c713d-1b46-4f6d-a0ad-3c8cc813dee2",
+      "name": "Goi Calendar Sub Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -2832,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\nconst fallback = source.response || '⚠️ Mia chưa xử lý được yêu cầu này lúc này.';\nreturn [{ json: { chatId: source.chatId || '', text: fallback } }];"
+      },
+      "id": "d3b5589e-0f76-433c-a489-5eccce7efdd0",
+      "name": "Format Calendar Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5ab4d95b-4d23-4f90-9690-354864360797",
+      "name": "Gửi Telegram Trực Tiếp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        512,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: '[TOOL_DELIVERED]', delivered: true, chatId: $json.chatId || '' } }];"
+      },
+      "id": "2c495f1d-27ad-4aa8-904a-a49f6548c8d2",
+      "name": "ACK Tool Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!String($json.chatId || '').trim() }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "71c1ae16-eb70-4693-b776-d1abd345b100",
+      "name": "Có ChatId?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        252,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "a5161218-4e50-4c70-97f8-2a9759b04e4d",
+      "name": "Giữ Text Khi Thiếu ChatId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.item.json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2 ($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst rawText = String(\n  source.text ||\n  source.responseText ||\n  source.output ||\n  source.response ||\n  ''\n).trim();\n\nconst plainText = String(source.plainText || htmlToPlainText(rawText)).trim();\n\nreturn [{\n  json: {\n    ...source,\n    text: plainText || rawText\n  }\n}];"
+      },
+      "id": "normalize-tool-text-wf",
+      "name": "Chuẩn Hóa Tool Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chuan Bi Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuan Bi Calendar": {
+      "main": [
+        [
+          {
+            "node": "Chon Workflow Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chon Workflow Calendar": {
+      "main": [
+        [
+          {
+            "node": "Lookup Calendar Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Calendar Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Extract Calendar Workflow ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Calendar Workflow ID": {
+      "main": [
+        [
+          {
+            "node": "Tim Thay Workflow Calendar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tim Thay Workflow Calendar?": {
+      "main": [
+        [
+          {
+            "node": "Goi Calendar Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Calendar Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Calendar Sub Workflow": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Calendar Error Response": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Tool Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram Trực Tiếp": {
+      "main": [
+        [
+          {
+            "node": "ACK Tool Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACK Tool Delivered": {
+      "main": [
+        []
+      ]
+    },
+    "Có ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Giữ Text Khi Thiếu ChatId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gửi Telegram Trực Tiếp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ Text Khi Thiếu ChatId": {
+      "main": [
+        []
+      ]
+    },
+    "Chuẩn Hóa Tool Text": {
+      "main": [
+        [
+          {
+            "node": "Có ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
+  }
+}

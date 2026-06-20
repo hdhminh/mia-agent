@@ -1,20 +1,20 @@
-# n8n Local Docs
+# Mia Agent Documentation Index
 
-## Architecture
+Welcome to the Mia Agent documentation. This directory contains detailed guides on the architecture, skills, and deployment of the system.
 
-- [DOMAIN_ARCHITECTURE.md](/home/huynhminh/Projects/n8n/docs/DOMAIN_ARCHITECTURE.md)
-- [MIA_AGENT_OVERVIEW.md](/home/huynhminh/Projects/n8n/docs/MIA_AGENT_OVERVIEW.md)
-- [MIA_CAPABILITY_MAP.md](/home/huynhminh/Projects/n8n/docs/MIA_CAPABILITY_MAP.md)
-- [MIA_TOOL_IO_SCHEMA.md](/home/huynhminh/Projects/n8n/docs/MIA_TOOL_IO_SCHEMA.md)
+## 📖 Architecture Guides
 
-## Migration / Refactor Notes
+- **[Architecture Overview](architecture/OVERVIEW.md)**: Main request flow, component architecture, and design patterns.
+- **[Agent Graph](architecture/AGENT_GRAPH.md)**: Detailed description of the LangGraph state machine, nodes, and transition logic.
+- **[Skill Registry](architecture/SKILL_REGISTRY.md)**: Capability mappings, gateway schema payload contracts, and how to create new tools.
+- **[Execution Layer](architecture/EXECUTION_LAYER.md)**: The role of n8n, Tool Gateway webhook structure, and workflow design guidelines.
 
-- [MIA_LANGCHAIN_MIGRATION.md](/home/huynhminh/Projects/n8n/docs/MIA_LANGCHAIN_MIGRATION.md)
-- [LOCAL_STRUCTURE_PLAN.md](/home/huynhminh/Projects/n8n/docs/LOCAL_STRUCTURE_PLAN.md)
+## 🛠️ Skills & API Schemas
 
-## Notes
+- **[Capability Map](skills/CAPABILITY_MAP.md)**: Complete list of all capability codes and their corresponding leaf workflows.
+- **[Tool I/O Schema](skills/TOOL_IO_SCHEMA.md)**: Input/Output JSON schema examples for each execution capability.
 
-- Root `n8n/` should now stay mostly for runtime config and entrypoints.
-- Workflow JSON files are grouped under [workflows/README.md](/home/huynhminh/Projects/n8n/workflows/README.md).
-- Local utility scripts are grouped under [scripts/README.md](/home/huynhminh/Projects/n8n/scripts/README.md).
-- Architecture and planning documents belong under `docs/`.
+## 🚀 Deployment & Operations
+
+- **[Setup & Deployment](deployment/SETUP.md)**: Deployment steps with docker compose, Postgres setup, and Telegram variables.
+- **[LangChain Migration Notes](deployment/MIGRATION.md)**: Architectural changes and history of the migration from legacy workflows.
