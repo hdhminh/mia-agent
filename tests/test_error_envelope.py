@@ -10,7 +10,7 @@ os.environ["MIA_LOCALE"] = "vi"
 
 
 
-from agent.brain.direct_executor import DirectExecutor
+from agent.brain.direct_executor import DirectExecutor, _extract_payload_context
 from agent.error_envelope import (
     ErrorEnvelope,
     build_approval_required_envelope,
@@ -68,6 +68,12 @@ class _DummyApprovalRepo:
 
 
 class ErrorEnvelopeTests(unittest.TestCase):
+    def test_extract_payload_context_includes_payload_text(self) -> None:
+        context = _extract_payload_context({"text": "Kết quả thô"})
+
+        self.assertIn("Kết quả thô", context)
+        self.assertIn("Kết quả:", context)
+
     def test_http_error_envelope_classifies_not_found(self) -> None:
         envelope = build_tool_http_error_envelope(
             tool_name="github.get_file",

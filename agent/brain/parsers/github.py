@@ -18,6 +18,31 @@ GITHUB_REPO_URL_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 
+GITHUB_PULL_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/pull/(?P<number>\d+)",
+    flags=re.IGNORECASE,
+)
+
+GITHUB_ISSUE_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/issues/(?P<number>\d+)",
+    flags=re.IGNORECASE,
+)
+
+GITHUB_RELEASE_TAG_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/releases/tag/(?P<tag>[^/\s?#]+)",
+    flags=re.IGNORECASE,
+)
+
+GITHUB_RELEASE_LATEST_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/releases/latest",
+    flags=re.IGNORECASE,
+)
+
+GITHUB_RELEASES_URL_PATTERN = re.compile(
+    r"https?://github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/releases(?:[/?#].*)?$",
+    flags=re.IGNORECASE,
+)
+
 GITHUB_ACCOUNT_REPO_CUES = (
     "repo cua toi",
     "repo của tôi",
@@ -66,6 +91,44 @@ GITHUB_REPO_SEARCH_CUES = (
     "github repos by topic",
 )
 
+GITHUB_PULL_CUES = (
+    "pull request",
+    "pull requests",
+    "pr",
+    "merge request",
+    "merg request",
+    "xem pr",
+    "list pr",
+    "danh sach pr",
+    "danh sách pr",
+    "pulls",
+)
+
+GITHUB_ISSUE_CUES = (
+    "issue",
+    "issues",
+    "bug",
+    "ticket",
+    "xem issue",
+    "xem issues",
+    "danh sach issue",
+    "danh sách issue",
+)
+
+GITHUB_RELEASE_CUES = (
+    "release",
+    "releases",
+    "version",
+    "versions",
+    "tag",
+    "tags",
+    "latest release",
+    "release moi nhat",
+    "release mới nhất",
+    "ban phat hanh",
+    "bản phát hành",
+)
+
 
 def _infer_github_hint(
     normalized: str,
@@ -81,9 +144,31 @@ def _infer_github_hint(
     path = str(context.get("path") or "").strip()
     ref = str(context.get("ref") or "").strip()
     repo = str(context.get("repo") or "").strip()
+    number = str(context.get("number") or "").strip()
+    tag = str(context.get("tag") or "").strip()
+    release_id = str(context.get("releaseId") or context.get("release_id") or "").strip()
+    item_type = str(context.get("itemType") or "").strip()
 
     if any_keyword_matches(normalized, ("diff", "compare", "so sanh", "so sánh", "patch", "changes")):
         return "github_get_diff", True
+    if item_type in {"release", "release_list"} or any_keyword_matches(normalized, GITHUB_RELEASE_CUES):
+        if tag or release_id or "latest" in normalized or any_keyword_matches(normalized, ("moi nhat", "mới nhất", "recent release", "newest release")):
+            return "github_get_release", True
+        if any_keyword_matches(normalized, ("list", "liet ke", "liệt kê", "danh sach", "danh sách", "xem", "show", "recent", "gần đây", "gan day")):
+            return "github_list_releases", True
+        return "github_list_releases", True
+    if item_type == "pull_request" or any_keyword_matches(normalized, GITHUB_PULL_CUES):
+        if number or any_keyword_matches(normalized, ("detail", "chi tiet", "chi tiết", "read", "doc", "open")):
+            return "github_get_pull_request", True
+        if any_keyword_matches(normalized, ("list", "liet ke", "liệt kê", "danh sach", "danh sách", "xem", "show", "open", "closed", "all")):
+            return "github_list_pull_requests", True
+        return "github_list_pull_requests", True
+    if item_type == "issue" or any_keyword_matches(normalized, GITHUB_ISSUE_CUES):
+        if number or any_keyword_matches(normalized, ("detail", "chi tiet", "chi tiết", "read", "doc", "open")):
+            return "github_get_issue", True
+        if any_keyword_matches(normalized, ("list", "liet ke", "liệt kê", "danh sach", "danh sách", "xem", "show", "open", "closed", "all")):
+            return "github_list_issues", True
+        return "github_list_issues", True
     if any_keyword_matches(normalized, ("cau truc repo", "cấu trúc repo", "repo tree", "tree", "cay repo", "cây repo", "directory structure", "file tree")):
         return "github_get_repo_tree", True
     if any_keyword_matches(normalized, ("branch", "branches", "nhanh", "nhánh")):
@@ -136,6 +221,79 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
         return {}
     normalized_source = normalize_query_text(source)
 
+    match = GITHUB_PULL_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        number = match.group("number") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "number": number,
+            "itemType": "pull_request",
+        }
+
+    match = GITHUB_ISSUE_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        number = match.group("number") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "number": number,
+            "itemType": "issue",
+        }
+
+    match = GITHUB_RELEASE_TAG_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        tag = match.group("tag") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "tag": tag,
+            "releaseId": tag,
+            "itemType": "release",
+        }
+
+    match = GITHUB_RELEASE_LATEST_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "releaseId": "latest",
+            "itemType": "release",
+        }
+
+    match = GITHUB_RELEASES_URL_PATTERN.search(source)
+    if match:
+        owner = match.group("owner") or ""
+        repo = match.group("repo") or ""
+        repo_url = f"https://github.com/{owner}/{repo}"
+        return {
+            "repo": f"{owner}/{repo}",
+            "owner": owner,
+            "repoName": repo,
+            "repoUrl": repo_url,
+            "itemType": "release_list",
+        }
+
     match = GITHUB_REPO_URL_PATTERN.search(source)
     if match:
         owner = match.group("owner") or ""
@@ -143,6 +301,19 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
         repo_url = f"https://github.com/{owner}/{repo}"
         ref = match.group("ref") or ""
         path = match.group("path") or ""
+        number = str((metadata or {}).get("number") or (metadata or {}).get("issueNumber") or (metadata or {}).get("prNumber") or "").strip()
+        tag = str((metadata or {}).get("tag") or "").strip()
+        release_id = str((metadata or {}).get("releaseId") or (metadata or {}).get("release_id") or "").strip()
+        if not number and any_keyword_matches(normalized_source, GITHUB_PULL_CUES + GITHUB_ISSUE_CUES):
+            number_match = re.search(r"(?:pull request|pull|pr|issue|issues|#)\s*#?\s*(\d+)", source, flags=re.IGNORECASE)
+            if number_match:
+                number = number_match.group(1).strip()
+        if not tag and any_keyword_matches(normalized_source, GITHUB_RELEASE_CUES):
+            tag_match = re.search(r"(?:release\s+tag|tag|version)\s*[:=#-]?\s*([A-Za-z0-9_.+-]+)", source, flags=re.IGNORECASE)
+            if tag_match:
+                tag = tag_match.group(1).strip()
+        if not release_id and "latest" in normalized_source and any_keyword_matches(normalized_source, GITHUB_RELEASE_CUES):
+            release_id = "latest"
         return {
             "repo": f"{owner}/{repo}",
             "owner": owner,
@@ -150,6 +321,9 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
             "repoUrl": repo_url,
             "ref": ref,
             "path": path,
+            "number": number,
+            "tag": tag,
+            "releaseId": release_id,
         }
 
     repo = str((metadata or {}).get("repo") or "").strip()
@@ -164,6 +338,9 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
             owner = repo
         repo_name = repo_name or ""
         if owner and repo_name:
+            number = str((metadata or {}).get("number") or (metadata or {}).get("issueNumber") or (metadata or {}).get("prNumber") or "").strip()
+            tag = str((metadata or {}).get("tag") or "").strip()
+            release_id = str((metadata or {}).get("releaseId") or (metadata or {}).get("release_id") or "").strip()
             return {
                 "repo": f"{owner}/{repo_name}",
                 "owner": owner,
@@ -171,6 +348,9 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
                 "repoUrl": f"https://github.com/{owner}/{repo_name}",
                 "ref": str((metadata or {}).get("ref") or "").strip(),
                 "path": str((metadata or {}).get("path") or (metadata or {}).get("filePath") or (metadata or {}).get("file_path") or "").strip(),
+                "number": number,
+                "tag": tag,
+                "releaseId": release_id,
             }
 
     github_action_cues = (
@@ -198,6 +378,9 @@ def extract_github_repo_context(text: str, metadata: dict[str, Any] | None = Non
                 "repoUrl": f"https://github.com/{owner}/{repo_name}",
                 "ref": str((metadata or {}).get("ref") or "").strip(),
                 "path": str((metadata or {}).get("path") or (metadata or {}).get("filePath") or (metadata or {}).get("file_path") or "").strip(),
+                "number": str((metadata or {}).get("number") or (metadata or {}).get("issueNumber") or (metadata or {}).get("prNumber") or "").strip(),
+                "tag": str((metadata or {}).get("tag") or "").strip(),
+                "releaseId": str((metadata or {}).get("releaseId") or (metadata or {}).get("release_id") or "").strip(),
             }
 
     return {}

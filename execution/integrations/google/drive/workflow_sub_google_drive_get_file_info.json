@@ -1,4 +1,5 @@
 {
+  "name": "Sub-workflow: Google Drive - Get File Info",
   "nodes": [
     {
       "parameters": {},

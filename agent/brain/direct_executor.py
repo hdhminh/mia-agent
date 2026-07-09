@@ -99,6 +99,7 @@ def _extract_payload_context(payload: dict[str, Any]) -> str:
                             ref_lines.append(t("skills.page_label", page=page, snippet=snippet[:220]))
                     if ref_lines:
                         parts.append(t("skills.page_refs_label", refs="\n".join(ref_lines)))
+    text_value = str(payload.get("text") or "").strip()
     if text_value and (not parts or text_value not in " ".join(parts)):
         parts.append(t("skills.result_label", text=text_value))
     return "\n".join(parts).strip()

@@ -58,6 +58,12 @@ GITHUB_TOOL_NAMES = [
     "github_list_branches",
     "github_list_commits",
     "github_get_commit",
+    "github_list_releases",
+    "github_get_release",
+    "github_list_pull_requests",
+    "github_get_pull_request",
+    "github_list_issues",
+    "github_get_issue",
     "github_get_file",
     "github_search_code",
     "github_get_diff",
@@ -153,6 +159,12 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "github_list_branches": "github.list_branches",
     "github_list_commits": "github.list_commits",
     "github_get_commit": "github.get_commit",
+    "github_list_releases": "github.list_releases",
+    "github_get_release": "github.get_release",
+    "github_list_pull_requests": "github.list_pull_requests",
+    "github_get_pull_request": "github.get_pull_request",
+    "github_list_issues": "github.list_issues",
+    "github_get_issue": "github.get_issue",
     "github_get_file": "github.get_file",
     "github_search_code": "github.search_code",
     "github_get_diff": "github.get_diff",
@@ -200,6 +212,9 @@ DIRECT_TOOL_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
     "github_list_user_repos": {"limit": 20},
     "github_search_repos": {"limit": 10},
     "github_get_repo_tree": {"limit": 20},
+    "github_list_releases": {"limit": 10},
+    "github_list_pull_requests": {"limit": 10, "state": "open"},
+    "github_list_issues": {"limit": 10, "state": "open"},
 }
 
 DIRECT_ROUTE_TOOLS = set(DIRECT_GATEWAY_TOOLS) | {"memory_recent", "time_now"}
@@ -242,6 +257,12 @@ DETERMINISTIC_DIRECT_TOOLS = {
     "github_list_branches",
     "github_list_commits",
     "github_get_commit",
+    "github_list_releases",
+    "github_get_release",
+    "github_list_pull_requests",
+    "github_get_pull_request",
+    "github_list_issues",
+    "github_get_issue",
     "github_get_file",
     "github_search_code",
     "github_get_diff",
@@ -258,5 +279,4 @@ DETERMINISTIC_DIRECT_TOOLS = {
 }
 
 DIRECT_FRIENDLY_MULTISTEP_TOOLS = set(DETERMINISTIC_DIRECT_TOOLS)
-
 

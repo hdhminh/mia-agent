@@ -5,7 +5,7 @@
   "domain_guidance": {
     "calendar": "Yêu cầu này thuộc Google Calendar. Hãy tự chọn tool calendar phù hợp theo ý định thật sự của người dùng. If thiếu thông tin để tạo, huỷ, hay kiểm tra lịch thì hỏi lại ngắn gọn thay vì đoán.",
     "gmail": "Yêu cầu này thuộc Gmail. Hãy phân biệt rõ xem người dùng muốn xem hộp thư, tìm mail, đọc mail, soạn, gửi, hay trả lời mail. Chỉ dùng tool gợi ý nếu thực sự khớp.",
-    "github": "Yêu cầu này thuộc GitHub read-only hoặc help. Hãy phân biệt rõ repo, branch, commit, file, diff, code search, search repo, và help trước khi gọi tool. If là tìm repo theo topic/ngôn ngữ/sao/fork thì dùng github_search_repos rồi hỏi người dùng chọn repo nào trước khi đi sâu. If người dùng đã chọn repo rồi thì hãy giữ repo đó làm ngữ cảnh cho các lượt hỏi tiếp như tổng quan, README, kĩ thuật build, branch, file, code search, hoặc diff. Khi user hỏi về README hoặc kỹ thuật của repo, hãy ưu tiên đọc thêm các file manifest hoặc build file phù hợp để trả lời sâu hơn.",
+    "github": "Yêu cầu này thuộc GitHub read-only hoặc help. Hãy phân biệt rõ repo, branch, commit, release, pull request, issue, file, diff, code search, search repo, và help trước khi gọi tool. If là tìm repo theo topic/ngôn ngữ/sao/fork thì dùng github_search_repos rồi hỏi người dùng chọn repo nào trước khi đi sâu. If người dùng đã chọn repo rồi thì hãy giữ repo đó làm ngữ cảnh cho các lượt hỏi tiếp như tổng quan, README, kĩ thuật build, branch, release, pull request, issue, file, code search, hoặc diff. Khi user hỏi về README hoặc kỹ thuật của repo, hãy ưu tiên đọc thêm các file manifest hoặc build file phù hợp để trả lời sâu hơn.",
     "workspace": "Yêu cầu này thuộc Google Drive, Docs, hoặc Sheets. Hãy xác định đúng loại tài nguyên trước khi gọi tool. If chưa rõ là file, doc, hay sheet thì hỏi lại ngắn gọn.",
     "media": "Yêu cầu này thuộc media attachment. Hãy phân biệt rõ ảnh, tài liệu, âm thanh, video, hoặc yêu cầu đọc thành giọng nói. If có file đính kèm mà chưa rõ mục tiêu, hãy hỏi lại ngắn gọn thay vì đoán.",
     "google_full": "Yêu cầu này có thể chạm nhiều tool Google. Hãy chọn tool theo từng ý định thật sự, không suy luận chỉ từ một từ khoá đơn lẻ."
@@ -25,6 +25,15 @@
     ],
     "github_tech": [
       "kĩ thuật", "kỹ thuật", "ki thuat", "kỹ thuật build", "kĩ thuật build", "build", "stack", "tech stack", "công nghệ", "cong nghe", "công nghệ gì", "cong nghe gi", "dùng gì", "dung gi", "dùng những gì", "dung nhung gi", "framework", "library", "thư viện", "thu vien", "kiến trúc", "kien truc", "architecture", "implementation", "triển khai", "trien khai", "cài đặt", "cai dat", "setup", "pipeline", "flow", "entrypoint", "entry point", "file quan trọng", "file quan trong", "module quan trọng", "module quan trong", "code search", "dependencies", "phụ thuộc", "phu thuoc"
+    ],
+    "github_release": [
+      "release", "releases", "latest release", "release moi nhat", "release mới nhất", "ban phat hanh", "bản phát hành", "phien ban", "phiên bản", "version", "versions", "tag", "tags", "phat hanh", "phát hành"
+    ],
+    "github_pr": [
+      "pull request", "pull requests", "pr", "xem pr", "danh sach pr", "danh sách pr", "merge request", "merged pr", "open pr", "closed pr"
+    ],
+    "github_issue": [
+      "issue", "issues", "bug", "ticket", "xem issue", "xem issues", "danh sach issue", "danh sách issue", "open issue", "closed issue"
     ]
   },
   "error": {
@@ -149,13 +158,19 @@
     "summary_label": "Tóm tắt: {summary}",
     "content_label": "Nội dung: {content}",
     "github_followup_prompt": "Anh muốn mình đi sâu repo nào? Trả số thứ tự hoặc tên repo, ví dụ: repo 1.",
-    "capability_overview": "Hiện tại Mia có thể làm những nhóm việc sau:\n1. Thời tiết, giá vàng, tin tức, tìm kiếm web, đọc link, tóm tắt link, hỏi tiếp link và tạo shortlink.\n2. Nhớ thông tin qua memory.\n3. Ảnh: đọc chữ, mô tả ảnh, trích thông tin từ ảnh.\n4. Tài liệu: trích text, tóm tắt, hỏi đáp, trích trường dữ liệu từ PDF/Word/TXT.\n5. Âm thanh và video: chép lời và tóm tắt.\n6. Gmail: xem hộp thư, đọc mail, tìm mail, soạn mail, gửi mail, trả lời mail.\n7. Google Calendar: xem lịch, tìm sự kiện, tạo lịch, huỷ lịch, kiểm tra giờ rảnh.\n8. Google Drive: xem file, tìm file, xem thông tin file, tạo folder/file, upload, download, chia sẻ, đổi tên, di chuyển, copy, xoá, export.\n9. Google Docs: tìm doc, đọc doc, tạo doc, thêm nội dung, xoá doc.\n10. Google Sheets: tìm sheet, đọc sheet, tạo sheet, thêm dòng, cập nhật ô, xoá sheet.\n11. GitHub (read-only): xem repo của anh, xem cấu trúc repo, liệt kê repo trong account, tìm repo theo topic/ngôn ngữ, liệt kê branch, xem lịch sử commit, xem chi tiết commit, đọc file, tìm code trong repo, xem diff.\n12. Một số thao tác mới đã có sẵn: Gmail theo người gửi, đánh dấu đã đọc, lưu trữ mail; Calendar tìm khung giờ trống và dời lịch; Docs cập nhật nội dung; Sheets đọc/cập nhật vùng dữ liệu.\n13. Web: đọc trực tiếp link cụ thể, tóm tắt link cụ thể và hỏi tiếp trên link đã đọc hoặc vừa tóm tắt.\n\nNếu {owner_name} muốn, Mia có thể nói riêng từng nhóm hoặc đưa ví dụ câu lệnh cho từng tool.",
+    "github_get_release_failed": "Mia chưa đọc được release này.",
+    "github_list_releases_failed": "Mia chưa đọc được danh sách release.",
+    "github_get_pull_request_failed": "Mia chưa đọc được pull request này.",
+    "github_list_pull_requests_failed": "Mia chưa đọc được danh sách pull request.",
+    "github_get_issue_failed": "Mia chưa đọc được issue này.",
+    "github_list_issues_failed": "Mia chưa đọc được danh sách issue.",
+    "capability_overview": "Hiện tại Mia có thể làm những nhóm việc sau:\n1. Thời tiết, giá vàng, tin tức, tìm kiếm web, đọc link, tóm tắt link, hỏi tiếp link và tạo shortlink.\n2. Nhớ thông tin qua memory.\n3. Ảnh: đọc chữ, mô tả ảnh, trích thông tin từ ảnh.\n4. Tài liệu: trích text, tóm tắt, hỏi đáp, trích trường dữ liệu từ PDF/Word/TXT.\n5. Âm thanh và video: chép lời và tóm tắt.\n6. Gmail: xem hộp thư, đọc mail, tìm mail, soạn mail, gửi mail, trả lời mail.\n7. Google Calendar: xem lịch, tìm sự kiện, tạo lịch, huỷ lịch, kiểm tra giờ rảnh.\n8. Google Drive: xem file, tìm file, xem thông tin file, tạo folder/file, upload, download, chia sẻ, đổi tên, di chuyển, copy, xoá, export.\n9. Google Docs: tìm doc, đọc doc, tạo doc, thêm nội dung, xoá doc.\n10. Google Sheets: tìm sheet, đọc sheet, tạo sheet, thêm dòng, cập nhật ô, xoá sheet.\n11. GitHub (read-only): xem repo của anh, xem cấu trúc repo, liệt kê repo trong account, tìm repo theo topic/ngôn ngữ, liệt kê branch, xem releases, xem pull request, xem issue, xem lịch sử commit, xem chi tiết commit, đọc file, tìm code trong repo, xem diff.\n12. Một số thao tác mới đã có sẵn: Gmail theo người gửi, đánh dấu đã đọc, lưu trữ mail; Calendar tìm khung giờ trống và dời lịch; Docs cập nhật nội dung; Sheets đọc/cập nhật vùng dữ liệu.\n13. Web: đọc trực tiếp link cụ thể, tóm tắt link cụ thể và hỏi tiếp trên link đã đọc hoặc vừa tóm tắt.\n\nNếu {owner_name} muốn, Mia có thể nói riêng từng nhóm hoặc đưa ví dụ câu lệnh cho từng tool.",
     "github_limited_suffix": "- Còn {count} ý nữa đã được lược bớt; nếu anh muốn, Mia sẽ bóc tiếp chi tiết từng file hoặc lệnh.",
     "github_get_repo_tree_failed": "Mia chưa đọc được cây repo này.",
     "github_analysis_failed": "Mia chưa đọc được đủ dữ liệu của repo này để phân tích sâu. Anh thử lại hoặc chọn repo khác nhé.",
     "github_list_branches_failed": "Mia chưa đọc được danh sách branch.",
     "github_unselected_drilldown": "Mia đã tìm được repo rồi, nhưng anh chưa chọn repo cụ thể. Anh trả số thứ tự, ví dụ repo 1 hoặc repo 2, rồi Mia sẽ đi sâu tiếp.",
-    "github_repo_selected": "Mia đã chọn {repo_name}. Anh muốn mình đi sâu phần nào tiếp theo: tóm tắt README, xem tổng quan, cấu trúc repo, kĩ thuật build, branch, file, code search hay diff?",
+    "github_repo_selected": "Mia đã chọn {repo_name}. Anh muốn mình đi sâu phần nào tiếp theo: tóm tắt README, xem tổng quan, cấu trúc repo, kĩ thuật build, branch, release, pull request, issue, file, code search hay diff?",
     "github_system_analysis_prompt": "Bạn là Mia. Hãy trả lời ngắn gọn, dễ đọc, đúng trọng tâm kỹ thuật, dựa hoàn toàn trên dữ liệu được cung cấp. Không bịa thông tin nếu chưa thấy trong nội dung. Không trả lời kiểu menu, không hỏi người dùng chọn tiếp một mục khác.\nBắt buộc theo format sau, mỗi mục 1-3 dòng ngắn:\n1. Mục đích repo\n2. Tech stack / runtime\n3. Lệnh quan trọng: phải nêu rõ lệnh chạy hoặc cài đặt nếu đã thấy; nếu không thấy thì ghi rõ 'chưa thấy lệnh cụ thể'\n4. File quan trọng\n5. Tín hiệu code search\n6. Rủi ro / lưu ý\n7. Gợi ý đọc tiếp\nYêu cầu trình bày:\n- Ưu tiên bullet ngắn, flat bullet, không văn xuôi dài.\n- Không quá 6 bullet chính.\n- Nếu có lệnh thì ghi đúng nguyên văn lệnh đã xuất hiện trong dữ liệu, không tự chế.\n- Nếu user hỏi về kĩ thuật/build/setup/runtime thì mục 'Lệnh quan trọng' phải nổi bật nhất.\n- Nếu dữ liệu chưa đủ, chỉ nói phần nào chưa thấy, không suy diễn.",
     "memory_saved": "Đã lưu memory.\nLoại: {type}\nTiêu đề: {title}\nNội dung: {content}",
     "untitled": "không có tiêu đề",

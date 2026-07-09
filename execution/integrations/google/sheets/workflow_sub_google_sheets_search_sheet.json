@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || '').trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanQuery(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['tim sheet', 'search sheet', 'tim bang tinh'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst query = cleanQuery(source.query || source.sheetName || source.fileName || ctx.payload.query || ctx.payload.sheetName || body);\nconst limit = Number(source.limit || source.payload?.limit || 5) || 5;\nconst folderId = String(source.folderId || source.payload?.folderId || '').trim();\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    query,\n    folderId,\n    limit,\n    hasTarget: Boolean(query),\n    response: query ? '' : '📊 <b>Tim Google Sheet</b>\\n\\nVi du: <code>tim sheet Chi tieu</code>'\n  }\n}];"
+        "jsCode": "function normalize(str) {\n  return String(str || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/Đ/g, 'D')\n    .trim();\n}\n\nfunction getTelegramContext(source) {\n  const payload = source.payload || {};\n  const message = source.message || payload.message || payload.body?.message || {};\n  const chatId = source.chatId || message.chat?.id || payload.chatId || '';\n  const rawText = String(\n    source.rawText || source.text || message.text || message.caption || payload.text || '' || payload.query || ''\n  ).trim();\n  return { payload, message, chatId, rawText };\n}\n\nfunction cleanQuery(value) {\n  return String(value || '')\n    .trim()\n    .replace(/^[\\\"'“”‘’]+|[\\\"'“”‘’]+$/g, '')\n    .replace(/\\s+/g, ' ');\n}\n\nconst source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst ctx = getTelegramContext(source);\nconst raw = ctx.rawText;\nconst text = normalize(raw);\nconst prefixes = ['tim sheet', 'search sheet', 'tim bang tinh'];\nlet body = raw;\nfor (const prefix of prefixes) {\n  if (text.startsWith(prefix + ' ')) {\n    body = raw.slice(prefix.length + 1).trim();\n    break;\n  }\n}\n\nconst query = cleanQuery(\n  source.query ||\n  source.sheetName ||\n  source.targetName ||\n  source.fileName ||\n  args.query ||\n  args.sheetName ||\n  args.targetName ||\n  ctx.payload.query ||\n  ctx.payload.sheetName ||\n  body\n);\nconst limit = Number(source.limit || args.limit || source.payload?.limit || 5) || 5;\nconst folderId = String(source.folderId || args.folderId || source.payload?.folderId || '').trim();\n\nreturn [{\n  json: {\n    ...source,\n    payload: ctx.payload,\n    message: ctx.message,\n    chatId: ctx.chatId,\n    rawText: raw,\n    text,\n    query,\n    sheetName: query,\n    targetName: cleanQuery(source.targetName || args.targetName || query),\n    folderId,\n    limit,\n    hasTarget: Boolean(query),\n    response: query ? '' : '📊 <b>Tim Google Sheet</b>\\n\\nVi du: <code>tim sheet Chi tieu</code>'\n  }\n}];"
       },
       "id": "9bebb89f-6681-4e50-9f6b-d71e6d54d6e8",
       "name": "Prepare Action",
@@ -56,7 +56,12 @@
             "value": "My Drive"
           },
           "whatToSearch": "all",
-          "includeTrashed": false
+          "includeTrashed": false,
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.folderId || 'root' }}"
+          }
         },
         "options": {
           "fields": [

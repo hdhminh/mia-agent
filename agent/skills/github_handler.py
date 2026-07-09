@@ -19,6 +19,9 @@ from agent.persona.followup_cues import (
     GITHUB_SEARCH_FOLLOWUP_CUES,
     GITHUB_REPO_DRILLDOWN_CUES,
     GITHUB_REPO_TECH_CUES,
+    GITHUB_REPO_RELEASE_CUES,
+    GITHUB_REPO_PR_CUES,
+    GITHUB_REPO_ISSUE_CUES,
     GITHUB_REPO_TECH_FILE_PROBES,
 )
 
@@ -242,6 +245,76 @@ class GitHubHandler:
                 code_search_hits.append({"query": query, "text": result.text.strip()})
 
         return sections, tools_called, code_search_hits, last_error
+
+    @staticmethod
+    def _github_followup_state(normalized: str, default: str = "open") -> str:
+        text = " ".join(str(normalized or "").split()).lower()
+        if any(cue in text for cue in ("all", "tat ca", "tất cả", "moi", "mọi")):
+            return "all"
+        if any(cue in text for cue in ("closed", "đóng", "dong", "merged", "merge")):
+            return "closed"
+        if any(cue in text for cue in ("open", "mở", "mo")):
+            return "open"
+        return default
+
+    @staticmethod
+    def _github_followup_number(text: str) -> str:
+        match = re.search(r"(?:pull request|pull|pr|issue|issues|#)\s*#?\s*(\d+)", text, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else ""
+
+    @staticmethod
+    def _github_followup_release_ref(text: str, normalized: str) -> tuple[str, bool]:
+        if not any(cue in normalized for cue in GITHUB_REPO_RELEASE_CUES):
+            return "", False
+        tag_match = re.search(r"(?:release\s+tag|tag|version)\s*[:=#-]?\s*([A-Za-z0-9_.+-]+)", text, flags=re.IGNORECASE)
+        if tag_match:
+            return tag_match.group(1).strip(), True
+        if any(cue in normalized for cue in ("latest", "moi nhat", "mới nhất", "newest release", "recent release")):
+            return "latest", True
+        return "", True
+
+    def _run_github_followup_tool(
+        self,
+        request: MiaChatRequest,
+        context: MiaContext,
+        tool_name: str,
+        tool_args: dict[str, Any],
+        *,
+        error_code: str,
+        error_message: str,
+        user_message: str,
+    ) -> MiaChatResponse | None:
+        try:
+            result = self.tool_gateway.run_tool(tool_name, tool_args, context, request_text=request.text)
+        except Exception:
+            return None
+
+        tools_called = [tool_name.replace(".", "_")]
+        if not result.ok:
+            error = result.error or ErrorEnvelope.build(
+                code=error_code,
+                category="external",
+                severity="error",
+                message=error_message,
+                user_message=user_message,
+                request_id=request.resolved_request_id(),
+                thread_id=request.resolved_thread_id(),
+                chat_id=request.chat_id,
+            )
+            return self._error_response(request, error, tools_called=tools_called)
+
+        text = str(result.text or "").strip()
+        if not text:
+            return None
+
+        return MiaChatResponse(
+            ok=True,
+            final_text=normalized_sanitize_final_text(text),
+            tools_called=tools_called,
+            thread_id=request.resolved_thread_id(),
+            request_id=request.resolved_request_id(),
+            trace={"tool": result.payload.get("data", {}) if isinstance(result.payload, dict) else {}},
+        )
 
     def _github_repo_code_search_queries(self, repo_context: dict[str, str]) -> list[str]:
         language = str(repo_context.get("language") or "").lower()
@@ -714,8 +787,13 @@ class GitHubHandler:
         )
         wants_tech = any(cue in normalized for cue in GITHUB_REPO_TECH_CUES)
         wants_branch = any(cue in normalized for cue in ("branch", "branches", "nhanh", "nhánh"))
+        wants_release = any(cue in normalized for cue in GITHUB_REPO_RELEASE_CUES) or any(
+            cue in normalized for cue in ("latest", "moi nhat", "mới nhất", "newest release", "recent release")
+        )
+        wants_pull_request = any(cue in normalized for cue in GITHUB_REPO_PR_CUES)
+        wants_issue = any(cue in normalized for cue in GITHUB_REPO_ISSUE_CUES)
 
-        if not (wants_readme or wants_overview or wants_branch or wants_tree or wants_tech):
+        if not (wants_readme or wants_overview or wants_branch or wants_tree or wants_tech or wants_release or wants_pull_request or wants_issue):
             return None
 
         if wants_tree and not (wants_readme or wants_overview or wants_tech):
@@ -759,6 +837,115 @@ class GitHubHandler:
                 request_id=request.resolved_request_id(),
                 trace={"tool": result.payload.get("data", {}) if isinstance(result.payload, dict) else {}},
             )
+
+        if wants_release:
+            release_ref, release_cue = self._github_followup_release_ref(text, normalized)
+            tool_args = {
+                "repo": repo_context.get("repo", ""),
+                "owner": repo_context.get("owner", ""),
+                "repoName": repo_context.get("repoName", ""),
+                "repoUrl": repo_context.get("repoUrl", ""),
+            }
+            if release_ref:
+                tool_name = "github.get_release"
+                if release_ref == "latest":
+                    tool_args["releaseId"] = "latest"
+                else:
+                    tool_args["tag"] = release_ref
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    tool_name,
+                    tool_args,
+                    error_code="github_get_release_failed",
+                    error_message="github.get_release failed.",
+                    user_message=t("skills.github_get_release_failed", default="Mia chưa đọc được release này."),
+                )
+                if response is not None:
+                    return response
+            elif release_cue:
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    "github.list_releases",
+                    {
+                        **tool_args,
+                        "limit": 10,
+                    },
+                    error_code="github_list_releases_failed",
+                    error_message="github.list_releases failed.",
+                    user_message=t("skills.github_list_releases_failed", default="Mia chưa đọc được danh sách release."),
+                )
+                if response is not None:
+                    return response
+
+        if wants_pull_request:
+            pr_number = self._github_followup_number(text)
+            tool_args = {
+                "repo": repo_context.get("repo", ""),
+                "owner": repo_context.get("owner", ""),
+                "repoName": repo_context.get("repoName", ""),
+                "repoUrl": repo_context.get("repoUrl", ""),
+            }
+            if pr_number:
+                tool_args["number"] = pr_number
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    "github.get_pull_request",
+                    tool_args,
+                    error_code="github_get_pull_request_failed",
+                    error_message="github.get_pull_request failed.",
+                    user_message=t("skills.github_get_pull_request_failed", default="Mia chưa đọc được pull request này."),
+                )
+            else:
+                tool_args["state"] = self._github_followup_state(normalized, default="open")
+                tool_args["limit"] = 10
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    "github.list_pull_requests",
+                    tool_args,
+                    error_code="github_list_pull_requests_failed",
+                    error_message="github.list_pull_requests failed.",
+                    user_message=t("skills.github_list_pull_requests_failed", default="Mia chưa đọc được danh sách pull request."),
+                )
+            if response is not None:
+                return response
+
+        if wants_issue:
+            issue_number = self._github_followup_number(text)
+            tool_args = {
+                "repo": repo_context.get("repo", ""),
+                "owner": repo_context.get("owner", ""),
+                "repoName": repo_context.get("repoName", ""),
+                "repoUrl": repo_context.get("repoUrl", ""),
+            }
+            if issue_number:
+                tool_args["number"] = issue_number
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    "github.get_issue",
+                    tool_args,
+                    error_code="github_get_issue_failed",
+                    error_message="github.get_issue failed.",
+                    user_message=t("skills.github_get_issue_failed", default="Mia chưa đọc được issue này."),
+                )
+            else:
+                tool_args["state"] = self._github_followup_state(normalized, default="open")
+                tool_args["limit"] = 10
+                response = self._run_github_followup_tool(
+                    request,
+                    context,
+                    "github.list_issues",
+                    tool_args,
+                    error_code="github_list_issues_failed",
+                    error_message="github.list_issues failed.",
+                    user_message=t("skills.github_list_issues_failed", default="Mia chưa đọc được danh sách issue."),
+                )
+            if response is not None:
+                return response
 
         if wants_readme or wants_overview or wants_tech or wants_tree:
             readme_only = wants_readme and not (wants_overview or wants_tree or wants_tech)

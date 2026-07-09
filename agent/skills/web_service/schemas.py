@@ -16,6 +16,7 @@ class WebRequest(BaseModel):
     prompt: str = Field(default="")
     instruction: str = Field(default="")
     question: str = Field(default="")
+    fetch_strategy: str = Field(default="auto")
     response_mode: str = Field(default="text")
     max_chars: int = Field(default=0, ge=0)
 

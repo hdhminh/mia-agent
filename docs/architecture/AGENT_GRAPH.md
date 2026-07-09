@@ -62,8 +62,8 @@ graph TD
 ### Ingress Node (`ingress`)
 The entry point of the graph. It performs lightweight, fast operations:
 1. **Approval Checking**: Inspects if the user's input is a confirmation for a pending action.
-2. **Follow-up Routing**: Matches natural language cues to determine if the query is a follow-up about a recently analyzed URL, document, or GitHub repository.
-3. **Direct Path Execution**: Evaluates if the query can be resolved directly (e.g. news search, weather, gold prices) without generating an agent plan.
+2. **Follow-up Routing**: Matches natural language cues to determine if the query is a follow-up about a recently analyzed URL, document, or GitHub repository. GitHub follow-ups now include repo overview, README, tree, branch, release, pull request, and issue drill-down.
+3. **Direct Path Execution**: Evaluates if the query can be resolved directly without generating an agent plan. This includes low-side-effect requests like memory_recent, weather, news, gold, search_web, read_url, summarize_url, ask_url, shortlink, and time_now.
 
 If the request is resolved in Ingress, the graph bypasses the agent loop and moves directly to `memory_writer`. Otherwise, it transitions to `supervisor`.
 
@@ -76,7 +76,7 @@ Prepares the state payload for the specialized agent. It:
 
 ### Specialist Nodes
 Each specialist is a LangChain agent running with a subset of tools configured for that domain:
-- `specialist_github`: For code reading, diff analysis, repo search.
+- `specialist_github`: For code reading, diff analysis, repo search, release, pull request, and issue drill-down.
 - `specialist_calendar`: Calendar events management.
 - `specialist_gmail`: Inbox viewing, search, drafting, reply.
 - `specialist_workspace`: Drive, Docs, Sheets management.
@@ -87,6 +87,7 @@ Each specialist is a LangChain agent running with a subset of tools configured f
 ### Evaluator Node (`evaluator`)
 Ensures output quality by inspecting the specialist agent's run:
 - Validates if the agent used correct tools and parameters.
+- For GitHub and web-style specialist responses, missing tool evidence is treated as a fail so the graph does not bless unsupported answers.
 - Analyzes if the response is complete or requires corrections.
 - If validation fails, it triggers a `retry` transition back to `supervisor` with system guidance detailing the error. The system supports up to 2 retries.
 - If it passes, it goes to `response_composer`.

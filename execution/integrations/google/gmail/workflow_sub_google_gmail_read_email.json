@@ -72,7 +72,49 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Doc Email').item.json || {};\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime())\n    ? ''\n    : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst cleanText = (value = '') => String(value)\n  .replace(/[\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180e\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst buildMailLink = (email) => {\n  const threadId = pickFirst(email.threadId);\n  const messageId = pickFirst(email.id);\n  if (threadId) return `https://mail.google.com/mail/u/0/#inbox/${threadId}`;\n  if (messageId) return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;\n  return '';\n};\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((email) => email && Object.keys(email).length > 0 && (email.id || email.subject || email.Subject || email.from || email.From || email.snippet));\n\nif (!rows.length) {\n  const query = pickFirst(source.query, source.messageId);\n  return [{\n    json: {\n      ok: false,\n      tool: 'gmail.read_email',\n      chatId: source.chatId || '',\n      text: query ? `Mia chưa tìm thấy email phù hợp với \"${query}\".` : 'Mia chưa tìm thấy email phù hợp.',\n      links: [],\n      result: {},\n      meta: { query }\n    }\n  }];\n}\n\nconst email = rows[0];\nconst from = cleanText(pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value)) || 'Không rõ người gửi';\nconst to = cleanText(pickFirst(email.to?.value?.[0]?.address, email.To, email.to, email.payload?.headers?.find((h) => h.name === 'To')?.value));\nconst subject = cleanText(pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value)) || 'Không có tiêu đề';\nconst date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\nconst link = buildMailLink(email);\n\nlet body = cleanText(pickFirst(email.textPlain, email.text, email.snippet)) || '(Email này không có nội dung văn bản để hiển thị.)';\nlet truncated = false;\nif (body.length > 1400) {\n  body = body.slice(0, 1400).trimEnd();\n  truncated = true;\n}\n\nlet text = `Mia đọc được email \"${subject}\"`;\ntext += `\\nTừ: ${from}`;\nif (to) text += `\\nĐến: ${to}`;\nif (date) text += `\\nThời gian: ${date}`;\nif (link) text += `\\nLink: ${link}`;\ntext += `\\n\\nNội dung:\\n${body}`;\nif (truncated) text += '\\n\\nMia đã rút gọn phần cuối để Telegram dễ đọc hơn.';\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'gmail.read_email',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: link ? [link] : [],\n    result: { email },\n    meta: { subject, from, date }\n  }\n}];\n"
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.messageId) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "gmail-read-has-message-id",
+      "name": "Co Message ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        720,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{$json.messageId}}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "id": "gmail-read-get-by-id",
+      "name": "Gmail Get Message By ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        960,
+        32
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5bVi6VSAG8L6X4DP",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Chuan Bi Doc Email').item.json || {};\n\nconst pickFirst = (...values) => {\n  for (const value of values) {\n    if (value === undefined || value === null) continue;\n    if (typeof value === 'string' && value.trim()) return value.trim();\n    if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  }\n  return '';\n};\n\nconst formatDate = (value) => {\n  if (value === undefined || value === null || value === '') return '';\n  const normalized = /^\\d+$/.test(String(value)) ? Number(value) : value;\n  const date = new Date(normalized);\n  return Number.isNaN(date.getTime())\n    ? ''\n    : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n};\n\nconst cleanText = (value = '') => String(value)\n  .replace(/[\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180e\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst buildMailLink = (email) => {\n  const threadId = pickFirst(email.threadId);\n  const messageId = pickFirst(email.id);\n  if (threadId) return `https://mail.google.com/mail/u/0/#inbox/${threadId}`;\n  if (messageId) return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;\n  return '';\n};\n\nconst decodeBase64Url = (value = '') => {\n  const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');\n  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));\n  try {\n    return Buffer.from(normalized + padding, 'base64').toString('utf8');\n  } catch (error) {\n    return '';\n  }\n};\n\nfunction collectPayloadText(part, out = []) {\n  if (!part || typeof part !== 'object') return out;\n  if (part.mimeType === 'text/plain' && part.body?.data) {\n    const decoded = decodeBase64Url(part.body.data);\n    if (decoded) out.push(decoded);\n  }\n  if (Array.isArray(part.parts)) {\n    part.parts.forEach((child) => collectPayloadText(child, out));\n  }\n  return out;\n}\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((email) => email && Object.keys(email).length > 0 && (email.id || email.subject || email.Subject || email.from || email.From || email.snippet));\n\nif (!rows.length) {\n  const query = pickFirst(source.query, source.messageId);\n  return [{\n    json: {\n      ok: false,\n      tool: 'gmail.read_email',\n      chatId: source.chatId || '',\n      text: query ? `Mia chưa tìm thấy email phù hợp với \"${query}\".` : 'Mia chưa tìm thấy email phù hợp.',\n      links: [],\n      result: {},\n      meta: { query }\n    }\n  }];\n}\n\nconst email = rows[0];\nconst from = cleanText(pickFirst(email.from?.value?.[0]?.name, email.from?.value?.[0]?.address, email.From, email.from, email.payload?.headers?.find((h) => h.name === 'From')?.value)) || 'Không rõ người gửi';\nconst to = cleanText(pickFirst(email.to?.value?.[0]?.address, email.To, email.to, email.payload?.headers?.find((h) => h.name === 'To')?.value));\nconst subject = cleanText(pickFirst(email.subject, email.Subject, email.payload?.headers?.find((h) => h.name === 'Subject')?.value)) || 'Không có tiêu đề';\nconst date = formatDate(pickFirst(email.date, email.Date, email.internalDate));\nconst link = buildMailLink(email);\nconst payloadText = collectPayloadText(email.payload || {}).join('\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n\nlet body = cleanText(pickFirst(email.textPlain, email.text, payloadText, email.snippet)) || '(Email này không có nội dung văn bản để hiển thị.)';\nlet truncated = false;\nif (body.length > 1400) {\n  body = body.slice(0, 1400).trimEnd();\n  truncated = true;\n}\n\nlet text = `Mia đọc được email \"${subject}\"`;\ntext += `\\nTừ: ${from}`;\nif (to) text += `\\nĐến: ${to}`;\nif (date) text += `\\nThời gian: ${date}`;\nif (link) text += `\\nLink: ${link}`;\ntext += `\\n\\nNội dung:\\n${body}`;\nif (truncated) text += '\\n\\nMia đã rút gọn phần cuối để Telegram dễ đọc hơn.';\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'gmail.read_email',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: link ? [link] : [],\n    result: { email },\n    meta: { subject, from, date, usedMessageId: Boolean(source.messageId) }\n  }\n}];\n"
       },
       "id": "gmail-read-format",
       "name": "Format Noi Dung Email",
@@ -124,7 +166,7 @@
       "main": [
         [
           {
-            "node": "Gmail Search Read",
+            "node": "Co Message ID?",
             "type": "main",
             "index": 0
           }
@@ -152,6 +194,35 @@
     "Format Noi Dung Email": {
       "main": [
         []
+      ]
+    },
+    "Co Message ID?": {
+      "main": [
+        [
+          {
+            "node": "Gmail Get Message By ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Search Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Get Message By ID": {
+      "main": [
+        [
+          {
+            "node": "Format Noi Dung Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

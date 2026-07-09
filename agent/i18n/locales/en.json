@@ -5,7 +5,7 @@
   "domain_guidance": {
     "calendar": "This request belongs to Google Calendar. Please choose the appropriate calendar tool according to the user's true intent. If there is insufficient information to create, delete, or check calendar events, ask back briefly instead of guessing.",
     "gmail": "This request belongs to Gmail. Please distinguish clearly whether the user wants to view inbox, search mail, read mail, compose, send, or reply to mail. Only use suggested tools if they truly match.",
-    "github": "This request belongs to GitHub (read-only or help). Please distinguish clearly among repo, branch, commit, file, diff, code search, search repo, and help before calling tools. If it is searching for a repo by topic/language/stars/forks, use github_search_repos and ask the user to select a repo before going deeper. If the user has already selected a repo, keep it as the context for subsequent questions like overview, README, tech stack, branch, file, code search, or diff. When the user asks about the README or tech stack of a repo, prioritize reading additional manifests or build files to answer deeper.",
+    "github": "This request belongs to GitHub (read-only or help). Please distinguish clearly among repo, branch, commit, release, pull request, issue, file, diff, code search, search repo, and help before calling tools. If it is searching for a repo by topic/language/stars/forks, use github_search_repos and ask the user to select a repo before going deeper. If the user has already selected a repo, keep it as the context for subsequent questions like overview, README, tech stack, branch, release, pull request, issue, file, code search, or diff. When the user asks about the README or tech stack of a repo, prioritize reading additional manifests or build files to answer deeper.",
     "workspace": "This request belongs to Google Drive, Docs, or Sheets. Please determine the correct resource type before calling tools. If it is not clear whether it is a file, doc, or sheet, ask back briefly.",
     "media": "This request belongs to media attachments. Please distinguish clearly among images, documents, audio, video, or text-to-speech requests. If there is an attached file but the goal is unclear, ask back briefly instead of guessing.",
     "google_full": "This request can touch multiple Google tools. Please select tools based on actual intent, do not infer based on a single keyword alone."
@@ -25,6 +25,15 @@
     ],
     "github_tech": [
       "technique", "techniques", "build", "stack", "tech stack", "technology", "what technology", "what framework", "what library", "dependencies", "architecture", "implementation", "deploy", "setup", "pipeline", "flow", "entrypoint", "entry point", "important files", "important modules", "code search", "dependencies"
+    ],
+    "github_release": [
+      "release", "releases", "latest release", "newest release", "release tag", "tag", "version", "versions", "published release"
+    ],
+    "github_pr": [
+      "pull request", "pull requests", "pr", "merge request", "merged pr", "open pr", "closed pr"
+    ],
+    "github_issue": [
+      "issue", "issues", "bug", "ticket", "open issue", "closed issue"
     ]
   },
   "error": {
@@ -149,13 +158,19 @@
     "summary_label": "Summary: {summary}",
     "content_label": "Content: {content}",
     "github_followup_prompt": "Which repo would you like to explore deeper? Reply with the number or name, e.g., repo 1.",
-    "capability_overview": "Currently Mia can perform the following tasks:\n1. Weather, gold prices, news, web search, read URL, summarize URL, ask URL, and create shortlinks.\n2. Recall information through memory.\n3. Image tools: OCR, describe images, and extract fields from images.\n4. Document tools: text extraction, summary, Q&A, and field extraction from PDF/Word/TXT.\n5. Audio and video: transcription and summary.\n6. Gmail: view inbox, read email, search email, compose email, send email, and reply to email.\n7. Google Calendar: view calendar, find event, create event, delete event, and check availability.\n8. Google Drive: view files, search files, get file info, create folders/files, upload, download, share, rename, move, copy, delete, and export.\n9. Google Docs: search doc, read doc, create doc, append content, and delete doc.\n10. Google Sheets: search sheet, read sheet, create sheet, append row, update cell, and delete sheet.\n11. GitHub (read-only): view repository, view repo structure, list user repos, search repos by topic/language, list branches, view commit history, view commit details, read files, search code in repo, and view diffs.\n12. Additional operations: Gmail search by sender, mark as read, archive email; Calendar find free slot and reschedule event; Docs update content; Sheets read/update range.\n13. Web: read specific URLs directly, summarize specific URLs, and ask follow-up questions on read/summarized URLs.\n\nIf {owner_name} wishes, Mia can discuss each group separately or provide example commands for each tool.",
+    "github_get_release_failed": "Mia could not read this release.",
+    "github_list_releases_failed": "Mia could not read the release list.",
+    "github_get_pull_request_failed": "Mia could not read this pull request.",
+    "github_list_pull_requests_failed": "Mia could not read the pull request list.",
+    "github_get_issue_failed": "Mia could not read this issue.",
+    "github_list_issues_failed": "Mia could not read the issue list.",
+    "capability_overview": "Currently Mia can perform the following tasks:\n1. Weather, gold prices, news, web search, read URL, summarize URL, ask URL, and create shortlinks.\n2. Recall information through memory.\n3. Image tools: OCR, describe images, and extract fields from images.\n4. Document tools: text extraction, summary, Q&A, and field extraction from PDF/Word/TXT.\n5. Audio and video: transcription and summary.\n6. Gmail: view inbox, read email, search email, compose email, send email, and reply to email.\n7. Google Calendar: view calendar, find event, create event, delete event, and check availability.\n8. Google Drive: view files, search files, get file info, create folders/files, upload, download, share, rename, move, copy, delete, and export.\n9. Google Docs: search doc, read doc, create doc, append content, and delete doc.\n10. Google Sheets: search sheet, read sheet, create sheet, append row, update cell, and delete sheet.\n11. GitHub (read-only): view repository, view repo structure, list user repos, search repos by topic/language, list branches, view releases, view pull requests, view issues, view commit history, view commit details, read files, search code in repo, and view diffs.\n12. Additional operations: Gmail search by sender, mark as read, archive email; Calendar find free slot and reschedule event; Docs update content; Sheets read/update range.\n13. Web: read specific URLs directly, summarize specific URLs, and ask follow-up questions on read/summarized URLs.\n\nIf {owner_name} wishes, Mia can discuss each group separately or provide example commands for each tool.",
     "github_limited_suffix": "- And {count} more items have been omitted; if you wish, Mia can drill down into specific files or commands.",
     "github_get_repo_tree_failed": "Mia could not read this repo tree.",
     "github_analysis_failed": "Mia could not read enough data from this repository to perform a deep analysis. Please try again or select another repo.",
     "github_list_branches_failed": "Mia could not read the branch list.",
     "github_unselected_drilldown": "Mia has found the repositories, but you haven't selected a specific repository yet. Please reply with the number (e.g., repo 1 or repo 2) and Mia will proceed.",
-    "github_repo_selected": "Mia has selected {repo_name}. Which part would you like to explore next: summarize README, view overview, repo structure, build stack, branch, file, code search, or diff?",
+    "github_repo_selected": "Mia has selected {repo_name}. Which part would you like to explore next: summarize README, view overview, repo structure, build stack, branch, release, pull request, issue, file, code search, or diff?",
     "github_system_analysis_prompt": "You are Mia. Respond briefly, easy to read, technically focused, based entirely on the provided data. Do not make up information if not found. Do not reply with menus or ask the user to select another item.\nMust follow this format, each item in 1-3 short lines:\n1. Repo goal\n2. Tech stack / runtime\n3. Key commands: must specify run or install commands if found; if not, state 'no specific commands found'\n4. Key files\n5. Code search signals\n6. Risks / notes\n7. Next read suggestion\nPresentation requirements:\n- Prioritize short bullets, flat bullets, no long prose.\n- No more than 6 main bullets.\n- If there are commands, write them exactly as they appear in the data, do not invent.\n- If the user asks about technical/build/setup/runtime, the 'Key commands' section must be the most prominent.\n- If data is insufficient, only mention what is missing, do not extrapolate.",
     "memory_saved": "Memory saved.\nType: {type}\nTitle: {title}\nContent: {content}",
     "untitled": "untitled",

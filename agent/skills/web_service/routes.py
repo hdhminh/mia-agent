@@ -68,6 +68,7 @@ def read_url(request: Request, payload: WebRequest) -> WebResult:
             instruction=payload.prompt or payload.instruction or payload.text,
             request_id=payload.request_id,
             chat_id=payload.chat_id,
+            fetch_strategy=payload.fetch_strategy,
             max_chars=payload.max_chars,
         )
     except Exception as exc:
@@ -83,6 +84,7 @@ def summarize_url(request: Request, payload: WebRequest) -> WebResult:
             instruction=payload.prompt or payload.instruction or payload.text,
             request_id=payload.request_id,
             chat_id=payload.chat_id,
+            fetch_strategy=payload.fetch_strategy,
             max_chars=payload.max_chars,
         )
     except Exception as exc:
@@ -98,6 +100,7 @@ def ask_url(request: Request, payload: WebRequest) -> WebResult:
             instruction=payload.question or payload.prompt or payload.instruction or payload.text,
             request_id=payload.request_id,
             chat_id=payload.chat_id,
+            fetch_strategy=payload.fetch_strategy,
             max_chars=payload.max_chars,
         )
     except Exception as exc:

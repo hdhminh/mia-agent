@@ -73,7 +73,9 @@
         "emailType": "text",
         "message": "={{ $json.body }}",
         "options": {
-          "sendTo": "={{ $json.toEmail }}"
+          "sendTo": "={{ $json.toEmail }}",
+          "ccList": "={{ $json.cc || '' }}",
+          "bccList": "={{ $json.bcc || '' }}"
         }
       },
       "id": "gmail-send-as-draft-node",
@@ -110,7 +112,10 @@
         "sendTo": "={{ $json.toEmail }}",
         "subject": "={{ $json.subject }}",
         "message": "={{ $json.body }}",
-        "options": {}
+        "options": {
+          "ccList": "={{ $json.cc || '' }}",
+          "bccList": "={{ $json.bcc || '' }}"
+        }
       },
       "id": "gmail-send-node",
       "name": "Gmail Send",

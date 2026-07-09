@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from dataclasses import dataclass
 from html import unescape
@@ -31,6 +32,7 @@ class WebPage:
     links: list[str]
     mime_type: str
     status_code: int
+    fetch_strategy: str
 
 
 def _is_textual_content_type(content_type: str) -> bool:
@@ -61,16 +63,86 @@ def _extract_first_url(text: str) -> str:
     return match.group(0).rstrip(".,;!?")
 
 
-def _clean_html_to_text(html_text: str) -> str:
+def _normalize_fetch_strategy(value: str) -> str:
+    strategy = str(value or "").strip().lower().replace("_", "-")
+    if strategy in {"browser", "render"}:
+        return "rendered"
+    if strategy in {"rendered", "static", "auto"}:
+        return strategy
+    return "auto"
+
+
+def _is_private_host(hostname: str) -> bool:
+    host = str(hostname or "").strip().lower().strip("[]")
+    if not host:
+        return True
+    if host in {"localhost", "localhost.localdomain"} or host.endswith(".localhost") or host.endswith(".local"):
+        return True
+    if host.startswith(("127.", "10.", "192.168.", "0.", "169.254.")):
+        return True
+    if host.startswith("172."):
+        parts = host.split(".")
+        if len(parts) >= 2:
+            try:
+                second = int(parts[1])
+                if 16 <= second <= 31:
+                    return True
+            except ValueError:
+                pass
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return bool(
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_unspecified
+        or ip.is_reserved
+    )
+
+
+def _extract_main_html(html_text: str) -> str:
+    text = str(html_text or "")
+    for pattern in (
+        r"(?is)<article\b[^>]*>(.*?)</article>",
+        r"(?is)<main\b[^>]*>(.*?)</main>",
+        r"(?is)<body\b[^>]*>(.*?)</body>",
+    ):
+        match = re.search(pattern, text)
+        if match:
+            candidate = match.group(1).strip()
+            if candidate:
+                return candidate
+    return text
+
+
+def _strip_html_noise(html_text: str) -> str:
     text = unescape(str(html_text or ""))
-    text = re.sub(r"(?is)<(script|style|noscript|svg|canvas).*?>.*?</\1>", " ", text)
+    text = re.sub(r"(?is)<!--.*?-->", " ", text)
+    text = re.sub(r"(?is)<(script|style|noscript|svg|canvas|iframe|form|header|footer|nav|aside)[^>]*>.*?</\1>", " ", text)
+    text = re.sub(r"(?is)<(script|style|noscript|svg|canvas|iframe|form|header|footer|nav|aside)\b[^>]*?/?>", " ", text)
     text = re.sub(r"(?i)<br\s*/?>", "\n", text)
     text = re.sub(r"(?i)</p>", "\n\n", text)
     text = re.sub(r"(?i)</div>", "\n", text)
+    text = re.sub(r"(?i)</section>", "\n", text)
+    text = re.sub(r"(?i)</article>", "\n\n", text)
     text = re.sub(r"(?i)</li>", "\n", text)
     text = re.sub(r"(?i)<li[^>]*>", "- ", text)
     text = re.sub(r"(?i)</h[1-6]>", "\n", text)
+    text = re.sub(r"(?i)<tr[^>]*>", "\n", text)
+    text = re.sub(r"(?i)</tr>", "\n", text)
+    text = re.sub(r"(?i)<t[dh][^>]*>", " ", text)
+    text = re.sub(r"(?i)</t[dh]>", " ", text)
     text = re.sub(r"(?i)<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", r"\2 (\1)", text)
+    text = re.sub(r"(?i)<a[^>]*href='([^']+)'[^>]*>(.*?)</a>", r"\2 (\1)", text)
+    return text
+
+
+def _clean_html_to_text(html_text: str) -> str:
+    text = _extract_main_html(html_text)
+    text = _strip_html_noise(text)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s+", "\n", text)
@@ -105,7 +177,33 @@ def _extract_links(html_text: str, base_url: str, limit: int = 12) -> list[str]:
     return urls
 
 
-def _parse_page(response: httpx.Response, source_url: str) -> WebPage:
+def _looks_blocked(page: WebPage) -> bool:
+    content = " ".join(
+        part.lower()
+        for part in (
+            page.title,
+            page.description,
+            page.text,
+        )
+        if part
+    )
+    cues = (
+        "captcha",
+        "access denied",
+        "blocked",
+        "cloudflare",
+        "attention required",
+        "bot detection",
+        "enable javascript",
+        "sign in to continue",
+        "verify you are human",
+        "just a moment",
+        "forbidden",
+    )
+    return page.status_code in {401, 403, 429, 503} or any(cue in content for cue in cues)
+
+
+def _parse_page(response: httpx.Response, source_url: str, *, fetch_strategy: str = "static") -> WebPage:
     final_url = str(response.url).strip() or source_url
     mime_type = str(response.headers.get("content-type") or "").strip()
     raw_text = response.text if _is_textual_content_type(mime_type) else ""
@@ -161,6 +259,7 @@ def _parse_page(response: httpx.Response, source_url: str) -> WebPage:
         links=links,
         mime_type=mime_type,
         status_code=response.status_code,
+        fetch_strategy=fetch_strategy,
     )
 
 
@@ -338,13 +437,17 @@ class WebService:
         trace["provider"] = provider_used
         return answer_text, trace
 
-    def _fetch_page(self, url: str) -> WebPage:
+    def _fetch_page(self, url: str, fetch_strategy: str = "auto") -> WebPage:
         source_url = str(url or "").strip()
         if not source_url:
             raise ValueError("URL is required.")
         parsed = urlparse(source_url)
         if parsed.scheme not in {"http", "https"}:
             raise ValueError("URL must start with http:// or https://.")
+        if _is_private_host(parsed.hostname or ""):
+            raise ValueError("Private, local, or loopback URLs are not allowed.")
+
+        strategy = _normalize_fetch_strategy(fetch_strategy)
 
         referer = self.settings.openrouter_referer
         parsed_ref = urlparse(referer)
@@ -360,11 +463,25 @@ class WebService:
         ) as client:
             response = client.get(source_url)
             response.raise_for_status()
-            return _parse_page(response, source_url)
+            return _parse_page(response, source_url, fetch_strategy=strategy)
 
     def _format_read_result(self, page: WebPage, *, max_chars: int = 12000) -> tuple[str, list[str]]:
         content = page.text or page.description or ""
         warnings: list[str] = []
+        if page.fetch_strategy == "rendered":
+            warnings.append(
+                t(
+                    "skills.web_rendered_fallback",
+                    default="Mia chưa có browser renderer riêng, nên chế độ rendered đang fallback sang fetch tĩnh và trích xuất nội dung công khai.",
+                )
+            )
+        if _looks_blocked(page):
+            warnings.append(
+                t(
+                    "skills.web_possible_block",
+                    default="Trang này có dấu hiệu chặn truy cập tự động hoặc yêu cầu đăng nhập.",
+                )
+            )
         if not content:
             warnings.append(t("skills.web_no_text", default="Không trích xuất được nội dung chữ đáng kể từ trang này."))
         visible = _compact_lines(content, limit=max(3000, min(max_chars or 12000, 20000)))
@@ -457,8 +574,8 @@ class WebService:
         trace["provider"] = provider_used
         return summary_text, trace
 
-    def read_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", max_chars: int = 0) -> WebResult:
-        page = self._fetch_page(url)
+    def read_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", fetch_strategy: str = "auto", max_chars: int = 0) -> WebResult:
+        page = self._fetch_page(url, fetch_strategy=fetch_strategy)
         text, warnings = self._format_read_result(page, max_chars=max_chars or 12000)
         self._store_url_context(
             chat_id=chat_id,
@@ -484,6 +601,7 @@ class WebService:
                 "links": page.links,
                 "mime_type": page.mime_type,
                 "status_code": page.status_code,
+                "fetch_strategy": page.fetch_strategy,
                 "instruction": instruction,
                 "request_id": request_id,
                 "chat_id": chat_id,
@@ -492,8 +610,8 @@ class WebService:
             trace={},
         )
 
-    def summarize_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", max_chars: int = 0) -> WebResult:
-        page = self._fetch_page(url)
+    def summarize_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", fetch_strategy: str = "auto", max_chars: int = 0) -> WebResult:
+        page = self._fetch_page(url, fetch_strategy=fetch_strategy)
         read_text, warnings = self._format_read_result(page, max_chars=max_chars or 12000)
         summary_text, trace = self._summarize_text(
             title=page.title,
@@ -537,6 +655,7 @@ class WebService:
                 "content": page.text,
                 "links": page.links,
                 "summary": summary_text,
+                "fetch_strategy": page.fetch_strategy,
                 "instruction": instruction,
                 "request_id": request_id,
                 "chat_id": chat_id,
@@ -545,7 +664,7 @@ class WebService:
             trace={"llm": trace},
         )
 
-    def ask_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", max_chars: int = 0) -> WebResult:
+    def ask_url(self, *, url: str, instruction: str = "", request_id: str = "", chat_id: str = "", fetch_strategy: str = "auto", max_chars: int = 0) -> WebResult:
         question = str(instruction or "").strip()
         warnings: list[str] = []
         page: WebPage | None = None
@@ -556,7 +675,7 @@ class WebService:
         context_mode = "memory"
 
         if url.strip():
-            page = self._fetch_page(url)
+            page = self._fetch_page(url, fetch_strategy=fetch_strategy)
             title = page.title
             canonical_url = page.canonical_url or page.final_url or page.url
             description = page.description
@@ -631,6 +750,7 @@ class WebService:
                 "context_mode": context_mode,
                 "title": title or (page.title if page else ""),
                 "canonical_url": canonical_url or (page.canonical_url if page else ""),
+                "fetch_strategy": page.fetch_strategy if page else _normalize_fetch_strategy(fetch_strategy),
                 "request_id": request_id,
                 "chat_id": chat_id,
             },

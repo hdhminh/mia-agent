@@ -14,10 +14,14 @@
 ## Direct Deterministic
 
 - `memory_recent`
+- `time_now`
 - `weather_get`
 - `gold_get_price`
 - `news_get`
 - `search_web`
+- `read_url`
+- `summarize_url`
+- `ask_url`
 - `shortlink_create`
 - `calendar_help`
 - `calendar_list_today`
@@ -31,10 +35,19 @@
 - `gmail_search_email`
 - `gmail_search_by_sender`
 - `github_help`
+- `github_list_user_repos`
+- `github_search_repos`
 - `github_get_repo`
+- `github_get_repo_tree`
 - `github_list_branches`
 - `github_list_commits`
 - `github_get_commit`
+- `github_list_releases`
+- `github_get_release`
+- `github_list_pull_requests`
+- `github_get_pull_request`
+- `github_list_issues`
+- `github_get_issue`
 - `github_get_file`
 - `github_search_code`
 - `github_get_diff`
@@ -68,10 +81,19 @@
 ### `github`
 
 - `github_help`
+- `github_list_user_repos`
+- `github_search_repos`
 - `github_get_repo`
+- `github_get_repo_tree`
 - `github_list_branches`
 - `github_list_commits`
 - `github_get_commit`
+- `github_list_releases`
+- `github_get_release`
+- `github_list_pull_requests`
+- `github_get_pull_request`
+- `github_list_issues`
+- `github_get_issue`
 - `github_get_file`
 - `github_search_code`
 - `github_get_diff`

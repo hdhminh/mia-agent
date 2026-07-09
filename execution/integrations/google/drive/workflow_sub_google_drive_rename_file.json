@@ -1,4 +1,5 @@
 {
+  "name": "Sub-workflow: Google Drive - Rename File",
   "nodes": [
     {
       "parameters": {},

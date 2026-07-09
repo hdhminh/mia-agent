@@ -1,4 +1,5 @@
 {
+  "name": "Sub-workflow: Google Drive - Create Folder",
   "nodes": [
     {
       "parameters": {},
@@ -13,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst args = source.args || payload.args || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || message.text || payload.text || '').trim();\nconst folderName = String(source.folderName || source.name || args.folderName || args.name || payload.folderName || raw.replace(/^(tao folder|tao thu muc|create folder)\\s*/i, '')).trim();\nconst folderId = source.folderId || source.parentId || args.folderId || args.parentId || payload.folderId || 'root';\nreturn [{ json: { ...source, payload, message, chatId, raw, folderName, folderId, hasTarget: Boolean(folderName), response: folderName ? '' : '📁 <b>Tao folder</b>\\n\\nVi du: tao folder Khach hang' } }];"
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst payload = source.payload || {};\nconst args = source.args || payload.args || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst raw = String(source.rawText || source.text || source.targetName || args.targetName || source.folderName || args.folderName || args.name || payload.targetName || payload.folderName || payload.text || '').trim();\nconst folderName = String(source.folderName || source.targetName || source.name || args.folderName || args.targetName || args.name || payload.folderName || payload.targetName || raw.replace(/^(tao folder|tao thu muc|create folder)\\s*/i, '')).trim();\nconst folderId = String(source.folderId || source.targetFolderId || source.parentId || args.folderId || args.targetFolderId || args.parentId || payload.folderId || payload.targetFolderId || 'root').trim() || 'root';\nreturn [{ json: { ...source, payload, message, chatId, raw, folderName, targetName: folderName, folderId, targetFolderId: folderId, hasTarget: Boolean(folderName), response: folderName ? '' : '📁 <b>Tao folder</b>\\n\\nVi du: tao folder Khach hang' } }];"
       },
       "id": "5b64bd16-b5ba-4b55-b547-c35e28fcd26b",
       "name": "Prepare Action",

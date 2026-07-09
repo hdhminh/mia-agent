@@ -38,6 +38,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
     def read_url_tool(
         url: str,
         instruction: str = "",
+        fetch_strategy: str = "auto",
         max_chars: int = 0,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
@@ -51,6 +52,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
                 "instruction": text,
                 "text": text,
                 "prompt": text,
+                "fetchStrategy": fetch_strategy.strip() or "auto",
                 "max_chars": max(0, int(max_chars or 0)),
             },
             runtime,
@@ -60,6 +62,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
     def summarize_url_tool(
         url: str,
         instruction: str = "",
+        fetch_strategy: str = "auto",
         max_chars: int = 0,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
@@ -73,6 +76,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
                 "instruction": text,
                 "text": text,
                 "prompt": text,
+                "fetchStrategy": fetch_strategy.strip() or "auto",
                 "max_chars": max(0, int(max_chars or 0)),
             },
             runtime,
@@ -83,6 +87,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
         url: str = "",
         question: str = "",
         instruction: str = "",
+        fetch_strategy: str = "auto",
         max_chars: int = 0,
         runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
@@ -94,6 +99,7 @@ def get_web_tools(tool_gateway: N8nToolGatewayClient) -> list:
             "question": text,
             "text": text,
             "prompt": text,
+            "fetchStrategy": fetch_strategy.strip() or "auto",
             "max_chars": max(0, int(max_chars or 0)),
         }
         return _run_gateway_tool(

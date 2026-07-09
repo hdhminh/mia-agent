@@ -6,10 +6,46 @@ from typing import Any
 
 from langchain.messages import AIMessage, HumanMessage, SystemMessage
 from agent.graph.state import MiaGraphState
+from agent.brain.parsers.common import normalize_query_text
+from agent.brain.parsers.web import URL_ASK_CUES, URL_READ_CUES, URL_SUMMARY_CUES
 from agent.brain.response_normalizer import coerce_message_text, sanitize_final_text
 from agent.i18n import t
 
 # EVAL_PROMPT is loaded dynamically via t("evaluator.eval_prompt")
+
+
+def _state_string(state: MiaGraphState, key: str) -> str:
+    value = state.get(key, "")
+    return str(value or "").strip().lower()
+
+
+def _route_string(route: Any, key: str) -> str:
+    return str(getattr(route, key, "") or "").strip().lower()
+
+
+def _normalized_contains_any(text: str, cues: tuple[str, ...]) -> bool:
+    return any(normalize_query_text(cue) in text for cue in cues)
+
+
+def _tool_evidence_reason(state: MiaGraphState) -> str:
+    route = state.get("route")
+    request = state["request"]
+    domain = _state_string(state, "domain") or _route_string(route, "domain")
+    agent_key = _state_string(state, "agent_key") or _route_string(route, "agent_key")
+    hint_tool = _state_string(state, "hint_tool") or _route_string(route, "hint_tool")
+    normalized_request = normalize_query_text(request.text)
+
+    if domain == "github" or agent_key == "github" or hint_tool.startswith("github_"):
+        return "GitHub response has no tool evidence."
+
+    if hint_tool in {"search_web", "read_url", "summarize_url", "ask_url"}:
+        return "Web response has no tool evidence."
+
+    web_cues = URL_READ_CUES + URL_SUMMARY_CUES + URL_ASK_CUES
+    if _normalized_contains_any(normalized_request, web_cues):
+        return "Web response has no tool evidence."
+
+    return ""
 
 
 def evaluator_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
@@ -36,6 +72,20 @@ def evaluator_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
     elif "<think>" in final_message.content or "</think>" in final_message.content:
         rule_verdict = "fail"
         rule_reason = "Internal think tags leaked into final response."
+    else:
+        evidence_reason = _tool_evidence_reason(state)
+        if evidence_reason:
+            has_tools = any(str(tool).strip() for tool in tools_called)
+            has_evidence = any(str(item).strip() for item in evidence)
+            if not has_tools or not has_evidence:
+                rule_verdict = "fail"
+                missing_parts = []
+                if not has_tools:
+                    missing_parts.append("tools_called")
+                if not has_evidence:
+                    missing_parts.append("evidence")
+                suffix = f" ({', '.join(missing_parts)} missing)" if missing_parts else ""
+                rule_reason = f"{evidence_reason.rstrip('.')}{suffix}."
 
     # If rule checks failed, we don't need LLM check
     if rule_verdict == "fail":
