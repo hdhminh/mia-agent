@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/mia-agent-platform-upgrade]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  static-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python
+        run: python -m compileall -q agent scripts tests infra/embedder
+      - name: Validate repository structure
+        run: python scripts/maintenance/validate_repo_structure.py
+      - name: Validate workflow exports
+        run: python scripts/maintenance/validate_workflow_json.py
+      - name: Validate tool contracts
+        run: python scripts/maintenance/validate_tool_contracts.py
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Python correctness lint
+        run: ruff check agent scripts tests
+      - name: Dependency audit
+        run: pip-audit
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build core image
+        run: docker build -f infra/Dockerfile.agent -t mia-core:test .
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2

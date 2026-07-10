@@ -12,12 +12,14 @@ Mia is an AI agent that manages your digital life through natural conversation:
 |---------------|-------------------------------------------------|
 | Gmail         | Read, search, compose, reply emails             |
 | Calendar      | Schedule, reschedule, check availability        |
+| Tasks/Contacts| Manage tasks and safely resolve recipients      |
 | Drive / Docs  | Full CRUD on Drive, Docs, and Sheets            |
 | Web           | Search, read URLs, summarize pages              |
-| GitHub        | Browse repos, read code, view diffs             |
+| GitHub        | Browse repos, issues, branches, files, and PRs  |
 | Media         | OCR, document analysis, transcription, TTS      |
 | Memory        | Long-term memory with semantic search (pgvector)|
-| Utilities     | News, weather, gold prices, shortlinks          |
+| Automation    | Run reusable skills now or on cron schedules    |
+| Utilities     | News, weather, gold prices, shortlinks, MCP     |
 
 ---
 
@@ -54,8 +56,8 @@ reasoning (Python) from tool execution (n8n workflows).
 │  └──────────────┘  └──────────────┘  └─────────────┘ │
 │                                                       │
 │  ┌─────────────────────────────────────────────────┐  │
-│  │  Skill Registry                                 │  │
-│  │  Maps skill names → n8n workflow endpoints      │  │
+│  │  Capability Broker + ToolSpec + Skill Engine    │  │
+│  │  Selects a small toolset and reusable workflow  │  │
 │  └────────────────────────┬────────────────────────┘  │
 └───────────────────────────┼───────────────────────────┘
                             │  HTTP / Webhook
@@ -76,7 +78,9 @@ reasoning (Python) from tool execution (n8n workflows).
 **Key design decisions:**
 - The Agent Core handles all reasoning, planning, and memory — it never calls external APIs directly.
 - The Execution Layer is stateless; each n8n workflow receives a request and returns a result.
-- Skills are registered declaratively — adding a new tool means adding a workflow + a registry entry.
+- ToolSpec is the contract shared by Python tools, the gateway, and CI validation.
+- External writes require exact confirmation and use a durable idempotency journal.
+- The capability broker sends only relevant tools to each model call, reducing schema tokens and ambiguity.
 
 ---
 
@@ -127,6 +131,9 @@ curl http://localhost:8000/health
 | [Execution Layer](docs/architecture/EXECUTION_LAYER.md)| n8n workflow design and gateway     |
 | [Capability Map](docs/skills/CAPABILITY_MAP.md)       | Full list of Mia's abilities        |
 | [Deployment](docs/deployment/SETUP.md)                | Production deployment guide         |
+| [Platform upgrade](docs/deployment/UPGRADE_MIA_PLATFORM.md) | Migration and rollout checklist |
+| [Security model](docs/security/SECURITY_MODEL.md)      | Auth, approval and network controls  |
+| [Adding tools and skills](docs/skills/ADDING_TOOLS_AND_SKILLS.md) | Extension guide |
 
 ---
 

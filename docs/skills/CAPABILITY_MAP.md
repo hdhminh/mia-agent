@@ -61,6 +61,13 @@
 - `sheets_help`
 - `sheets_search_sheet`
 - `sheets_read_sheet`
+- `tasks_list`
+- `tasks_list_due`
+- `tasks_list_overdue`
+- `contacts_search`
+- `contacts_get`
+- `contacts_resolve_recipient`
+- `automation_list`
 
 ## Domain Agent Candidates
 
@@ -97,6 +104,29 @@
 - `github_get_file`
 - `github_search_code`
 - `github_get_diff`
+- `github_create_issue`
+- `github_update_issue`
+- `github_comment_issue`
+- `github_create_branch`
+- `github_update_file`
+- `github_create_pull_request`
+- `github_comment_pull_request`
+- `github_list_workflow_runs`
+- `github_rerun_failed_workflow`
+
+### `productivity`
+
+- Google Tasks: list, due, overdue, create, update, complete, delete
+- Google Contacts: search, get, resolve recipient candidates
+- Automation: list, create, pause, resume, delete, run now
+
+### Reusable Skills
+
+- `daily_briefing`
+- `meeting_assistant`
+- `research_report`
+- `expense_receipt`
+- `repository_review`
 
 ### `workspace`
 

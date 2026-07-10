@@ -1,82 +1,72 @@
 #!/usr/bin/env python3
-import os
+"""Validate and optionally commit selected workflow files.
+
+This command is deliberately dry-run by default. It never pulls, rebases, or
+pushes, and it refuses to create commits on the default branch.
+"""
+
+from __future__ import annotations
+
+import argparse
 import subprocess
-import json
-import urllib.request
 import sys
 from pathlib import Path
 
-WORK_DIR = Path(__file__).resolve().parents[2]
-os.chdir(WORK_DIR)
 
-def run(cmd, check=True):
-    result = subprocess.run(cmd, text=True)
-    if check and result.returncode != 0:
-        print(f"Command failed: {' '.join(cmd)}")
-        sys.exit(result.returncode)
-    return result
+ROOT = Path(__file__).resolve().parents[2]
 
-# 1. Kiểm tra xem có sự thay đổi nào không
-status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
-if not status:
-    print("No changes found. Skipping.")
-    sys.exit(0)
 
-print("Changes detected! Gathering diff...")
+def run(command: list[str], *, capture: bool = False) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, cwd=ROOT, check=True, text=True, capture_output=capture)
 
-# 2. Add tất cả các file đã thay đổi
-subprocess.run(["git", "add", "."])
 
-# 3. Lấy nội dung chi tiết của những đoạn code bị sửa (Diff)
-diff = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True).stdout.strip()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("paths", nargs="+", help="Explicit repository-relative files to validate/stage.")
+    parser.add_argument("--commit", action="store_true", help="Commit only the selected paths after validation.")
+    parser.add_argument("--message", default="Update n8n workflows", help="Commit message used with --commit.")
+    return parser.parse_args()
 
-if not diff:
-    print("No diff generated.")
-    sys.exit(0)
 
-# Giới hạn diff 2000 ký tự để AI xử lý nhanh trên Pi 5
-diff_excerpt = diff[:2000]
+def resolve_paths(values: list[str]) -> list[str]:
+    resolved: list[str] = []
+    for value in values:
+        candidate = (ROOT / value).resolve()
+        if ROOT not in candidate.parents or not candidate.is_file():
+            raise ValueError(f"Path must be an existing file inside the repository: {value}")
+        resolved.append(str(candidate.relative_to(ROOT)))
+    return resolved
 
-print("Asking Local Ollama AI to generate a meaningful English commit message...")
 
-# 4. Nhờ AI đọc code và tạo Commit Message tiếng Anh
-prompt = f"Write a short, professional, single-line Git commit message in English explaining these changes. Only output the commit message, no quotes, no explanations:\n\n{diff_excerpt}"
+def main() -> int:
+    args = parse_args()
+    try:
+        paths = resolve_paths(args.paths)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
 
-url = "http://localhost:11434/api/generate"
-data = json.dumps({
-    "model": "qwen2.5:3b",
-    "prompt": prompt,
-    "stream": False
-}).encode("utf-8")
+    run([sys.executable, "scripts/maintenance/validate_workflow_json.py"])
+    run([sys.executable, "scripts/maintenance/validate_tool_contracts.py"])
+    diff = run(["git", "diff", "--", *paths], capture=True).stdout
+    if not diff.strip():
+        print("Selected files have no unstaged changes.")
+        return 0
 
-commit_msg = ""
-try:
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    response = urllib.request.urlopen(req)
-    result = json.loads(response.read().decode("utf-8"))
-    commit_msg = result.get("response", "").strip()
-    
-    # Xóa dấu ngoặc kép nếu AI bị thừa
-    if commit_msg.startswith('"') and commit_msg.endswith('"'):
-        commit_msg = commit_msg[1:-1]
-        
-except Exception as e:
-    print(f"Ollama AI failed: {e}")
-    commit_msg = "Update n8n configurations and workflows"
+    print(diff)
+    if not args.commit:
+        print("Dry run only. Re-run with --commit to stage and commit these exact files.")
+        return 0
 
-if not commit_msg:
-    commit_msg = "Update files automatically"
+    branch = run(["git", "branch", "--show-current"], capture=True).stdout.strip()
+    if branch in {"main", "master"}:
+        print("Refusing to commit on the default branch. Create a feature branch first.", file=sys.stderr)
+        return 2
+    run(["git", "add", "--", *paths])
+    run(["git", "commit", "-m", args.message, "--", *paths])
+    print(f"Committed {len(paths)} selected file(s) on {branch}. Push remains an explicit operator action.")
+    return 0
 
-print(f"-> Generated Commit: {commit_msg}")
 
-# 5. Tiến hành Commit, đồng bộ remote, rồi Push
-print("Creating commit...")
-run(["git", "commit", "-m", commit_msg])
-
-print("Pulling latest changes from origin/main with rebase...")
-run(["git", "pull", "--rebase", "origin", "main"])
-
-print("Pushing to Github...")
-run(["git", "push", "origin", "main"])
-
-print("Sync completed successfully!")
+if __name__ == "__main__":
+    raise SystemExit(main())

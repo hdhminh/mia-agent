@@ -13,10 +13,13 @@ ALLOWED_ROOT = {
     ".env.example",
     ".git",
     ".gitignore",
+    ".github",
     "LICENSE",
     "README.md",
     "SHOWCASE.md",
     "requirements.txt",
+    "requirements-dev.txt",
+    "pyproject.toml",
     "docs",
     "agent",
     "execution",
@@ -59,7 +62,7 @@ def main() -> int:
     root_names = {path.name for path in ROOT.iterdir()}
     extra = sorted(
         name for name in root_names - ALLOWED_ROOT
-        if not name.startswith(".venv") and name not in {"tmp", "sync.log"}
+        if not name.startswith(".venv") and name not in {"tmp", "sync.log", ".pytest_cache", ".ruff_cache"}
     )
     if extra:
         errors.append("Unexpected root entries: " + ", ".join(extra))

@@ -171,10 +171,6 @@ def validate_workflow_data(data: Any, *, source: str) -> list[str]:
                             f"{source}: node '{node_name}' executeWorkflow.workflowId='{workflow_id}' does not look like a workflow ID."
                         )
 
-            js_code = params.get("jsCode")
-            if isinstance(js_code, str) and "const workflowMap" in js_code:
-                issues.extend(_validate_workflow_map(source, node_name, js_code))
-
     if isinstance(workflow_name, str):
         if workflow_name == "Mia: Tool Gateway" or source.endswith("workflow_mia_tool_gateway.json"):
             issues.extend(_validate_gateway_workflow(data, source=source))
@@ -199,7 +195,7 @@ def validate_workflow_file(path: Path | str) -> list[str]:
 
 def discover_default_workflow_files(root: Path) -> list[Path]:
     candidates: list[Path] = []
-    for rel in ("workflows", "google", "shortlink"):
+    for rel in ("execution", "workflows", "google", "shortlink"):
         base = root / rel
         if base.exists():
             candidates.extend(sorted(base.rglob("*.json")))
