@@ -69,3 +69,25 @@ class MiaFeedbackResponse(BaseModel):
     insight_id: int | None = None
     message: str = ""
     error: ErrorEnvelope | None = None
+
+
+class MiaAutomationRequest(BaseModel):
+    chat_id: str
+    user_id: str
+    name: str = ""
+    schedule: str = ""
+    skill_name: str = ""
+    input_text: str = ""
+    next_run_at: str | None = None
+
+
+class MiaAutomationActionRequest(BaseModel):
+    chat_id: str
+    user_id: str
+    automation_id: int
+
+
+class MiaMCPCallRequest(BaseModel):
+    server: str
+    tool: str = ""
+    arguments: dict[str, Any] = Field(default_factory=dict)

@@ -1,0 +1,57 @@
+{
+  "name": "Sub-workflow: Mia Automation Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "automation-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$('Execute Workflow Trigger').item.json||{}; const args=source.args&&typeof source.args==='object'?source.args:source; const tool=String(source.tool||''); const action=tool.replace(/^automation\\./,'').replace(/_/g,'-'); const allowed=['list','create','pause','resume','delete','run-now']; if(!allowed.includes(action))return[{json:{ok:false,error:`Unsupported automation tool: ${tool}`,tool}}]; const configured=String($env.MIA_CORE_URL||'http://mia-core:8000').replace(/\\/$/,'').replace(/\\/mia\\/chat\\/?$/,''); const payload={chat_id:String(source.originChatId||source.chatId||''),user_id:String(source.userId||source.originChatId||source.chatId||''),name:String(args.name||''),schedule:String(args.schedule||''),skill_name:String(args.skillName||args.skill_name||''),input_text:String(args.inputText||args.input_text||''),next_run_at:args.nextRunAt||args.next_run_at||null,automation_id:Number(args.automationId||args.automation_id||0)}; return[{json:{...source,ok:true,tool,url:`${configured}/mia/automation/${action}`,payload,coreToken:String($env.MIA_CORE_API_TOKEN||'')}}];"
+      },
+      "id": "automation-normalize",
+      "name": "Normalize Automation Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "Authorization", "value": "={{ 'Bearer ' + $json.coreToken }}"}, {"name": "x-mia-user-id", "value": "={{ $json.payload.user_id }}"}]},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {"ignoreResponseCode": true}
+      },
+      "id": "automation-call",
+      "name": "Call Mia Automation Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$('Normalize Automation Request').item.json||{}; const data=$json||{}; return[{json:{ok:data.ok===true,tool:source.tool,text:String(data.text||data.detail||'Automation request completed.'),result:data.result||{},links:[],meta:{requestId:source.requestId||''}}}];"
+      },
+      "id": "automation-result",
+      "name": "Normalize Automation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Automation Request", "type": "main", "index": 0}]]},
+    "Normalize Automation Request": {"main": [[{"node": "Call Mia Automation Core", "type": "main", "index": 0}]]},
+    "Call Mia Automation Core": {"main": [[{"node": "Normalize Automation Result", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": false
+}

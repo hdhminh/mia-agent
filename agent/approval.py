@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -55,12 +56,33 @@ CONFIRMATION_CUES = (
     "go ahead",
 )
 
+CANCELLATION_CUES = (
+    "hủy",
+    "huy",
+    "cancel",
+    "thôi",
+    "thoi",
+    "không làm",
+    "khong lam",
+    "đừng làm",
+    "dung lam",
+)
+
+NEGATION_CUES = ("không", "khong", "chưa", "chua", "đừng", "dung", "not ", "do not")
+
 DANGEROUS_GATEWAY_NAMES = {
     "calendar.create_event",
     "calendar.reschedule_event",
     "calendar.delete_event",
     "gmail.send_email",
+    "gmail.draft_email",
     "gmail.reply_email",
+    "gmail.mark_read",
+    "gmail.archive",
+    "drive.create_folder",
+    "drive.create_file",
+    "drive.upload_file",
+    "drive.copy_file",
     "drive.move_file",
     "drive.rename_file",
     "drive.delete_file",
@@ -75,24 +97,52 @@ DANGEROUS_GATEWAY_NAMES = {
     "sheets.update_cell",
     "sheets.update_range",
     "sheets.delete_sheet",
+    "shortlink.create",
+    "tasks.create",
+    "tasks.update",
+    "tasks.complete",
+    "tasks.delete",
+    "automation.create",
+    "automation.pause",
+    "automation.resume",
+    "automation.delete",
+    "automation.run_now",
+    "github.create_issue",
+    "github.update_issue",
+    "github.comment_issue",
+    "github.create_branch",
+    "github.update_file",
+    "github.create_pull_request",
+    "github.comment_pull_request",
+    "github.rerun_failed_workflow",
 }
 
 
 def is_confirmation_text(text: str) -> bool:
-    normalized = _normalize_text(text).lower().replace("đ", "d")
+    normalized = _normalize_text(text).lower()
+    normalized = re.sub(r"[^\w\s-]", "", normalized, flags=re.UNICODE).strip()
     if not normalized:
         return False
-    return any(cue in normalized for cue in CONFIRMATION_CUES)
+    if any(cue in normalized for cue in NEGATION_CUES):
+        return False
+    accepted = {re.sub(r"[^\w\s-]", "", cue.lower(), flags=re.UNICODE) for cue in CONFIRMATION_CUES}
+    if normalized in accepted:
+        return True
+    return bool(re.fullmatch(r"(?:xác nhận|xac nhan|confirm)\s+(?:#?\d+)", normalized))
+
+
+def is_cancellation_text(text: str) -> bool:
+    normalized = _normalize_text(text).lower()
+    normalized = re.sub(r"[^\w\s-]", "", normalized, flags=re.UNICODE).strip()
+    return normalized in {
+        re.sub(r"[^\w\s-]", "", cue.lower(), flags=re.UNICODE)
+        for cue in CANCELLATION_CUES
+    }
 
 
 def should_require_confirmation(gateway_name: str, args: dict[str, Any] | None = None, request_text: str = "") -> bool:
     gateway = _normalize_text(gateway_name)
     if gateway not in DANGEROUS_GATEWAY_NAMES:
-        return False
-    payload = _normalize_json(args or {})
-    if bool(payload.get("forceExecute") or payload.get("force_execute")):
-        return False
-    if any(marker in _normalize_text(request_text).lower() for marker in ("bỏ qua xác nhận", "bo qua xac nhan", "skip confirm", "force execute")):
         return False
     return True
 
@@ -207,6 +257,7 @@ def _summarize_gateway_action(gateway_name: str, args: dict[str, Any] | None = N
 class PendingAction:
     id: int
     chat_id: str
+    user_id: str
     request_id: str
     tool_name: str
     gateway_name: str
@@ -231,6 +282,7 @@ class ApprovalRepository:
                     CREATE TABLE IF NOT EXISTS mia_pending_actions (
                       id BIGSERIAL PRIMARY KEY,
                       chat_id TEXT NOT NULL,
+                      user_id TEXT NOT NULL DEFAULT '',
                       request_id TEXT NOT NULL,
                       tool_name TEXT NOT NULL DEFAULT '',
                       gateway_name TEXT NOT NULL DEFAULT '',
@@ -246,8 +298,10 @@ class ApprovalRepository:
                     );
                     """
                 )
+                cur.execute("ALTER TABLE mia_pending_actions ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT '';")
+                cur.execute("ALTER TABLE mia_pending_actions ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;")
                 cur.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_chat_status ON mia_pending_actions (chat_id, status, created_at DESC);"
+                    "CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_owner_status ON mia_pending_actions (chat_id, user_id, status, created_at DESC);"
                 )
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_expires ON mia_pending_actions (status, expires_at);"
@@ -258,6 +312,7 @@ class ApprovalRepository:
         self,
         *,
         chat_id: str,
+        user_id: str,
         request_id: str,
         tool_name: str,
         gateway_name: str,
@@ -268,6 +323,7 @@ class ApprovalRepository:
     ) -> dict[str, Any]:
         payload = {
             "chat_id": _normalize_text(chat_id),
+            "user_id": _normalize_text(user_id),
             "request_id": _normalize_text(request_id),
             "tool_name": _normalize_text(tool_name),
             "gateway_name": _normalize_text(gateway_name),
@@ -281,13 +337,13 @@ class ApprovalRepository:
                 cur.execute(
                     """
                     INSERT INTO mia_pending_actions (
-                      chat_id, request_id, tool_name, gateway_name, args, summary, reason, status, created_at, updated_at, expires_at
+                      chat_id, user_id, request_id, tool_name, gateway_name, args, summary, reason, status, created_at, updated_at, expires_at
                     )
                     VALUES (
-                      %(chat_id)s, %(request_id)s, %(tool_name)s, %(gateway_name)s, %(args)s::jsonb,
+                      %(chat_id)s, %(user_id)s, %(request_id)s, %(tool_name)s, %(gateway_name)s, %(args)s::jsonb,
                       %(summary)s, %(reason)s, 'pending', now(), now(), now() + (%(expires_in_minutes)s || ' minutes')::interval
                     )
-                    RETURNING id, chat_id, request_id, tool_name, gateway_name, args, summary, reason, status, created_at, updated_at, expires_at;
+                    RETURNING id, chat_id, user_id, request_id, tool_name, gateway_name, args, summary, reason, status, created_at, updated_at, expires_at;
                     """,
                     {
                         **payload,
@@ -298,21 +354,22 @@ class ApprovalRepository:
             conn.commit()
         return dict(row or payload)
 
-    def latest_pending_action(self, *, chat_id: str) -> dict[str, Any] | None:
+    def latest_pending_action(self, *, chat_id: str, user_id: str) -> dict[str, Any] | None:
         with self.pool.connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, chat_id, request_id, tool_name, gateway_name, args, summary, reason, status,
+                    SELECT id, chat_id, user_id, request_id, tool_name, gateway_name, args, summary, reason, status,
                            created_at, updated_at, expires_at
                     FROM mia_pending_actions
                     WHERE chat_id = %s
+                      AND user_id = %s
                       AND status = 'pending'
                       AND expires_at > now()
                     ORDER BY created_at DESC, id DESC
                     LIMIT 1;
                     """,
-                    (str(chat_id or "").strip(),),
+                    (str(chat_id or "").strip(), str(user_id or "").strip()),
                 )
                 row = cur.fetchone()
         return dict(row) if row else None
@@ -322,7 +379,7 @@ class ApprovalRepository:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, chat_id, request_id, tool_name, gateway_name, args, summary, reason, status,
+                    SELECT id, chat_id, user_id, request_id, tool_name, gateway_name, args, summary, reason, status,
                            created_at, updated_at, expires_at
                     FROM mia_pending_actions
                     WHERE id = %s
@@ -331,6 +388,28 @@ class ApprovalRepository:
                     (int(action_id),),
                 )
                 row = cur.fetchone()
+        return dict(row) if row else None
+
+    def claim_pending_action(self, *, action_id: int, chat_id: str, user_id: str) -> dict[str, Any] | None:
+        """Atomically reserve one unexpired action for its original user."""
+        with self.pool.connection() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    UPDATE mia_pending_actions
+                    SET status = 'claimed', claimed_at = now(), updated_at = now()
+                    WHERE id = %s
+                      AND chat_id = %s
+                      AND user_id = %s
+                      AND status = 'pending'
+                      AND expires_at > now()
+                    RETURNING id, chat_id, user_id, request_id, tool_name, gateway_name, args,
+                              summary, reason, status, created_at, updated_at, expires_at;
+                    """,
+                    (int(action_id), _normalize_text(chat_id), _normalize_text(user_id)),
+                )
+                row = cur.fetchone()
+            conn.commit()
         return dict(row) if row else None
 
     def mark_pending_action_status(
@@ -352,7 +431,7 @@ class ApprovalRepository:
                         error_text = %s,
                         updated_at = now()
                     WHERE id = %s
-                    RETURNING id, chat_id, request_id, tool_name, gateway_name, args, summary, reason,
+                    RETURNING id, chat_id, user_id, request_id, tool_name, gateway_name, args, summary, reason,
                               status, result_text, error_text, created_at, updated_at, expires_at;
                     """,
                     (clean_status, _normalize_text(result_text), _normalize_text(error_text), int(action_id)),
@@ -369,11 +448,11 @@ class ApprovalRepository:
                     UPDATE mia_pending_actions
                     SET status = 'expired',
                         updated_at = now()
-                    WHERE status = 'pending'
-                      AND expires_at <= now() - (%s || ' minutes')::interval
+                    WHERE status IN ('pending', 'claimed')
+                      AND expires_at <= now()
                     RETURNING id;
                     """,
-                    (max(1, int(max_age_minutes or 30)),),
+                    (),
                 )
                 rows = cur.fetchall()
             conn.commit()

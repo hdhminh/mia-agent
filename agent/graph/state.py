@@ -42,3 +42,5 @@ class MiaGraphState(TypedDict, total=False):
     provider_used: str
     trace: dict[str, Any]
     learning_scopes: list[str]
+    skill_name: str
+    skill_request_id: str

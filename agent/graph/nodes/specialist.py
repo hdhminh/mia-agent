@@ -17,6 +17,8 @@ def make_specialist_node(agent_key: str):
             messages_payload=messages_payload,
             thread_id=thread_id,
             context=context,
+            query=state["request"].text,
+            hint_tool=state.get("hint_tool", ""),
         )
 
         messages = list(result.get("messages", []))

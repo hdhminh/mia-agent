@@ -4,6 +4,7 @@ import base64
 import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from langchain.messages import HumanMessage, SystemMessage
@@ -797,17 +798,28 @@ class MediaService:
             lines.append("- " + t("skills.media_image_fields_empty"))
         return "\n".join(lines).strip()
 
-    @staticmethod
-    def _decode_file(file_base64: str) -> bytes:
+    def _decode_file(self, file_base64: str) -> bytes:
         if not file_base64:
             return b""
-        return base64.b64decode(file_base64, validate=False)
+        encoded = str(file_base64).strip()
+        estimated_size = (len(encoded) * 3) // 4
+        max_bytes = max(1024, int(self.settings.media_max_input_bytes))
+        if estimated_size > max_bytes:
+            raise ValueError("Media input is larger than the configured limit.")
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Media input is not valid base64 data.") from exc
+        if len(data) > max_bytes:
+            raise ValueError("Media input is larger than the configured limit.")
+        return data
 
     def _load_media(self, *, file_base64: str, file_name: str, mime_type: str, attachment_kind: str) -> MediaBytes:
         data = self._decode_file(file_base64)
         if not data:
             raise ValueError(t("skills.media_unprocessed"))
-        return MediaBytes(file_name=file_name, mime_type=mime_type, attachment_kind=attachment_kind, data=data)
+        safe_name = Path(str(file_name or "attachment")).name or "attachment"
+        return MediaBytes(file_name=safe_name, mime_type=mime_type, attachment_kind=attachment_kind, data=data)
 
     def image_ocr(self, *, file_base64: str, file_name: str, mime_type: str, attachment_kind: str, instruction: str = "", request_id: str = "", chat_id: str = "") -> MediaResult:
         media = self._load_media(file_base64=file_base64, file_name=file_name, mime_type=mime_type, attachment_kind=attachment_kind)

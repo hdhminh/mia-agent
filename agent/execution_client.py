@@ -6,7 +6,8 @@ from typing import Any
 
 import httpx
 
-from agent.approval import ApprovalRepository, should_require_confirmation
+from agent.approval import ApprovalRepository, DANGEROUS_GATEWAY_NAMES, should_require_confirmation
+from agent.execution_journal import ExecutionJournalRepository, build_idempotency_key
 from agent.i18n import t
 from agent.error_envelope import (
     ErrorEnvelope,
@@ -38,12 +39,14 @@ class N8nToolGatewayClient:
         *,
         learning_repo: LearningRepository | None = None,
         approval_repo: ApprovalRepository | None = None,
+        execution_journal: ExecutionJournalRepository | None = None,
     ) -> None:
         self.url = url
         self.token = token
         self.timeout_seconds = timeout_seconds
         self.learning_repo = learning_repo
         self.approval_repo = approval_repo
+        self.execution_journal = execution_journal
 
     @staticmethod
     def _scope_from_gateway_name(gateway_name: str) -> str:
@@ -142,6 +145,7 @@ class N8nToolGatewayClient:
         ):
             pending = self.approval_repo.create_pending_action(
                 chat_id=context.chat_id,
+                user_id=context.user_id,
                 request_id=context.request_id,
                 tool_name=tool_name,
                 gateway_name=tool_name,
@@ -200,6 +204,51 @@ class N8nToolGatewayClient:
             payload["text"] = request_text.strip()
             payload["rawText"] = request_text.strip()
 
+        journal_key = ""
+        if self.execution_journal is not None and tool_name in DANGEROUS_GATEWAY_NAMES:
+            journal_key = build_idempotency_key(
+                user_id=context.user_id,
+                request_id=context.request_id,
+                tool_name=tool_name,
+                args=args,
+            )
+            created, existing = self.execution_journal.reserve(
+                idempotency_key=journal_key,
+                request_id=context.request_id,
+                chat_id=context.chat_id,
+                user_id=context.user_id,
+                tool_name=tool_name,
+                args=args,
+            )
+            if not created:
+                status = str(existing.get("status") or "").strip()
+                cached = existing.get("result") if isinstance(existing.get("result"), dict) else {}
+                if status == "completed" and cached:
+                    return ToolGatewayResult(
+                        ok=bool(cached.get("ok", True)),
+                        tool=tool_name,
+                        text=str(cached.get("text") or "").strip(),
+                        payload={**cached, "idempotency_replay": True, "idempotency_key": journal_key},
+                    )
+                envelope = ErrorEnvelope.build(
+                    code="duplicate_action_in_progress",
+                    category="conflict",
+                    severity="warn",
+                    message=f"Duplicate execution blocked for {tool_name}.",
+                    user_message="Thao tác này đang được xử lý hoặc đã được ghi nhận. Mia sẽ không chạy lặp lại.",
+                    retryable=False,
+                    request_id=context.request_id,
+                    chat_id=context.chat_id,
+                    details={"tool_name": tool_name, "idempotency_key": journal_key, "status": status},
+                )
+                return ToolGatewayResult(
+                    ok=False,
+                    tool=tool_name,
+                    text=envelope.display_text(),
+                    payload={"ok": False, "error": envelope.model_dump(mode="json"), "idempotency_key": journal_key},
+                    error=envelope,
+                )
+
         start = time.monotonic()
         status_code = 0
         response_text = ""
@@ -239,6 +288,8 @@ class N8nToolGatewayClient:
                     payload=payload,
                     error_text=error_text,
                 )
+                if journal_key and self.execution_journal:
+                    self.execution_journal.finish(idempotency_key=journal_key, status="failed", result=payload, error_text=error_text)
                 return ToolGatewayResult(
                     ok=False,
                     tool=tool_name,
@@ -275,6 +326,8 @@ class N8nToolGatewayClient:
                     payload=payload,
                     error_text=error_text,
                 )
+                if journal_key and self.execution_journal:
+                    self.execution_journal.finish(idempotency_key=journal_key, status="failed", result=payload, error_text=error_text)
                 return ToolGatewayResult(
                     ok=False,
                     tool=tool_name,
@@ -315,6 +368,8 @@ class N8nToolGatewayClient:
                     payload=payload,
                     error_text=error_text,
                 )
+                if journal_key and self.execution_journal:
+                    self.execution_journal.finish(idempotency_key=journal_key, status="failed", result=payload, error_text=error_text)
                 return ToolGatewayResult(
                     ok=False,
                     tool=tool_name,
@@ -351,6 +406,8 @@ class N8nToolGatewayClient:
                     payload=payload,
                     error_text=error_text,
                 )
+                if journal_key and self.execution_journal:
+                    self.execution_journal.finish(idempotency_key=journal_key, status="failed", result=payload, error_text=error_text)
                 return ToolGatewayResult(
                     ok=False,
                     tool=tool_name,
@@ -390,6 +447,13 @@ class N8nToolGatewayClient:
             ok=ok,
             payload=data,
         )
+        if journal_key and self.execution_journal:
+            self.execution_journal.finish(
+                idempotency_key=journal_key,
+                status="completed" if ok else "failed",
+                result=data,
+                error_text="" if ok else text,
+            )
         return ToolGatewayResult(ok=ok, tool=tool_name, text=text, payload=data, error=envelope)
 
     def run_pending_action(
@@ -400,6 +464,18 @@ class N8nToolGatewayClient:
         request_text: str = "",
     ) -> ToolGatewayResult:
         action_id = int(pending_action.get("id") or 0)
+        gateway_name = str(pending_action.get("gateway_name") or pending_action.get("tool_name") or "").strip()
+        args = pending_action.get("args") if isinstance(pending_action.get("args"), dict) else {}
+        if not self.approval_repo or not action_id:
+            raise RuntimeError("Pending action repository or action id is missing.")
+        claimed = self.approval_repo.claim_pending_action(
+            action_id=action_id,
+            chat_id=context.chat_id,
+            user_id=context.user_id,
+        )
+        if not claimed:
+            raise RuntimeError("Pending action is no longer available for this user.")
+        pending_action = claimed
         gateway_name = str(pending_action.get("gateway_name") or pending_action.get("tool_name") or "").strip()
         args = pending_action.get("args") if isinstance(pending_action.get("args"), dict) else {}
         try:

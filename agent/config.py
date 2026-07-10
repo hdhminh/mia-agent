@@ -33,6 +33,12 @@ class Settings:
     recursion_limit: int
     history_max_tokens: int
     request_timeout_seconds: float
+    web_max_response_bytes: int
+    web_max_redirects: int
+    media_max_input_bytes: int
+    api_rate_limit_per_minute: int
+    mcp_servers_json: str
+    automation_poll_seconds: int
     prompt_cache_enabled: bool
     prompt_cache_namespace: str
     prompt_cache_version: str
@@ -88,6 +94,12 @@ class Settings:
             recursion_limit=int(os.getenv("MIA_RECURSION_LIMIT", "12")),
             history_max_tokens=int(os.getenv("MIA_HISTORY_MAX_TOKENS", "1400")),
             request_timeout_seconds=float(os.getenv("MIA_REQUEST_TIMEOUT_SECONDS", "60")),
+            web_max_response_bytes=int(os.getenv("MIA_WEB_MAX_RESPONSE_BYTES", str(2 * 1024 * 1024))),
+            web_max_redirects=int(os.getenv("MIA_WEB_MAX_REDIRECTS", "5")),
+            media_max_input_bytes=int(os.getenv("MIA_MEDIA_MAX_INPUT_BYTES", str(25 * 1024 * 1024))),
+            api_rate_limit_per_minute=int(os.getenv("MIA_API_RATE_LIMIT_PER_MINUTE", "120")),
+            mcp_servers_json=os.getenv("MIA_MCP_SERVERS_JSON", "").strip(),
+            automation_poll_seconds=int(os.getenv("MIA_AUTOMATION_POLL_SECONDS", "30")),
             prompt_cache_enabled=_env_bool("MIA_PROMPT_CACHE_ENABLED", True),
             prompt_cache_namespace=os.getenv("MIA_PROMPT_CACHE_NAMESPACE", "mia").strip(),
             prompt_cache_version=os.getenv("MIA_PROMPT_CACHE_VERSION", "v1").strip(),
@@ -127,3 +139,11 @@ class Settings:
             raise RuntimeError("MIA_CORE_API_TOKEN is required for mia-core.")
         if self.evaluator_mode not in {"soft", "hard"}:
             raise RuntimeError("MIA_EVALUATOR_MODE must be either 'soft' or 'hard'.")
+        if self.request_timeout_seconds <= 0:
+            raise RuntimeError("MIA_REQUEST_TIMEOUT_SECONDS must be positive.")
+        if self.web_max_response_bytes < 1024 or self.media_max_input_bytes < 1024:
+            raise RuntimeError("Mia web and media byte limits must be at least 1024.")
+        if self.web_max_redirects < 0 or self.api_rate_limit_per_minute <= 0:
+            raise RuntimeError("Mia redirect and rate limits are invalid.")
+        if self.automation_poll_seconds < 5:
+            raise RuntimeError("MIA_AUTOMATION_POLL_SECONDS must be at least 5.")

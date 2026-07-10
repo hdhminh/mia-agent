@@ -1,0 +1,70 @@
+{
+  "name": "Sub-workflow: Google Contacts Master",
+  "nodes": [
+    {
+      "parameters": {"conditions": {"boolean": [{"value1": "={{ $json.ok }}", "value2": true}]}},
+      "id": "contacts-if",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {},
+      "id": "contacts-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$('Execute Workflow Trigger').item.json||{}; const args=source.args&&typeof source.args==='object'?source.args:source; const tool=String(source.tool||''); const query=String(args.query||'').trim(); const limit=Math.max(1,Math.min(Number(args.limit||10),50)); let url=''; if(tool==='contacts.get'){const resource=String(args.resourceName||'').trim(); if(!resource)return[{json:{ok:false,error:'resourceName is required.',tool}}]; url=`https://people.googleapis.com/v1/${resource}?personFields=names,emailAddresses,phoneNumbers,organizations`; } else if(['contacts.search','contacts.resolve_recipient'].includes(tool)){if(!query)return[{json:{ok:false,error:'Contact query is required.',tool}}]; url=`https://people.googleapis.com/v1/people:searchContacts?query=${encodeURIComponent(query)}&readMask=names,emailAddresses,phoneNumbers,organizations&pageSize=${limit}`;} else return[{json:{ok:false,error:`Unsupported Contacts tool: ${tool}`,tool}}]; return[{json:{...source,ok:true,tool,url,query}}];"
+      },
+      "id": "contacts-normalize",
+      "name": "Normalize Contacts Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleContactsOAuth2Api",
+        "url": "={{ $json.url }}",
+        "options": {"ignoreResponseCode": true}
+      },
+      "id": "contacts-call",
+      "name": "Call Google People API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$('Normalize Contacts Request').item.json||{}; const data=$json||{}; const ok=!data.error&&!data.message; const rows=Array.isArray(data.results)?data.results.map(r=>r.person||{}):[data]; function render(p,i){const name=p.names?.[0]?.displayName||'(no name)';const emails=(p.emailAddresses||[]).map(e=>e.value).filter(Boolean);const phones=(p.phoneNumbers||[]).map(e=>e.value).filter(Boolean);return `${i+1}. ${name}${emails.length?' | '+emails.join(', '):''}${phones.length?' | '+phones.join(', '):''}${p.resourceName?' | '+p.resourceName:''}`;} const visible=rows.filter(r=>r&&Object.keys(r).length); let text=visible.length?visible.slice(0,10).map(render).join('\\n'):(ok?'No matching contacts.':String(data.error?.message||data.message||'Google Contacts request failed.')); return[{json:{ok,tool:source.tool,text,result:visible,links:[],meta:{ambiguous:source.tool==='contacts.resolve_recipient'&&visible.length!==1,count:visible.length}}}];"
+      },
+      "id": "contacts-result",
+      "name": "Normalize Contacts Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {"jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Contacts request rejected.'),result:{},links:[],meta:{}}}];"},
+      "id": "contacts-error",
+      "name": "Return Contacts Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 120]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Contacts Request", "type": "main", "index": 0}]]},
+    "Normalize Contacts Request": {"main": [[{"node": "Can Continue?", "type": "main", "index": 0}]]},
+    "Can Continue?": {"main": [[{"node": "Call Google People API", "type": "main", "index": 0}], [{"node": "Return Contacts Error", "type": "main", "index": 0}]]},
+    "Call Google People API": {"main": [[{"node": "Normalize Contacts Result", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": false
+}

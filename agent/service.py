@@ -13,7 +13,7 @@ from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
 
 from agent.skills import registry as caps
-from agent.approval import is_confirmation_text
+from agent.approval import is_cancellation_text, is_confirmation_text
 from agent.config import Settings
 from agent.brain.direct_executor import DirectExecutor, build_memory_recent_text
 from agent.learning.repository import LearningRepository, build_learning_guidance_text, classify_learning_issue
@@ -38,6 +38,8 @@ from agent.brain.response_normalizer import (
 from agent.brain.router import route_request
 from agent.skills import build_tools
 from agent.graph.builder import build_mia_graph
+from agent.brain.capability_broker import CapabilityBroker
+from agent.skills_engine import SkillEngine
 
 from agent.persona.system_prompt import SYSTEM_PROMPT
 from agent.i18n import t
@@ -84,12 +86,14 @@ class MiaAgentService:
         learning_repo: LearningRepository,
         tool_gateway: N8nToolGatewayClient,
         checkpointer: PostgresSaver,
+        skill_engine: SkillEngine | None = None,
     ) -> None:
         self.settings = settings
         self.memory_repo = memory_repo
         self.learning_repo = learning_repo
         self.tool_gateway = tool_gateway
         self.checkpointer = checkpointer
+        self.skill_engine = skill_engine
         self.primary_llm_provider = normalize_llm_provider(self.settings.primary_llm_provider)
         self.agent_models: dict[str, Any] = {}
         self.agent_fallback_models: dict[str, Any | None] = {}
@@ -116,6 +120,9 @@ class MiaAgentService:
         )
         self.model = self.agent_models["general"]
         self.tool_registry = self._build_tool_registry()
+        self.capability_broker = CapabilityBroker.default()
+        self._dynamic_agents: dict[tuple[str, tuple[str, ...]], Any] = {}
+        self._dynamic_fallback_agents: dict[tuple[str, tuple[str, ...]], Any] = {}
         self.direct_executor = DirectExecutor(
             memory_repo=self.memory_repo,
             tool_gateway=self.tool_gateway,
@@ -176,11 +183,36 @@ class MiaAgentService:
         context: MiaContext,
     ) -> MiaChatResponse | None:
         approval_repo = getattr(self.tool_gateway, "approval_repo", None)
-        if approval_repo is None or not is_confirmation_text(request.text):
+        if approval_repo is None:
             return None
 
-        pending = approval_repo.latest_pending_action(chat_id=request.chat_id)
+        pending = approval_repo.latest_pending_action(
+            chat_id=request.chat_id,
+            user_id=request.resolved_user_id(),
+        )
         if not pending:
+            return None
+
+        if is_cancellation_text(request.text):
+            approval_repo.mark_pending_action_status(int(pending["id"]), "cancelled")
+            if self.skill_engine is not None:
+                try:
+                    self.skill_engine.repository.finish_latest(
+                        chat_id=request.chat_id,
+                        user_id=request.resolved_user_id(),
+                        status="cancelled",
+                        state={"cancelled_action": pending.get("gateway_name") or pending.get("tool_name")},
+                    )
+                except Exception:
+                    pass
+            return MiaChatResponse(
+                final_text=t("approval.cancelled", default="Đã hủy thao tác đang chờ."),
+                tools_called=[],
+                thread_id=request.resolved_thread_id(),
+                request_id=request.resolved_request_id(),
+                trace={"approval": {"action_id": pending.get("id"), "status": "cancelled"}},
+            )
+        if not is_confirmation_text(request.text):
             return None
 
         try:
@@ -272,6 +304,16 @@ class MiaAgentService:
                 }
             },
         )
+        if self.skill_engine is not None:
+            try:
+                self.skill_engine.repository.finish_latest(
+                    chat_id=request.chat_id,
+                    user_id=request.resolved_user_id(),
+                    status="completed",
+                    state={"approved_action": tool_name, "final_text": response.final_text},
+                )
+            except Exception:
+                pass
         self._record_learning_event(
             request=request,
             source="approval",
@@ -366,7 +408,7 @@ class MiaAgentService:
         )
         return {tool.name: tool for tool in tools}
 
-    def _build_agent(self, *, tool_names: list[str], model: ChatOpenAI):
+    def _build_agent(self, *, tool_names: list[str], model: Any):
         tools = [self.tool_registry[name] for name in tool_names]
         return create_agent(
             model=model,
@@ -403,8 +445,22 @@ class MiaAgentService:
         messages_payload: list[dict[str, str]],
         thread_id: str,
         context: MiaContext,
+        query: str = "",
+        hint_tool: str = "",
     ):
-        agent = self.agents[agent_key]
+        available = caps.AGENT_TOOLSETS[agent_key]
+        selected = self.capability_broker.select_tool_names(
+            query=query,
+            domain=agent_key,
+            available=available,
+            hint_tool=hint_tool,
+            limit=12 if agent_key == "google_full" else 10,
+        )
+        cache_key = (agent_key, tuple(selected))
+        agent = self._dynamic_agents.get(cache_key)
+        if agent is None:
+            agent = self._build_agent(tool_names=selected, model=self.agent_models[agent_key])
+            self._dynamic_agents[cache_key] = agent
         try:
             return agent.invoke(
                 {"messages": messages_payload},
@@ -415,7 +471,11 @@ class MiaAgentService:
                 context=context,
             ), "primary"
         except Exception as primary_exc:
-            fallback_agent = self.fallback_agents.get(agent_key)
+            fallback_agent = self._dynamic_fallback_agents.get(cache_key)
+            fallback_model = self.agent_fallback_models.get(agent_key)
+            if fallback_agent is None and fallback_model is not None:
+                fallback_agent = self._build_agent(tool_names=selected, model=fallback_model)
+                self._dynamic_fallback_agents[cache_key] = fallback_agent
             if fallback_agent is None:
                 raise
             try:

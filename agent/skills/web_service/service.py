@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import socket
 from dataclasses import dataclass
 from html import unescape
 from typing import Any
@@ -101,6 +102,24 @@ def _is_private_host(hostname: str) -> bool:
         or ip.is_unspecified
         or ip.is_reserved
     )
+
+
+def _validate_public_url(url: str) -> None:
+    parsed = urlparse(str(url or "").strip())
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("URL must start with http:// or https://.")
+    if parsed.username or parsed.password:
+        raise ValueError("URLs containing credentials are not allowed.")
+    hostname = parsed.hostname or ""
+    if _is_private_host(hostname):
+        raise ValueError("Private, local, or loopback URLs are not allowed.")
+    try:
+        default_port = 443 if parsed.scheme == "https" else 80
+        addresses = {item[4][0] for item in socket.getaddrinfo(hostname, parsed.port or default_port, type=socket.SOCK_STREAM)}
+    except OSError as exc:
+        raise ValueError("URL hostname could not be resolved.") from exc
+    if not addresses or any(_is_private_host(address) for address in addresses):
+        raise ValueError("URL resolves to a private, local, or reserved address.")
 
 
 def _extract_main_html(html_text: str) -> str:
@@ -441,11 +460,7 @@ class WebService:
         source_url = str(url or "").strip()
         if not source_url:
             raise ValueError("URL is required.")
-        parsed = urlparse(source_url)
-        if parsed.scheme not in {"http", "https"}:
-            raise ValueError("URL must start with http:// or https://.")
-        if _is_private_host(parsed.hostname or ""):
-            raise ValueError("Private, local, or loopback URLs are not allowed.")
+        _validate_public_url(source_url)
 
         strategy = _normalize_fetch_strategy(fetch_strategy)
 
@@ -457,13 +472,44 @@ class WebService:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
         with httpx.Client(
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=self.settings.request_timeout_seconds,
             headers=headers,
         ) as client:
-            response = client.get(source_url)
-            response.raise_for_status()
-            return _parse_page(response, source_url, fetch_strategy=strategy)
+            current_url = source_url
+            max_redirects = max(0, int(self.settings.web_max_redirects))
+            for redirect_count in range(max_redirects + 1):
+                _validate_public_url(current_url)
+                with client.stream("GET", current_url) as streamed:
+                    if streamed.status_code in {301, 302, 303, 307, 308}:
+                        location = str(streamed.headers.get("location") or "").strip()
+                        if not location:
+                            streamed.raise_for_status()
+                        if redirect_count >= max_redirects:
+                            raise ValueError("URL exceeded the redirect limit.")
+                        current_url = urljoin(current_url, location)
+                        continue
+                    streamed.raise_for_status()
+                    content_length = int(streamed.headers.get("content-length") or 0)
+                    max_bytes = max(1024, int(self.settings.web_max_response_bytes))
+                    if content_length and content_length > max_bytes:
+                        raise ValueError("Web response is larger than the configured limit.")
+                    chunks: list[bytes] = []
+                    total = 0
+                    for chunk in streamed.iter_bytes():
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise ValueError("Web response is larger than the configured limit.")
+                        chunks.append(chunk)
+                    response = httpx.Response(
+                        status_code=streamed.status_code,
+                        headers=streamed.headers,
+                        content=b"".join(chunks),
+                        request=streamed.request,
+                    )
+                    _validate_public_url(str(response.url))
+                    return _parse_page(response, source_url, fetch_strategy=strategy)
+            raise ValueError("URL could not be fetched safely.")
 
     def _format_read_result(self, page: WebPage, *, max_chars: int = 12000) -> tuple[str, list[str]]:
         content = page.text or page.description or ""

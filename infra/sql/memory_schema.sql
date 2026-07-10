@@ -11,11 +11,22 @@ CREATE TABLE IF NOT EXISTS mia_memory_items (
   source_text TEXT NOT NULL DEFAULT '',
   tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
   importance INTEGER NOT NULL DEFAULT 3,
+  confidence DOUBLE PRECISION NOT NULL DEFAULT 0.75,
+  source TEXT NOT NULL DEFAULT 'mia_langchain_core',
+  last_used_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  superseded_by BIGINT REFERENCES mia_memory_items(id) ON DELETE SET NULL,
   metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS confidence DOUBLE PRECISION NOT NULL DEFAULT 0.75;
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'mia_langchain_core';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS superseded_by BIGINT REFERENCES mia_memory_items(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS mia_memory_chunks (
   id BIGSERIAL PRIMARY KEY,
@@ -36,6 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_type
 
 CREATE INDEX IF NOT EXISTS idx_mia_memory_items_tags
   ON mia_memory_items USING GIN (tags);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_items_active_expiry
+  ON mia_memory_items (chat_id, is_active, expires_at);
 
 CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_chat_created
   ON mia_memory_chunks (chat_id, created_at DESC);
@@ -139,6 +153,7 @@ CREATE INDEX IF NOT EXISTS idx_mia_learning_feedbacks_scope_created
 CREATE TABLE IF NOT EXISTS mia_pending_actions (
   id BIGSERIAL PRIMARY KEY,
   chat_id TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT '',
   request_id TEXT NOT NULL,
   tool_name TEXT NOT NULL DEFAULT '',
   gateway_name TEXT NOT NULL DEFAULT '',
@@ -148,13 +163,83 @@ CREATE TABLE IF NOT EXISTS mia_pending_actions (
   status TEXT NOT NULL DEFAULT 'pending',
   error_text TEXT NOT NULL DEFAULT '',
   result_text TEXT NOT NULL DEFAULT '',
+  claimed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '15 minutes')
 );
+
+ALTER TABLE mia_pending_actions ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE mia_pending_actions ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_chat_status
   ON mia_pending_actions (chat_id, status, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_expires
   ON mia_pending_actions (status, expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_mia_pending_actions_owner_status
+  ON mia_pending_actions (chat_id, user_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS mia_execution_journal (
+  id BIGSERIAL PRIMARY KEY,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  request_id TEXT NOT NULL,
+  chat_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  args_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',
+  result JSONB NOT NULL DEFAULT '{}'::JSONB,
+  error_text TEXT NOT NULL DEFAULT '',
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '30 days')
+);
+
+CREATE INDEX IF NOT EXISTS idx_mia_execution_journal_owner
+  ON mia_execution_journal (user_id, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS mia_skill_runs (
+  id BIGSERIAL PRIMARY KEY,
+  skill_name TEXT NOT NULL,
+  request_id TEXT NOT NULL UNIQUE,
+  chat_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',
+  current_step INTEGER NOT NULL DEFAULT 0,
+  completed_steps JSONB NOT NULL DEFAULT '[]'::JSONB,
+  state JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_mia_skill_runs_owner
+  ON mia_skill_runs (user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS mia_automations (
+  id BIGSERIAL PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  schedule TEXT NOT NULL,
+  skill_name TEXT NOT NULL,
+  input_text TEXT NOT NULL DEFAULT '',
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  next_run_at TIMESTAMPTZ,
+  last_run_at TIMESTAMPTZ,
+  lease_until TIMESTAMPTZ,
+  last_error TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE mia_automations ADD COLUMN IF NOT EXISTS lease_until TIMESTAMPTZ;
+ALTER TABLE mia_automations ADD COLUMN IF NOT EXISTS last_error TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_mia_automations_due
+  ON mia_automations (enabled, next_run_at);
+
+CREATE INDEX IF NOT EXISTS idx_mia_automations_owner
+  ON mia_automations (user_id, updated_at DESC);

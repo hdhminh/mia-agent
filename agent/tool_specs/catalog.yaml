@@ -1,0 +1,1869 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "name": "ask_url",
+      "action": "web.ask_url",
+      "domain": "web",
+      "description": "ask url",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "web.ask_url",
+      "tags": [
+        "ask",
+        "url"
+      ]
+    },
+    {
+      "name": "audio_summarize",
+      "action": "media.audio_summarize",
+      "domain": "media",
+      "description": "audio summarize",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.audio_summarize",
+      "tags": [
+        "audio",
+        "summarize"
+      ]
+    },
+    {
+      "name": "audio_transcribe",
+      "action": "media.audio_transcribe",
+      "domain": "media",
+      "description": "audio transcribe",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.audio_transcribe",
+      "tags": [
+        "audio",
+        "transcribe"
+      ]
+    },
+    {
+      "name": "automation_create",
+      "action": "automation.create",
+      "domain": "automation",
+      "description": "automation create",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.create",
+      "tags": [
+        "automation",
+        "create"
+      ]
+    },
+    {
+      "name": "automation_delete",
+      "action": "automation.delete",
+      "domain": "automation",
+      "description": "automation delete",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.delete",
+      "tags": [
+        "automation",
+        "delete"
+      ]
+    },
+    {
+      "name": "automation_list",
+      "action": "automation.list",
+      "domain": "automation",
+      "description": "automation list",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.list",
+      "tags": [
+        "automation",
+        "list"
+      ]
+    },
+    {
+      "name": "automation_pause",
+      "action": "automation.pause",
+      "domain": "automation",
+      "description": "automation pause",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.pause",
+      "tags": [
+        "automation",
+        "pause"
+      ]
+    },
+    {
+      "name": "automation_resume",
+      "action": "automation.resume",
+      "domain": "automation",
+      "description": "automation resume",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.resume",
+      "tags": [
+        "automation",
+        "resume"
+      ]
+    },
+    {
+      "name": "automation_run_now",
+      "action": "automation.run_now",
+      "domain": "automation",
+      "description": "automation run now",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "automation.run_now",
+      "tags": [
+        "automation",
+        "run",
+        "now"
+      ]
+    },
+    {
+      "name": "calendar_check_availability",
+      "action": "calendar.check_availability",
+      "domain": "calendar",
+      "description": "calendar check availability",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.check_availability",
+      "tags": [
+        "calendar",
+        "check",
+        "availability"
+      ]
+    },
+    {
+      "name": "calendar_create_event",
+      "action": "calendar.create_event",
+      "domain": "calendar",
+      "description": "calendar create event",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.create_event",
+      "tags": [
+        "calendar",
+        "create",
+        "event"
+      ]
+    },
+    {
+      "name": "calendar_delete_event",
+      "action": "calendar.delete_event",
+      "domain": "calendar",
+      "description": "calendar delete event",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.delete_event",
+      "tags": [
+        "calendar",
+        "delete",
+        "event"
+      ]
+    },
+    {
+      "name": "calendar_find_event",
+      "action": "calendar.find_event",
+      "domain": "calendar",
+      "description": "calendar find event",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.find_event",
+      "tags": [
+        "calendar",
+        "find",
+        "event"
+      ]
+    },
+    {
+      "name": "calendar_find_free_slot",
+      "action": "calendar.find_free_slot",
+      "domain": "calendar",
+      "description": "calendar find free slot",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.find_free_slot",
+      "tags": [
+        "calendar",
+        "find",
+        "free",
+        "slot"
+      ]
+    },
+    {
+      "name": "calendar_help",
+      "action": "calendar.help",
+      "domain": "calendar",
+      "description": "calendar help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.help",
+      "tags": [
+        "calendar",
+        "help"
+      ]
+    },
+    {
+      "name": "calendar_list_today",
+      "action": "calendar.list_today",
+      "domain": "calendar",
+      "description": "calendar list today",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.list_today",
+      "tags": [
+        "calendar",
+        "list",
+        "today"
+      ]
+    },
+    {
+      "name": "calendar_list_tomorrow",
+      "action": "calendar.list_tomorrow",
+      "domain": "calendar",
+      "description": "calendar list tomorrow",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.list_tomorrow",
+      "tags": [
+        "calendar",
+        "list",
+        "tomorrow"
+      ]
+    },
+    {
+      "name": "contacts_get",
+      "action": "contacts.get",
+      "domain": "contacts",
+      "description": "contacts get",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "contacts.get",
+      "tags": [
+        "contacts",
+        "get"
+      ]
+    },
+    {
+      "name": "contacts_resolve_recipient",
+      "action": "contacts.resolve_recipient",
+      "domain": "contacts",
+      "description": "contacts resolve recipient",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "contacts.resolve_recipient",
+      "tags": [
+        "contacts",
+        "resolve",
+        "recipient"
+      ]
+    },
+    {
+      "name": "contacts_search",
+      "action": "contacts.search",
+      "domain": "contacts",
+      "description": "contacts search",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "contacts.search",
+      "tags": [
+        "contacts",
+        "search"
+      ]
+    },
+    {
+      "name": "docs_append_doc",
+      "action": "docs.append_doc",
+      "domain": "docs",
+      "description": "docs append doc",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.append_doc",
+      "tags": [
+        "docs",
+        "append",
+        "doc"
+      ]
+    },
+    {
+      "name": "docs_create_doc",
+      "action": "docs.create_doc",
+      "domain": "docs",
+      "description": "docs create doc",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.create_doc",
+      "tags": [
+        "docs",
+        "create",
+        "doc"
+      ]
+    },
+    {
+      "name": "docs_delete_doc",
+      "action": "docs.delete_doc",
+      "domain": "docs",
+      "description": "docs delete doc",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.delete_doc",
+      "tags": [
+        "docs",
+        "delete",
+        "doc"
+      ]
+    },
+    {
+      "name": "docs_help",
+      "action": "docs.help",
+      "domain": "docs",
+      "description": "docs help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.help",
+      "tags": [
+        "docs",
+        "help"
+      ]
+    },
+    {
+      "name": "docs_read_doc",
+      "action": "docs.read_doc",
+      "domain": "docs",
+      "description": "docs read doc",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.read_doc",
+      "tags": [
+        "docs",
+        "read",
+        "doc"
+      ]
+    },
+    {
+      "name": "docs_search_doc",
+      "action": "docs.search_doc",
+      "domain": "docs",
+      "description": "docs search doc",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.search_doc",
+      "tags": [
+        "docs",
+        "search",
+        "doc"
+      ]
+    },
+    {
+      "name": "docs_update_doc",
+      "action": "docs.update_doc",
+      "domain": "docs",
+      "description": "docs update doc",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "docs.update_doc",
+      "tags": [
+        "docs",
+        "update",
+        "doc"
+      ]
+    },
+    {
+      "name": "document_extract_fields",
+      "action": "media.document_extract_fields",
+      "domain": "media",
+      "description": "document extract fields",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.document_extract_fields",
+      "tags": [
+        "document",
+        "extract",
+        "fields"
+      ]
+    },
+    {
+      "name": "document_extract_text",
+      "action": "media.document_extract_text",
+      "domain": "media",
+      "description": "document extract text",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.document_extract_text",
+      "tags": [
+        "document",
+        "extract",
+        "text"
+      ]
+    },
+    {
+      "name": "document_search_answer",
+      "action": "media.document_search_answer",
+      "domain": "media",
+      "description": "document search answer",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.document_search_answer",
+      "tags": [
+        "document",
+        "search",
+        "answer"
+      ]
+    },
+    {
+      "name": "document_summarize",
+      "action": "media.document_summarize",
+      "domain": "media",
+      "description": "document summarize",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.document_summarize",
+      "tags": [
+        "document",
+        "summarize"
+      ]
+    },
+    {
+      "name": "drive_copy_file",
+      "action": "drive.copy_file",
+      "domain": "drive",
+      "description": "drive copy file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.copy_file",
+      "tags": [
+        "drive",
+        "copy",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_create_file",
+      "action": "drive.create_file",
+      "domain": "drive",
+      "description": "drive create file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.create_file",
+      "tags": [
+        "drive",
+        "create",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_create_folder",
+      "action": "drive.create_folder",
+      "domain": "drive",
+      "description": "drive create folder",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.create_folder",
+      "tags": [
+        "drive",
+        "create",
+        "folder"
+      ]
+    },
+    {
+      "name": "drive_delete_file",
+      "action": "drive.delete_file",
+      "domain": "drive",
+      "description": "drive delete file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.delete_file",
+      "tags": [
+        "drive",
+        "delete",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_delete_folder",
+      "action": "drive.delete_folder",
+      "domain": "drive",
+      "description": "drive delete folder",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.delete_folder",
+      "tags": [
+        "drive",
+        "delete",
+        "folder"
+      ]
+    },
+    {
+      "name": "drive_download_file",
+      "action": "drive.download_file",
+      "domain": "drive",
+      "description": "drive download file",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.download_file",
+      "tags": [
+        "drive",
+        "download",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_export_file",
+      "action": "drive.export_file",
+      "domain": "drive",
+      "description": "drive export file",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.export_file",
+      "tags": [
+        "drive",
+        "export",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_get_file_info",
+      "action": "drive.get_file_info",
+      "domain": "drive",
+      "description": "drive get file info",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.get_file_info",
+      "tags": [
+        "drive",
+        "get",
+        "file",
+        "info"
+      ]
+    },
+    {
+      "name": "drive_help",
+      "action": "drive.help",
+      "domain": "drive",
+      "description": "drive help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.help",
+      "tags": [
+        "drive",
+        "help"
+      ]
+    },
+    {
+      "name": "drive_list_files",
+      "action": "drive.list_files",
+      "domain": "drive",
+      "description": "drive list files",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.list_files",
+      "tags": [
+        "drive",
+        "list",
+        "files"
+      ]
+    },
+    {
+      "name": "drive_move_file",
+      "action": "drive.move_file",
+      "domain": "drive",
+      "description": "drive move file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.move_file",
+      "tags": [
+        "drive",
+        "move",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_rename_file",
+      "action": "drive.rename_file",
+      "domain": "drive",
+      "description": "drive rename file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.rename_file",
+      "tags": [
+        "drive",
+        "rename",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_search_file",
+      "action": "drive.search_file",
+      "domain": "drive",
+      "description": "drive search file",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.search_file",
+      "tags": [
+        "drive",
+        "search",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_share_file",
+      "action": "drive.share_file",
+      "domain": "drive",
+      "description": "drive share file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.share_file",
+      "tags": [
+        "drive",
+        "share",
+        "file"
+      ]
+    },
+    {
+      "name": "drive_upload_file",
+      "action": "drive.upload_file",
+      "domain": "drive",
+      "description": "drive upload file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "drive.upload_file",
+      "tags": [
+        "drive",
+        "upload",
+        "file"
+      ]
+    },
+    {
+      "name": "github_comment_issue",
+      "action": "github.comment_issue",
+      "domain": "github",
+      "description": "github comment issue",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.comment_issue",
+      "tags": [
+        "github",
+        "comment",
+        "issue"
+      ]
+    },
+    {
+      "name": "github_comment_pull_request",
+      "action": "github.comment_pull_request",
+      "domain": "github",
+      "description": "github comment pull request",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.comment_pull_request",
+      "tags": [
+        "github",
+        "comment",
+        "pull",
+        "request"
+      ]
+    },
+    {
+      "name": "github_create_branch",
+      "action": "github.create_branch",
+      "domain": "github",
+      "description": "github create branch",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.create_branch",
+      "tags": [
+        "github",
+        "create",
+        "branch"
+      ]
+    },
+    {
+      "name": "github_create_issue",
+      "action": "github.create_issue",
+      "domain": "github",
+      "description": "github create issue",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.create_issue",
+      "tags": [
+        "github",
+        "create",
+        "issue"
+      ]
+    },
+    {
+      "name": "github_create_pull_request",
+      "action": "github.create_pull_request",
+      "domain": "github",
+      "description": "github create pull request",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.create_pull_request",
+      "tags": [
+        "github",
+        "create",
+        "pull",
+        "request"
+      ]
+    },
+    {
+      "name": "github_get_commit",
+      "action": "github.get_commit",
+      "domain": "github",
+      "description": "github get commit",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_commit",
+      "tags": [
+        "github",
+        "get",
+        "commit"
+      ]
+    },
+    {
+      "name": "github_get_diff",
+      "action": "github.get_diff",
+      "domain": "github",
+      "description": "github get diff",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_diff",
+      "tags": [
+        "github",
+        "get",
+        "diff"
+      ]
+    },
+    {
+      "name": "github_get_file",
+      "action": "github.get_file",
+      "domain": "github",
+      "description": "github get file",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_file",
+      "tags": [
+        "github",
+        "get",
+        "file"
+      ]
+    },
+    {
+      "name": "github_get_issue",
+      "action": "github.get_issue",
+      "domain": "github",
+      "description": "github get issue",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_issue",
+      "tags": [
+        "github",
+        "get",
+        "issue"
+      ]
+    },
+    {
+      "name": "github_get_pull_request",
+      "action": "github.get_pull_request",
+      "domain": "github",
+      "description": "github get pull request",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_pull_request",
+      "tags": [
+        "github",
+        "get",
+        "pull",
+        "request"
+      ]
+    },
+    {
+      "name": "github_get_release",
+      "action": "github.get_release",
+      "domain": "github",
+      "description": "github get release",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_release",
+      "tags": [
+        "github",
+        "get",
+        "release"
+      ]
+    },
+    {
+      "name": "github_get_repo",
+      "action": "github.get_repo",
+      "domain": "github",
+      "description": "github get repo",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_repo",
+      "tags": [
+        "github",
+        "get",
+        "repo"
+      ]
+    },
+    {
+      "name": "github_get_repo_tree",
+      "action": "github.get_repo_tree",
+      "domain": "github",
+      "description": "github get repo tree",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.get_repo_tree",
+      "tags": [
+        "github",
+        "get",
+        "repo",
+        "tree"
+      ]
+    },
+    {
+      "name": "github_help",
+      "action": "github.help",
+      "domain": "github",
+      "description": "github help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.help",
+      "tags": [
+        "github",
+        "help"
+      ]
+    },
+    {
+      "name": "github_list_branches",
+      "action": "github.list_branches",
+      "domain": "github",
+      "description": "github list branches",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_branches",
+      "tags": [
+        "github",
+        "list",
+        "branches"
+      ]
+    },
+    {
+      "name": "github_list_commits",
+      "action": "github.list_commits",
+      "domain": "github",
+      "description": "github list commits",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_commits",
+      "tags": [
+        "github",
+        "list",
+        "commits"
+      ]
+    },
+    {
+      "name": "github_list_issues",
+      "action": "github.list_issues",
+      "domain": "github",
+      "description": "github list issues",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_issues",
+      "tags": [
+        "github",
+        "list",
+        "issues"
+      ]
+    },
+    {
+      "name": "github_list_pull_requests",
+      "action": "github.list_pull_requests",
+      "domain": "github",
+      "description": "github list pull requests",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_pull_requests",
+      "tags": [
+        "github",
+        "list",
+        "pull",
+        "requests"
+      ]
+    },
+    {
+      "name": "github_list_releases",
+      "action": "github.list_releases",
+      "domain": "github",
+      "description": "github list releases",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_releases",
+      "tags": [
+        "github",
+        "list",
+        "releases"
+      ]
+    },
+    {
+      "name": "github_list_user_repos",
+      "action": "github.list_user_repos",
+      "domain": "github",
+      "description": "github list user repos",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_user_repos",
+      "tags": [
+        "github",
+        "list",
+        "user",
+        "repos"
+      ]
+    },
+    {
+      "name": "github_list_workflow_runs",
+      "action": "github.list_workflow_runs",
+      "domain": "github",
+      "description": "github list workflow runs",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.list_workflow_runs",
+      "tags": [
+        "github",
+        "list",
+        "workflow",
+        "runs"
+      ]
+    },
+    {
+      "name": "github_rerun_failed_workflow",
+      "action": "github.rerun_failed_workflow",
+      "domain": "github",
+      "description": "github rerun failed workflow",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.rerun_failed_workflow",
+      "tags": [
+        "github",
+        "rerun",
+        "failed",
+        "workflow"
+      ]
+    },
+    {
+      "name": "github_search_code",
+      "action": "github.search_code",
+      "domain": "github",
+      "description": "github search code",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.search_code",
+      "tags": [
+        "github",
+        "search",
+        "code"
+      ]
+    },
+    {
+      "name": "github_search_repos",
+      "action": "github.search_repos",
+      "domain": "github",
+      "description": "github search repos",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.search_repos",
+      "tags": [
+        "github",
+        "search",
+        "repos"
+      ]
+    },
+    {
+      "name": "github_update_file",
+      "action": "github.update_file",
+      "domain": "github",
+      "description": "github update file",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.update_file",
+      "tags": [
+        "github",
+        "update",
+        "file"
+      ]
+    },
+    {
+      "name": "github_update_issue",
+      "action": "github.update_issue",
+      "domain": "github",
+      "description": "github update issue",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "github.update_issue",
+      "tags": [
+        "github",
+        "update",
+        "issue"
+      ]
+    },
+    {
+      "name": "gmail_archive",
+      "action": "gmail.archive",
+      "domain": "gmail",
+      "description": "gmail archive",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.archive",
+      "tags": [
+        "gmail",
+        "archive"
+      ]
+    },
+    {
+      "name": "gmail_draft_email",
+      "action": "gmail.draft_email",
+      "domain": "gmail",
+      "description": "gmail draft email",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.draft_email",
+      "tags": [
+        "gmail",
+        "draft",
+        "email"
+      ]
+    },
+    {
+      "name": "gmail_help",
+      "action": "gmail.help",
+      "domain": "gmail",
+      "description": "gmail help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.help",
+      "tags": [
+        "gmail",
+        "help"
+      ]
+    },
+    {
+      "name": "gmail_list_inbox",
+      "action": "gmail.list_inbox",
+      "domain": "gmail",
+      "description": "gmail list inbox",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.list_inbox",
+      "tags": [
+        "gmail",
+        "list",
+        "inbox"
+      ]
+    },
+    {
+      "name": "gmail_mark_read",
+      "action": "gmail.mark_read",
+      "domain": "gmail",
+      "description": "gmail mark read",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.mark_read",
+      "tags": [
+        "gmail",
+        "mark",
+        "read"
+      ]
+    },
+    {
+      "name": "gmail_read_email",
+      "action": "gmail.read_email",
+      "domain": "gmail",
+      "description": "gmail read email",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.read_email",
+      "tags": [
+        "gmail",
+        "read",
+        "email"
+      ]
+    },
+    {
+      "name": "gmail_reply_email",
+      "action": "gmail.reply_email",
+      "domain": "gmail",
+      "description": "gmail reply email",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.reply_email",
+      "tags": [
+        "gmail",
+        "reply",
+        "email"
+      ]
+    },
+    {
+      "name": "gmail_search_by_sender",
+      "action": "gmail.search_by_sender",
+      "domain": "gmail",
+      "description": "gmail search by sender",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.search_by_sender",
+      "tags": [
+        "gmail",
+        "search",
+        "by",
+        "sender"
+      ]
+    },
+    {
+      "name": "gmail_search_email",
+      "action": "gmail.search_email",
+      "domain": "gmail",
+      "description": "gmail search email",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.search_email",
+      "tags": [
+        "gmail",
+        "search",
+        "email"
+      ]
+    },
+    {
+      "name": "gmail_send_email",
+      "action": "gmail.send_email",
+      "domain": "gmail",
+      "description": "gmail send email",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gmail.send_email",
+      "tags": [
+        "gmail",
+        "send",
+        "email"
+      ]
+    },
+    {
+      "name": "gold_get_price",
+      "action": "gold.get_price",
+      "domain": "gold",
+      "description": "gold get price",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "gold.get_price",
+      "tags": [
+        "gold",
+        "get",
+        "price"
+      ]
+    },
+    {
+      "name": "image_describe",
+      "action": "media.image_describe",
+      "domain": "media",
+      "description": "image describe",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.image_describe",
+      "tags": [
+        "image",
+        "describe"
+      ]
+    },
+    {
+      "name": "image_extract_fields",
+      "action": "media.image_extract_fields",
+      "domain": "media",
+      "description": "image extract fields",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.image_extract_fields",
+      "tags": [
+        "image",
+        "extract",
+        "fields"
+      ]
+    },
+    {
+      "name": "image_ocr",
+      "action": "media.image_ocr",
+      "domain": "media",
+      "description": "image ocr",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.image_ocr",
+      "tags": [
+        "image",
+        "ocr"
+      ]
+    },
+    {
+      "name": "news_get",
+      "action": "news.get",
+      "domain": "news",
+      "description": "news get",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "news.get",
+      "tags": [
+        "news",
+        "get"
+      ]
+    },
+    {
+      "name": "read_url",
+      "action": "web.read_url",
+      "domain": "web",
+      "description": "read url",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "web.read_url",
+      "tags": [
+        "read",
+        "url"
+      ]
+    },
+    {
+      "name": "search_web",
+      "action": "search.web",
+      "domain": "search",
+      "description": "search web",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "search.web",
+      "tags": [
+        "search",
+        "web"
+      ]
+    },
+    {
+      "name": "sheets_append_row",
+      "action": "sheets.append_row",
+      "domain": "sheets",
+      "description": "sheets append row",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.append_row",
+      "tags": [
+        "sheets",
+        "append",
+        "row"
+      ]
+    },
+    {
+      "name": "sheets_create_sheet",
+      "action": "sheets.create_sheet",
+      "domain": "sheets",
+      "description": "sheets create sheet",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.create_sheet",
+      "tags": [
+        "sheets",
+        "create",
+        "sheet"
+      ]
+    },
+    {
+      "name": "sheets_delete_sheet",
+      "action": "sheets.delete_sheet",
+      "domain": "sheets",
+      "description": "sheets delete sheet",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.delete_sheet",
+      "tags": [
+        "sheets",
+        "delete",
+        "sheet"
+      ]
+    },
+    {
+      "name": "sheets_help",
+      "action": "sheets.help",
+      "domain": "sheets",
+      "description": "sheets help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.help",
+      "tags": [
+        "sheets",
+        "help"
+      ]
+    },
+    {
+      "name": "sheets_read_range",
+      "action": "sheets.read_sheet",
+      "domain": "sheets",
+      "description": "sheets read range",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.read_sheet",
+      "tags": [
+        "sheets",
+        "read",
+        "range"
+      ]
+    },
+    {
+      "name": "sheets_read_sheet",
+      "action": "sheets.read_sheet",
+      "domain": "sheets",
+      "description": "sheets read sheet",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.read_sheet",
+      "tags": [
+        "sheets",
+        "read",
+        "sheet"
+      ]
+    },
+    {
+      "name": "sheets_search_sheet",
+      "action": "sheets.search_sheet",
+      "domain": "sheets",
+      "description": "sheets search sheet",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.search_sheet",
+      "tags": [
+        "sheets",
+        "search",
+        "sheet"
+      ]
+    },
+    {
+      "name": "sheets_update_cell",
+      "action": "sheets.update_cell",
+      "domain": "sheets",
+      "description": "sheets update cell",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.update_cell",
+      "tags": [
+        "sheets",
+        "update",
+        "cell"
+      ]
+    },
+    {
+      "name": "sheets_update_range",
+      "action": "sheets.update_range",
+      "domain": "sheets",
+      "description": "sheets update range",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "sheets.update_range",
+      "tags": [
+        "sheets",
+        "update",
+        "range"
+      ]
+    },
+    {
+      "name": "shortlink_create",
+      "action": "shortlink.create",
+      "domain": "shortlink",
+      "description": "shortlink create",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "shortlink.create",
+      "tags": [
+        "shortlink",
+        "create"
+      ]
+    },
+    {
+      "name": "summarize_url",
+      "action": "web.summarize_url",
+      "domain": "web",
+      "description": "summarize url",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "web.summarize_url",
+      "tags": [
+        "summarize",
+        "url"
+      ]
+    },
+    {
+      "name": "tasks_complete",
+      "action": "tasks.complete",
+      "domain": "tasks",
+      "description": "tasks complete",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.complete",
+      "tags": [
+        "tasks",
+        "complete"
+      ]
+    },
+    {
+      "name": "tasks_create",
+      "action": "tasks.create",
+      "domain": "tasks",
+      "description": "tasks create",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.create",
+      "tags": [
+        "tasks",
+        "create"
+      ]
+    },
+    {
+      "name": "tasks_delete",
+      "action": "tasks.delete",
+      "domain": "tasks",
+      "description": "tasks delete",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.delete",
+      "tags": [
+        "tasks",
+        "delete"
+      ]
+    },
+    {
+      "name": "tasks_list",
+      "action": "tasks.list",
+      "domain": "tasks",
+      "description": "tasks list",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.list",
+      "tags": [
+        "tasks",
+        "list"
+      ]
+    },
+    {
+      "name": "tasks_list_due",
+      "action": "tasks.list_due",
+      "domain": "tasks",
+      "description": "tasks list due",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.list_due",
+      "tags": [
+        "tasks",
+        "list",
+        "due"
+      ]
+    },
+    {
+      "name": "tasks_list_overdue",
+      "action": "tasks.list_overdue",
+      "domain": "tasks",
+      "description": "tasks list overdue",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.list_overdue",
+      "tags": [
+        "tasks",
+        "list",
+        "overdue"
+      ]
+    },
+    {
+      "name": "tasks_update",
+      "action": "tasks.update",
+      "domain": "tasks",
+      "description": "tasks update",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "tasks.update",
+      "tags": [
+        "tasks",
+        "update"
+      ]
+    },
+    {
+      "name": "tts_speak",
+      "action": "media.tts_speak",
+      "domain": "media",
+      "description": "tts speak",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.tts_speak",
+      "tags": [
+        "tts",
+        "speak"
+      ]
+    },
+    {
+      "name": "video_summarize",
+      "action": "media.video_summarize",
+      "domain": "media",
+      "description": "video summarize",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.video_summarize",
+      "tags": [
+        "video",
+        "summarize"
+      ]
+    },
+    {
+      "name": "video_transcribe",
+      "action": "media.video_transcribe",
+      "domain": "media",
+      "description": "video transcribe",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "media.video_transcribe",
+      "tags": [
+        "video",
+        "transcribe"
+      ]
+    },
+    {
+      "name": "weather_get",
+      "action": "weather.get",
+      "domain": "weather",
+      "description": "weather get",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "weather.get",
+      "tags": [
+        "weather",
+        "get"
+      ]
+    }
+  ]
+}

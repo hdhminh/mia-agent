@@ -183,5 +183,6 @@
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1795e0dd65e3ea6d4e393ce2383c1be1063c1db87f1a76fa30d08d658771dfd1"
-  }
+  },
+  "name": "Sub-workflow: Memory Search"
 }

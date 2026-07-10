@@ -1,0 +1,74 @@
+{
+  "name": "Sub-workflow: Google Tasks Master",
+  "nodes": [
+    {
+      "parameters": {"conditions": {"boolean": [{"value1": "={{ $json.ok }}", "value2": true}]}},
+      "id": "tasks-if",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {},
+      "id": "tasks-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args && typeof source.args === 'object' ? source.args : source;\nconst tool = String(source.tool || '').trim();\nconst tasklistId = encodeURIComponent(String(args.tasklistId || '@default'));\nconst taskId = encodeURIComponent(String(args.taskId || ''));\nconst base = `https://tasks.googleapis.com/tasks/v1/lists/${tasklistId}/tasks`;\nlet method = 'GET';\nlet url = base;\nlet body = {};\nconst limit = Math.max(1, Math.min(Number(args.limit || 20), 100));\nif (tool === 'tasks.list') url += `?maxResults=${limit}&showCompleted=false`;\nelse if (tool === 'tasks.list_due') { const day = String(args.date || new Date().toISOString().slice(0,10)); url += `?maxResults=${limit}&showCompleted=false&dueMin=${encodeURIComponent(day+'T00:00:00.000Z')}&dueMax=${encodeURIComponent(day+'T23:59:59.999Z')}`; }\nelse if (tool === 'tasks.list_overdue') url += `?maxResults=${limit}&showCompleted=false&dueMax=${encodeURIComponent(new Date().toISOString())}`;\nelse if (tool === 'tasks.create') { method='POST'; body={title:String(args.title||''),notes:String(args.notes||''),due:String(args.due||'')||undefined}; }\nelse if (tool === 'tasks.update') { method='PATCH'; url += `/${taskId}`; body=Object.fromEntries(Object.entries({title:args.title,notes:args.notes,due:args.due}).filter(([,v])=>String(v||'').trim())); }\nelse if (tool === 'tasks.complete') { method='PATCH'; url += `/${taskId}`; body={status:'completed'}; }\nelse if (tool === 'tasks.delete') { method='DELETE'; url += `/${taskId}`; }\nelse return [{json:{ok:false,error:`Unsupported Tasks tool: ${tool}`,tool}}];\nif (['tasks.create'].includes(tool) && !String(args.title||'').trim()) return [{json:{ok:false,error:'Task title is required.',tool}}];\nif (['tasks.update','tasks.complete','tasks.delete'].includes(tool) && !String(args.taskId||'').trim()) return [{json:{ok:false,error:'Task id is required.',tool}}];\nreturn [{json:{...source,ok:true,tool,method,url,body}}];"
+      },
+      "id": "tasks-normalize",
+      "name": "Normalize Tasks Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleTasksOAuth2Api",
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "sendBody": "={{ ['POST','PATCH'].includes($json.method) }}",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {"ignoreResponseCode": true}
+      },
+      "id": "tasks-call",
+      "name": "Call Google Tasks API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$('Normalize Tasks Request').item.json||{}; const data=$json||{}; const ok=!data.error&&!data.message; const rows=Array.isArray(data.items)?data.items:[]; let text=''; if(rows.length) text=rows.slice(0,20).map((t,i)=>`${i+1}. ${t.title||'(untitled)'}${t.due?' | due '+t.due:''}${t.status?' | '+t.status:''}`).join('\\n'); else if(ok) text=source.method==='GET'?'No matching tasks.':'Task action completed.'; else text=String(data.error?.message||data.message||'Google Tasks request failed.'); return [{json:{ok,tool:source.tool,text,result:data,links:[],meta:{requestId:source.requestId||''}}}];"
+      },
+      "id": "tasks-result",
+      "name": "Normalize Tasks Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {"jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Tasks request rejected.'),result:{},links:[],meta:{}}}];"},
+      "id": "tasks-error",
+      "name": "Return Tasks Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 120]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Tasks Request", "type": "main", "index": 0}]]},
+    "Normalize Tasks Request": {"main": [[{"node": "Can Continue?", "type": "main", "index": 0}]]},
+    "Can Continue?": {"main": [[{"node": "Call Google Tasks API", "type": "main", "index": 0}], [{"node": "Return Tasks Error", "type": "main", "index": 0}]]},
+    "Call Google Tasks API": {"main": [[{"node": "Normalize Tasks Result", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": false
+}

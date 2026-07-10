@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import re
+from typing import Any
 
 from agent.skills.registry import DIRECT_GATEWAY_TOOLS, DIRECT_ROUTE_TOOLS
 from agent.brain.time_utils import build_current_date_response

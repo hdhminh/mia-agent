@@ -94,7 +94,10 @@ def evaluator_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
     else:
         # LLM quality check
         mode = service.settings.evaluator_mode
-        if mode == "hard":
+        if mode == "hard" and tools_called and evidence:
+            verdict = "pass"
+            reason = "Structured tool evidence passed deterministic quality checks."
+        elif mode == "hard":
             # Call summary model to evaluate quality
             prompt = t(
                 "evaluator.eval_prompt",

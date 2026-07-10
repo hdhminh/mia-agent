@@ -114,12 +114,16 @@ class MemoryRepository:
         sql = """
         WITH semantic AS (
           SELECT
+            i.id AS item_id,
             c.chunk_text,
             c.chunk_index,
             i.memory_type,
             i.title,
             i.tags,
             i.importance,
+            i.confidence,
+            i.source,
+            i.expires_at,
             i.created_at,
             1 - (c.embedding <=> CAST(%s AS vector)) AS semantic_score,
             (
@@ -131,21 +135,30 @@ class MemoryRepository:
           JOIN mia_memory_items i ON i.id = c.item_id
           WHERE c.chat_id = %s
             AND i.is_active = TRUE
+            AND (i.expires_at IS NULL OR i.expires_at > now())
             AND (%s = '' OR i.memory_type = %s)
           ORDER BY c.embedding <=> CAST(%s AS vector)
           LIMIT %s
         )
         SELECT
+          item_id,
           chunk_text,
           chunk_index,
           memory_type,
           title,
           tags,
           importance,
+          confidence,
+          source,
+          expires_at,
           created_at,
           semantic_score,
           keyword_bonus,
-          semantic_score + keyword_bonus AS final_score
+          semantic_score + keyword_bonus
+            + LEAST(importance, 5) * 0.015
+            + LEAST(GREATEST(confidence, 0), 1) * 0.05
+            + 0.04 / (1 + EXTRACT(EPOCH FROM (now() - created_at)) / 86400 / 30)
+            AS final_score
         FROM semantic
         WHERE semantic_score >= %s OR keyword_bonus > 0
         ORDER BY final_score DESC, importance DESC, created_at DESC
@@ -170,7 +183,15 @@ class MemoryRepository:
                         limit,
                     ),
                 )
-                return list(cur.fetchall())
+                rows = list(cur.fetchall())
+                item_ids = sorted({int(row["item_id"]) for row in rows if row.get("item_id") is not None})
+                if item_ids:
+                    cur.execute(
+                        "UPDATE mia_memory_items SET last_used_at = now() WHERE id = ANY(%s);",
+                        (item_ids,),
+                    )
+                    conn.commit()
+                return rows
 
     def recent(
         self,
@@ -187,11 +208,16 @@ class MemoryRepository:
           content,
           tags,
           importance,
+          confidence,
+          source,
+          last_used_at,
+          expires_at,
           created_at,
           updated_at
         FROM mia_memory_items
         WHERE chat_id = %s
           AND is_active = TRUE
+          AND (expires_at IS NULL OR expires_at > now())
         ORDER BY updated_at DESC, importance DESC, created_at DESC
         LIMIT %s;
         """
@@ -211,6 +237,9 @@ class MemoryRepository:
         tags: list[str] | None = None,
         importance: int = 3,
         source_text: str = "",
+        confidence: float = 0.75,
+        source: str = "mia_langchain_core",
+        expires_at: str | None = None,
     ) -> dict[str, Any]:
         normalized_content = _normalize_text(content)
         if not normalized_content:
@@ -228,16 +257,18 @@ class MemoryRepository:
             "title": title,
             "tags": clean_tags,
             "importance": importance,
-            "source": "mia_langchain_core",
+            "source": source,
+            "confidence": max(0.0, min(float(confidence), 1.0)),
+            "expires_at": expires_at,
             "source_text": source_text or normalized_content,
         }
 
         upsert_sql = """
         INSERT INTO mia_memory_items (
           chat_id, fingerprint, memory_type, title, content, source_text, tags,
-          importance, metadata, is_active, created_at, updated_at
+          importance, confidence, source, expires_at, metadata, is_active, created_at, updated_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, TRUE, now(), now())
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::timestamptz, %s::jsonb, TRUE, now(), now())
         ON CONFLICT (fingerprint)
         DO UPDATE SET
           memory_type = EXCLUDED.memory_type,
@@ -246,6 +277,9 @@ class MemoryRepository:
           source_text = EXCLUDED.source_text,
           tags = EXCLUDED.tags,
           importance = EXCLUDED.importance,
+          confidence = EXCLUDED.confidence,
+          source = EXCLUDED.source,
+          expires_at = EXCLUDED.expires_at,
           metadata = EXCLUDED.metadata,
           is_active = TRUE,
           updated_at = now()
@@ -272,6 +306,9 @@ class MemoryRepository:
                         source_text or normalized_content,
                         clean_tags,
                         importance,
+                        metadata["confidence"],
+                        source,
+                        expires_at,
                         json.dumps(metadata),
                     ),
                 )
@@ -306,6 +343,9 @@ class MemoryRepository:
             "title": item["title"],
             "tags": item["tags"] or [],
             "importance": item["importance"],
+            "confidence": metadata["confidence"],
+            "source": source,
+            "expires_at": expires_at,
             "chunk_count": len(chunk_texts),
             "content": normalized_content,
         }

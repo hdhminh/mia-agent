@@ -25,4 +25,18 @@ def memory_writer_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
             notes="agent response",
         )
 
+    skill_request_id = state.get("skill_request_id", "")
+    if skill_request_id and service.skill_engine is not None:
+        final_text = str(state.get("final_text") or "")
+        skill_state = {"tools_called": state.get("tools_called", []), "final_text": final_text}
+        approval_wait = any(cue in final_text.lower() for cue in ("xác nhận", "xac nhan", "confirmation", "confirm"))
+        if approval_wait:
+            service.skill_engine.repository.pause(request_id=skill_request_id, state=skill_state)
+        else:
+            service.skill_engine.repository.finish(
+                request_id=skill_request_id,
+                status="completed" if final_text else "failed",
+                state=skill_state,
+            )
+
     return {"memory_written": True}

@@ -67,6 +67,15 @@ GITHUB_TOOL_NAMES = [
     "github_get_file",
     "github_search_code",
     "github_get_diff",
+    "github_create_issue",
+    "github_update_issue",
+    "github_comment_issue",
+    "github_create_branch",
+    "github_update_file",
+    "github_create_pull_request",
+    "github_comment_pull_request",
+    "github_list_workflow_runs",
+    "github_rerun_failed_workflow",
 ]
 WORKSPACE_TOOL_NAMES = [
     "drive_help",
@@ -101,15 +110,24 @@ WORKSPACE_TOOL_NAMES = [
     "sheets_update_range",
     "sheets_delete_sheet",
 ]
-GOOGLE_FULL_TOOL_NAMES = CALENDAR_TOOL_NAMES + GMAIL_TOOL_NAMES + WORKSPACE_TOOL_NAMES
+TASK_TOOL_NAMES = [
+    "tasks_list", "tasks_list_due", "tasks_list_overdue", "tasks_create",
+    "tasks_update", "tasks_complete", "tasks_delete",
+]
+CONTACT_TOOL_NAMES = ["contacts_search", "contacts_get", "contacts_resolve_recipient"]
+AUTOMATION_TOOL_NAMES = [
+    "automation_list", "automation_create", "automation_pause", "automation_resume",
+    "automation_delete", "automation_run_now",
+]
+GOOGLE_FULL_TOOL_NAMES = CALENDAR_TOOL_NAMES + GMAIL_TOOL_NAMES + WORKSPACE_TOOL_NAMES + TASK_TOOL_NAMES + CONTACT_TOOL_NAMES
 
 AGENT_TOOLSETS: dict[str, list[str]] = {
-    "general": MEMORY_TOOL_NAMES + SIMPLE_TOOL_NAMES,
+    "general": MEMORY_TOOL_NAMES + SIMPLE_TOOL_NAMES + AUTOMATION_TOOL_NAMES,
     "media": MEMORY_TOOL_NAMES + MEDIA_TOOL_NAMES,
     "calendar": MEMORY_TOOL_NAMES + CALENDAR_TOOL_NAMES,
     "gmail": MEMORY_TOOL_NAMES + GMAIL_TOOL_NAMES,
     "github": MEMORY_TOOL_NAMES + GITHUB_TOOL_NAMES,
-    "workspace": MEMORY_TOOL_NAMES + WORKSPACE_TOOL_NAMES,
+    "workspace": MEMORY_TOOL_NAMES + WORKSPACE_TOOL_NAMES + TASK_TOOL_NAMES + CONTACT_TOOL_NAMES,
     "google_full": MEMORY_TOOL_NAMES + GOOGLE_FULL_TOOL_NAMES,
 }
 
@@ -120,6 +138,7 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "search_web": "search.web",
     "read_url": "web.read_url",
     "summarize_url": "web.summarize_url",
+    "ask_url": "web.ask_url",
     "shortlink_create": "shortlink.create",
     "image_ocr": "media.image_ocr",
     "image_describe": "media.image_describe",
@@ -168,6 +187,15 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "github_get_file": "github.get_file",
     "github_search_code": "github.search_code",
     "github_get_diff": "github.get_diff",
+    "github_create_issue": "github.create_issue",
+    "github_update_issue": "github.update_issue",
+    "github_comment_issue": "github.comment_issue",
+    "github_create_branch": "github.create_branch",
+    "github_update_file": "github.update_file",
+    "github_create_pull_request": "github.create_pull_request",
+    "github_comment_pull_request": "github.comment_pull_request",
+    "github_list_workflow_runs": "github.list_workflow_runs",
+    "github_rerun_failed_workflow": "github.rerun_failed_workflow",
     "drive_help": "drive.help",
     "drive_list_files": "drive.list_files",
     "drive_search_file": "drive.search_file",
@@ -199,6 +227,22 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "sheets_update_cell": "sheets.update_cell",
     "sheets_update_range": "sheets.update_range",
     "sheets_delete_sheet": "sheets.delete_sheet",
+    "tasks_list": "tasks.list",
+    "tasks_list_due": "tasks.list_due",
+    "tasks_list_overdue": "tasks.list_overdue",
+    "tasks_create": "tasks.create",
+    "tasks_update": "tasks.update",
+    "tasks_complete": "tasks.complete",
+    "tasks_delete": "tasks.delete",
+    "contacts_search": "contacts.search",
+    "contacts_get": "contacts.get",
+    "contacts_resolve_recipient": "contacts.resolve_recipient",
+    "automation_list": "automation.list",
+    "automation_create": "automation.create",
+    "automation_pause": "automation.pause",
+    "automation_resume": "automation.resume",
+    "automation_delete": "automation.delete",
+    "automation_run_now": "automation.run_now",
 }
 
 DIRECT_TOOL_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
@@ -266,6 +310,7 @@ DETERMINISTIC_DIRECT_TOOLS = {
     "github_get_file",
     "github_search_code",
     "github_get_diff",
+    "github_list_workflow_runs",
     "drive_help",
     "docs_help",
     "sheets_help",
@@ -276,7 +321,13 @@ DETERMINISTIC_DIRECT_TOOLS = {
     "tts_speak",
     "gmail_search_by_sender",
     "sheets_read_range",
+    "tasks_list",
+    "tasks_list_due",
+    "tasks_list_overdue",
+    "contacts_search",
+    "contacts_get",
+    "contacts_resolve_recipient",
+    "automation_list",
 }
 
 DIRECT_FRIENDLY_MULTISTEP_TOOLS = set(DETERMINISTIC_DIRECT_TOOLS)
-

@@ -58,6 +58,16 @@ def supervisor_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
                 "content": learning_guidance,
             }
         )
+    skill_name = ""
+    if service.skill_engine is not None:
+        skill_name, skill_guidance = service.skill_engine.start_guidance(
+            query=request.text,
+            request_id=state["request_id"],
+            chat_id=request.chat_id,
+            user_id=request.resolved_user_id(),
+        )
+        if skill_guidance:
+            messages_payload.append({"role": "system", "content": skill_guidance})
     messages_payload.append(
         {
             "role": "system",
@@ -70,6 +80,8 @@ def supervisor_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
         "messages": messages_payload,
         "learning_scopes": scopes,
         "agent_key": agent_key,
+        "skill_name": skill_name,
+        "skill_request_id": state["request_id"] if skill_name else "",
     }
 
 
