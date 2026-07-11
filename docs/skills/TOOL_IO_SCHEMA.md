@@ -270,7 +270,7 @@ These still rely mainly on free-text `instruction` and should be migrated next.
 2. Remove `instruction` from search/list flows where args already exist.
 3. Finish migrating remaining Google write/read actions from free-text `instruction` to action-specific args.
 4. Make the gateway normalize all workflow outputs to the same `ok/text/result/links/meta` contract.
-5. Keep web URL read/ask and GitHub read-only flows structured so the graph stays token-efficient.
+5. Keep web URL read/ask, Google Maps lookups, and GitHub browse flows structured so the graph stays token-efficient.
 
 ## Latest Implemented Progress
 
@@ -355,7 +355,7 @@ These still rely mainly on free-text `instruction` and should be migrated next.
 
 - Stage 12:
   - `web.read_url`, `web.summarize_url`, and `web.ask_url` now carry `fetchStrategy` end-to-end through planner, gateway, and sub-workflow normalization
-  - GitHub read-only follow-ups now cover releases, pull requests, and issues in both direct routing and selected-repo follow-up flows
+  - GitHub follow-ups now cover releases, pull requests, and issues in both direct routing and selected-repo follow-up flows
   - evaluator now fails GitHub/Web specialist responses that do not bring back tool evidence
 
 - Stage 13:
@@ -496,9 +496,9 @@ These still rely mainly on free-text `instruction` and should be migrated next.
   - Result: one more chunk of legacy instruction dependence is removed at the skill boundary itself, not just in the planner
 
 - Stage 29:
-  - The GitHub read-only tools now keep `instruction` out of the payload whenever repo / branch / commit / release / PR / issue / file / code-search fields are already structured, so the planner and skill layer stay compact
+  - The GitHub browse tools now keep `instruction` out of the payload whenever repo / branch / commit / release / PR / issue / file / code-search fields are already structured, so the planner and skill layer stay compact
   - This applies across the GitHub browse surfaces that phase 5 expands, while preserving the existing GitHub master workflow and not introducing a new orchestration shape
-  - Result: another large legacy instruction path is removed from the agent edge, and token usage stays more efficient on the GitHub read-only route
+  - Result: another large legacy instruction path is removed from the agent edge, and token usage stays more efficient on the GitHub browse route
 
 - Stage 30:
   - `sheets.update_range` now carries `targetId` / `targetName` / `rangeName` through the planner, skill wrapper, and leaf workflow, so update-range can stay structured when the sheet identity is already known

@@ -48,25 +48,46 @@
     {
       "id": "2eb81ffd-1805-4d4d-8a06-1060ccfdb3df",
       "name": "Google Calendar Find Event",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         -640,
         400
       ],
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || \"primary\" }}"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.startAt }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.endAt }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            }
+          ]
         },
-        "limit": 5,
-        "options": {
-          "timeMin": "={{ $json.startAt }}",
-          "timeMax": "={{ $json.endAt }}",
-          "query": "={{ $json.query }}"
-        }
+        "options": {}
       },
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -86,7 +107,7 @@
         400
       ],
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.eventId || item.summary);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: 'Mia chưa tìm thấy sự kiện phù hợp để đổi lịch.' } }];\n}\nconst item = rows[0];\nreturn [{ json: { ...source, ok: true, eventId: item.id || item.eventId || '', eventSummary: item.summary || source.query || '', eventLink: item.htmlLink || item.webViewLink || '' } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rawData = $input.first().json || {};\nconst rows = (rawData.items || []).filter((item) => item && (item.id || item.eventId || item.summary));\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: 'Mia chưa tìm thấy sự kiện phù hợp để đổi lịch.' } }];\n}\nconst item = rows[0];\nreturn [{ json: { ...source, ok: true, eventId: item.id || item.eventId || '', eventSummary: item.summary || source.query || '', eventLink: item.htmlLink || item.webViewLink || '' } }];"
       }
     },
     {

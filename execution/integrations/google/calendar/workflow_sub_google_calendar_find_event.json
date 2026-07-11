@@ -27,23 +27,44 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.after }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.before }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "={{ $json.limit || 5 }}"
+            }
+          ]
         },
-        "limit": 5,
-        "options": {
-          "timeMin": "={{ $json.after }}",
-          "timeMax": "={{ $json.before }}",
-          "query": "={{ $json.query }}"
-        }
+        "options": {}
       },
       "id": "2c39f18d-bb70-4a6c-85e9-58aba35a58f5",
       "name": "Google Calendar Find",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         512,
         0
@@ -58,7 +79,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric'\n  }).format(date);\n}\n\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false\n  }).format(date);\n}\n\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} đến ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\n\nconst source = $('Chuan Bi Tim Lich').item.json || {};\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((event) => event && Object.keys(event).length > 0 && (event.id || event.summary || event.start || event.end))\n  .slice(0, 3);\nconst query = source.query || source.rawText || '';\nconst links = [];\n\nlet text = '';\nif (!rows.length) {\n  text = query\n    ? `Mia chưa tìm thấy lịch nào khớp với \"${query}\".`\n    : 'Mia chưa tìm thấy lịch phù hợp.';\n} else {\n  text = query\n    ? `Mia tìm thấy ${rows.length} lịch khá khớp với \"${query}\":`\n    : `Mia tìm thấy ${rows.length} lịch phù hợp:`;\n  rows.forEach((event, index) => {\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `\\n${index + 1}. ${title} — ${formatRange(start, end)}`;\n    if (event.htmlLink && !links.includes(event.htmlLink)) links.push(event.htmlLink);\n  });\n  if (links.length) {\n    text += '\\n\\nMở nhanh lịch:';\n    links.slice(0, 3).forEach((link, index) => {\n      text += `\\n${index + 1}. ${link}`;\n    });\n  }\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'calendar.find_event',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: links.slice(0, 3),\n    result: { events: rows },\n    meta: { query, count: rows.length }\n  }\n}];\n"
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric'\n  }).format(date);\n}\n\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false\n  }).format(date);\n}\n\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} đến ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\n\nconst source = $('Chuan Bi Tim Lich').item.json || {};\nconst rawData = $input.first().json || {};\nconst rows = (rawData.items || [])\n  .filter((event) => event && (event.id || event.summary || event.start || event.end))\n  .slice(0, 3);\nconst query = source.query || source.rawText || '';\nconst links = [];\n\nlet text = '';\nif (!rows.length) {\n  text = query\n    ? `Mia chưa tìm thấy lịch nào khớp với \"${query}\".`\n    : 'Mia chưa tìm thấy lịch phù hợp.';\n} else {\n  text = query\n    ? `Mia tìm thấy ${rows.length} lịch khá khớp với \"${query}\":`\n    : `Mia tìm thấy ${rows.length} lịch phù hợp:`;\n  rows.forEach((event, index) => {\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `\\n${index + 1}. ${title} — ${formatRange(start, end)}`;\n    if (event.htmlLink && !links.includes(event.htmlLink)) links.push(event.htmlLink);\n  });\n  if (links.length) {\n    text += '\\n\\nMở nhanh lịch:';\n    links.slice(0, 3).forEach((link, index) => {\n      text += `\\n${index + 1}. ${link}` Milan;\n    });\n  }\n}\n\n// Clean up typo Milan\ntext = text.replace(\" Milan\", \"\");\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'calendar.find_event',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: links.slice(0, 3),\n    result: { events: rows },\n    meta: { query, count: rows.length }\n  }\n}];"
       },
       "id": "a4d33306-938e-430b-8771-7ba650461a92",
       "name": "Format Tim Lich",

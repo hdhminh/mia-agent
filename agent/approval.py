@@ -250,6 +250,54 @@ def _summarize_gateway_action(gateway_name: str, args: dict[str, Any] | None = N
     if gateway == "sheets.delete_sheet":
         title = _first_non_empty(payload.get("sheetName"), payload.get("spreadsheetId"))
         return t("approval.action.sheets_delete", default=f"xóa sheet {title}", title=title).strip()
+    if gateway == "github.create_issue":
+        repo = _first_non_empty(payload.get("repo"))
+        title = _first_non_empty(payload.get("title"))
+        parts = [t("approval.action.github_create_issue", default="tạo issue GitHub")]
+        if repo:
+            parts.append(repo)
+        if title:
+            parts.append(t("approval.action.github_title", default=f"tiêu đề {title}", title=title))
+        return " ".join(parts)
+    if gateway == "github.update_issue":
+        repo = _first_non_empty(payload.get("repo"))
+        number = _first_non_empty(payload.get("number"))
+        state = _first_non_empty(payload.get("state"))
+        parts = [t("approval.action.github_update_issue", default="cập nhật issue GitHub")]
+        if repo:
+            parts.append(repo)
+        if number:
+            parts.append(f"#{number}")
+        if state:
+            parts.append(t("approval.action.github_state", default=f"trạng thái {state}", state=state))
+        return " ".join(parts)
+    if gateway == "github.comment_issue":
+        repo = _first_non_empty(payload.get("repo"))
+        number = _first_non_empty(payload.get("number"))
+        return t("approval.action.github_comment_issue", default=f"bình luận issue #{number} ở {repo}", number=number, repo=repo).strip()
+    if gateway == "github.create_branch":
+        repo = _first_non_empty(payload.get("repo"))
+        branch = _first_non_empty(payload.get("branch"))
+        return t("approval.action.github_create_branch", default=f"tạo branch {branch} ở {repo}", branch=branch, repo=repo).strip()
+    if gateway == "github.update_file":
+        repo = _first_non_empty(payload.get("repo"))
+        path = _first_non_empty(payload.get("path"))
+        branch = _first_non_empty(payload.get("branch"))
+        return t("approval.action.github_update_file", default=f"cập nhật file {path} ở {repo} trên branch {branch}", path=path, repo=repo, branch=branch).strip()
+    if gateway == "github.create_pull_request":
+        repo = _first_non_empty(payload.get("repo"))
+        title = _first_non_empty(payload.get("title"))
+        head = _first_non_empty(payload.get("head"))
+        base = _first_non_empty(payload.get("base"))
+        return t("approval.action.github_create_pr", default=f"tạo pull request {title} từ {head} sang {base} ở {repo}", title=title, head=head, base=base, repo=repo).strip()
+    if gateway == "github.comment_pull_request":
+        repo = _first_non_empty(payload.get("repo"))
+        number = _first_non_empty(payload.get("number"))
+        return t("approval.action.github_comment_pr", default=f"bình luận pull request #{number} ở {repo}", number=number, repo=repo).strip()
+    if gateway == "github.rerun_failed_workflow":
+        repo = _first_non_empty(payload.get("repo"))
+        run_id = _first_non_empty(payload.get("runId"), payload.get("run_id"))
+        return t("approval.action.github_rerun_workflow", default=f"rerun workflow run {run_id} ở {repo}", run_id=run_id, repo=repo).strip()
     return gateway or t("approval.action.fallback", default="thao tác này")
 
 

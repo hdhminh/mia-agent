@@ -28,24 +28,42 @@
     {
       "id": "ccc55bb2-7d9a-48ef-8992-6cf003c70fa0",
       "name": "Google Calendar Busy Check",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         -640,
         240
       ],
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || \"primary\" }}"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.startAt }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.endAt }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "100"
+            }
+          ]
         },
-        "limit": 100,
-        "options": {
-          "timeMin": "={{ $json.startAt }}",
-          "timeMax": "={{ $json.endAt }}"
-        }
+        "options": {}
       },
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -65,7 +83,7 @@
         240
       ],
       "parameters": {
-        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst events = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.start || item.end);\nconst windowStart = new Date(source.startAt || Date.now());\nconst windowEnd = new Date(source.endAt || Date.now() + 24 * 60 * 60 * 1000);\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || 60) || 60, 1440));\nconst durationMs = durationMinutes * 60 * 1000;\nconst stepMs = 15 * 60 * 1000;\n\nconst busy = events\n  .map((ev) => {\n    const startRaw = ev.start?.dateTime || ev.start?.date || ev.start || ev.startAt || '';\n    const endRaw = ev.end?.dateTime || ev.end?.date || ev.end || ev.endAt || '';\n    return { start: new Date(startRaw), end: new Date(endRaw) };\n  })\n  .filter((ev) => Number.isFinite(ev.start.getTime()) && Number.isFinite(ev.end.getTime()))\n  .sort((a, b) => a.start - b.start);\n\nfunction overlaps(candidateStart, candidateEnd, interval) {\n  return candidateStart < interval.end && candidateEnd > interval.start;\n}\n\nconst slots = [];\nfor (let cursor = new Date(windowStart); cursor.getTime() + durationMs <= windowEnd.getTime(); cursor = new Date(cursor.getTime() + stepMs)) {\n  const candidateEnd = new Date(cursor.getTime() + durationMs);\n  const conflict = busy.some((interval) => overlaps(cursor, candidateEnd, interval));\n  if (!conflict) {\n    slots.push({ start: cursor.toISOString(), end: candidateEnd.toISOString() });\n  }\n  if (slots.length >= 8) break;\n}\n\nreturn [{ json: { ...source, ok: true, slots } }];"
+        "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rawData = $input.first().json || {};\nconst events = (rawData.items || []).filter((item) => item && (item.id || item.start || item.end));\nconst windowStart = new Date(source.startAt || Date.now());\nconst windowEnd = new Date(source.endAt || Date.now() + 24 * 60 * 60 * 1000);\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || 60) || 60, 1440));\nconst durationMs = durationMinutes * 60 * 1000;\nconst stepMs = 15 * 60 * 1000;\n\nconst busy = events\n  .map((ev) => {\n    const startRaw = ev.start?.dateTime || ev.start?.date || ev.start || ev.startAt || '';\n    const endRaw = ev.end?.dateTime || ev.end?.date || ev.end || ev.endAt || '';\n    return { start: new Date(startRaw), end: new Date(endRaw) };\n  })\n  .filter((ev) => Number.isFinite(ev.start.getTime()) && Number.isFinite(ev.end.getTime()))\n  .sort((a, b) => a.start - b.start);\n\nfunction overlaps(candidateStart, candidateEnd, interval) {\n  return candidateStart < interval.end && candidateEnd > interval.start;\n}\n\nconst slots = [];\nfor (let cursor = new Date(windowStart); cursor.getTime() + durationMs <= windowEnd.getTime(); cursor = new Date(cursor.getTime() + stepMs)) {\n  const candidateEnd = new Date(cursor.getTime() + durationMs);\n  const conflict = busy.some((interval) => overlaps(cursor, candidateEnd, interval));\n  if (!conflict) {\n    slots.push({ start: cursor.toISOString(), end: candidateEnd.toISOString() });\n  }\n  if (slots.length >= 8) break;\n}\n\nreturn [{ json: { ...source, ok: true, slots } }];"
       }
     },
     {

@@ -18,6 +18,10 @@ services:
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - NODES_EXCLUDE=["n8n-nodes-base.executeCommand","n8n-nodes-base.readWriteFile"]
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - MIA_MAPS_DEFAULT_LANGUAGE=${MIA_MAPS_DEFAULT_LANGUAGE:-vi}
+      - MIA_MAPS_DEFAULT_REGION=${MIA_MAPS_DEFAULT_REGION:-VN}
+      - MIA_MAPS_MAX_PLACE_RESULTS=${MIA_MAPS_MAX_PLACE_RESULTS:-5}
       - MIA_CORE_URL=${MIA_CORE_URL:-http://mia-core:8000/mia/chat}
       - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
       - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
@@ -107,6 +111,10 @@ services:
       - MIA_TOOL_GATEWAY_URL=${MIA_TOOL_GATEWAY_URL:-http://n8n:5678/webhook/mia-tool}
       - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
       - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - MIA_MAPS_DEFAULT_LANGUAGE=${MIA_MAPS_DEFAULT_LANGUAGE:-vi}
+      - MIA_MAPS_DEFAULT_REGION=${MIA_MAPS_DEFAULT_REGION:-VN}
+      - MIA_MAPS_MAX_PLACE_RESULTS=${MIA_MAPS_MAX_PLACE_RESULTS:-5}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GROQ_BASE_URL=${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
       - MIA_GROQ_STT_MODEL=${MIA_GROQ_STT_MODEL:-whisper-large-v3-turbo}
@@ -136,6 +144,8 @@ services:
 
 volumes:
   n8n_data:
+    external: true
+    name: n8n_n8n_data
   ollama_data:
   pg_data:
   memory_models:

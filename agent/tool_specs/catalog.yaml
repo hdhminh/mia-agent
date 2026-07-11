@@ -1456,6 +1456,106 @@
       ]
     },
     {
+      "name": "maps_compute_route",
+      "action": "maps.compute_route",
+      "domain": "maps",
+      "description": "maps compute route",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.compute_route",
+      "tags": [
+        "maps",
+        "compute",
+        "route"
+      ]
+    },
+    {
+      "name": "maps_geocode",
+      "action": "maps.geocode",
+      "domain": "maps",
+      "description": "maps geocode",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.geocode",
+      "tags": [
+        "maps",
+        "geocode"
+      ]
+    },
+    {
+      "name": "maps_help",
+      "action": "maps.help",
+      "domain": "maps",
+      "description": "maps help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.help",
+      "tags": [
+        "maps",
+        "help"
+      ]
+    },
+    {
+      "name": "maps_place_details",
+      "action": "maps.place_details",
+      "domain": "maps",
+      "description": "maps place details",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.place_details",
+      "tags": [
+        "maps",
+        "place",
+        "details"
+      ]
+    },
+    {
+      "name": "maps_reverse_geocode",
+      "action": "maps.reverse_geocode",
+      "domain": "maps",
+      "description": "maps reverse geocode",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.reverse_geocode",
+      "tags": [
+        "maps",
+        "reverse",
+        "geocode"
+      ]
+    },
+    {
+      "name": "maps_search_place",
+      "action": "maps.search_place",
+      "domain": "maps",
+      "description": "maps search place",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "maps.search_place",
+      "tags": [
+        "maps",
+        "search",
+        "place"
+      ]
+    },
+    {
       "name": "news_get",
       "action": "news.get",
       "domain": "news",

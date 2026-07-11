@@ -27,22 +27,40 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}",
-          "mode": "id"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.after }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.before }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "={{ $json.limit || 5 }}"
+            }
+          ]
         },
-        "limit": 5,
-        "options": {
-          "timeMin": "={{ $json.after }}",
-          "timeMax": "={{ $json.before }}"
-        }
+        "options": {}
       },
       "id": "5209c35f-c072-4ea4-a809-ecc99fc2cb4f",
       "name": "Google Calendar List",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         512,
         0
@@ -57,7 +75,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);\n}\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);\n}\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} → ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\nconst source = $('Chuan Bi Lich Ngay Mai').item.json;\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && (event.id || event.summary || event.start || event.end)).slice(0, 3);\nlet text = '';\nif (rows.length === 0) {\n  text = `Ngày mai ${owner} chưa có lịch nào cả.`;\n} else {\n  text = `Ngày mai ${owner} có mấy lịch như sau:`;\n  const links = [];\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    const link = event.htmlLink || '';\n    text += `\\n${i + 1}. ${title} — ${formatRange(start, end)}`;\n    if (link) links.push(link);\n  }\n  if (links.length) {\n    text += '\\n\\nMở nhanh lịch:';\n    links.slice(0, 3).forEach((link, index) => {\n      text += `\\n${index + 1}. ${link}`;\n    });\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);\n}\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);\n}\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} → ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\nconst source = $('Chuan Bi Lich Ngay Mai').item.json;\nconst owner = String($env.OWNER_DISPLAY_NAME || 'User').trim();\nconst rawData = $input.first().json || {};\nconst rows = (rawData.items || []).filter((event) => event && (event.id || event.summary || event.start || event.end)).slice(0, 3);\nlet text = '';\nif (rows.length === 0) {\n  text = `Ngày mai ${owner} chưa có lịch nào cả.`;\n} else {\n  text = `Ngày mai ${owner} có mấy lịch như sau:`;\n  const links = [];\n  for (let i = 0; i < rows.length; i++) {\n    const event = rows[i];\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    const link = event.htmlLink || '';\n    text += `\\n${i + 1}. ${title} — ${formatRange(start, end)}`;\n    if (link) links.push(link);\n  }\n  if (links.length) {\n    text += '\\n\\nMở nhanh lịch:';\n    links.slice(0, 3).forEach((link, index) => {\n      text += `\\n${index + 1}. ${link}`;\n    });\n  }\n}\nreturn [{ json: { chatId: source.chatId, text: text.trim() } }];"
       },
       "id": "9b5feb8b-425a-4536-ab1e-831939286107",
       "name": "Format Danh Sach Lich",

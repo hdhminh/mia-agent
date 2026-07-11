@@ -32,6 +32,7 @@ from agent.brain.parsers.google import (
     _infer_calendar_hint,
     _infer_gmail_hint,
     _infer_workspace_hint,
+    _infer_maps_hint,
 )
 from agent.brain.parsers.github import (
     _infer_github_hint,
@@ -129,7 +130,7 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if any_keyword_matches(normalized, ("shortlink", "short link", "rut gon link", "rút gọn link", "tao link ngan", "tạo link ngắn")):
         return RequestProfile(domain="general", hint_tool="shortlink_create", direct_confident=True, reason="shortlink request")
 
-    if any_keyword_matches(normalized, ("task", "tasks", "việc cần làm", "viec can lam", "to-do", "todo")):
+    if any_keyword_matches(normalized, ("task", "tasks", "việc cần làm", "viec can lam", "to-do", "todo", "nhiem vu", "nhiệm vụ", "nhac nho", "nhắc nhở", "cong viec", "công việc", "remind", "reminder")):
         if any_keyword_matches(normalized, ("quá hạn", "qua han", "overdue")):
             return RequestProfile(domain="workspace", hint_tool="tasks_list_overdue", direct_confident=True, reason="overdue tasks request")
         if any_keyword_matches(normalized, ("đến hạn", "den han", "due", "hôm nay", "hom nay")):
@@ -218,6 +219,9 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if domain == "gmail":
         hint_tool, direct_confident = _infer_gmail_hint(normalized, help_request)
         return RequestProfile(domain=domain, hint_tool=hint_tool, direct_confident=direct_confident, reason="gmail domain")
+    if domain == "maps":
+        hint_tool, direct_confident = _infer_maps_hint(normalized, help_request)
+        return RequestProfile(domain=domain, hint_tool=hint_tool, direct_confident=direct_confident, reason="maps domain")
     if domain == "google_full":
         return RequestProfile(domain=domain, hint_tool="", direct_confident=False, reason="multi-google domain")
     if domain == "workspace":

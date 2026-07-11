@@ -8,7 +8,7 @@ _locales_cache: dict[str, dict[str, Any]] = {}
 
 
 def get_locale() -> str:
-    return os.getenv("MIA_LOCALE", "en").strip().lower()
+    return os.getenv("MIA_LOCALE", "vi").strip().lower()
 
 
 def load_locale_data(locale: str) -> dict[str, Any]:

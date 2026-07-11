@@ -32,9 +32,10 @@ Agent Core (FastAPI / LangGraph)
    ▼ (Deterministic Direct Path)   ▼ (Domain / Agentic Path)
 DirectExecutor                   LangGraph Specialist Node
   - Fast execution for cheap,      - LangChain agent executing domain tools
-    read-only/deterministic tasks  - History trim & retry middlewares
-  - Maps to: weather, gold,        - Maps to: calendar, gmail, drive, docs,
-    news, search, shortlinks         sheets, github, media, google_full
+    deterministic read tasks       - History trim & retry middlewares
+  - Maps to: weather, gold,        - Maps to: calendar, gmail, maps, drive,
+    news, search, shortlinks,        docs, sheets, github, media, google_full
+    maps lookups
    │                               │
    └───────────────┬───────────────┘
                    │

@@ -55,6 +55,7 @@ GOOGLE_SERVICE_CUES: dict[str, tuple[str, ...]] = {
     "drive": ("drive", "google drive", "folder", "thu muc", "thư mục", "tep", "tệp", "file", "file drive"),
     "docs": ("docs", "google docs", "google doc", "doc", "tai lieu", "tài liệu", "van ban", "văn bản", "document"),
     "sheets": ("sheets", "sheet", "bang tinh", "bảng tính", "spreadsheet"),
+    "maps": ("map", "maps", "google maps", "ban do", "bản đồ", "dia chi", "địa chỉ", "toa do", "tọa độ", "chi duong", "chỉ đường", "duong di", "đường đi", "route", "places", "place"),
 }
 
 VIEW_ACTION_CUES = ("xem", "mo", "mở", "liet ke", "liệt kê", "check", "co gi", "có gì", "danh sach", "danh sách")

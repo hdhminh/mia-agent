@@ -15,6 +15,28 @@ from agent.brain.parsers import (
 from agent.brain.parsers.common import SOFT_FOLLOWUP_PATTERN
 
 
+_LAT_LNG_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)")
+
+
+def _extract_lat_lng(value: str) -> tuple[str, str]:
+    match = _LAT_LNG_PATTERN.search(str(value or ""))
+    if not match:
+        return "", ""
+    return match.group(1).strip(), match.group(2).strip()
+
+
+def _extract_route_points(value: str) -> tuple[str, str]:
+    patterns = (
+        r"(?:tu|từ|from)\s+(.+?)\s+(?:den|đến|to)\s+(.+)",
+        r"(?:chi duong|chỉ đường|duong di|đường đi)\s+(?:tu|từ|from)?\s*(.+?)\s+(?:den|đến|to)\s+(.+)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, str(value or ""), flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip(" ,.-"), match.group(2).strip(" ,.-")
+    return "", ""
+
+
 def build_direct_tool_args(
     tool_name: str,
     request_text: str,
@@ -1578,6 +1600,103 @@ def build_direct_tool_args(
                 payload.get("fileName"),
             )
         return with_optional_instruction(payload)
+
+    if tool_name in {
+        "maps_help",
+        "maps_geocode",
+        "maps_reverse_geocode",
+        "maps_search_place",
+        "maps_place_details",
+        "maps_compute_route",
+    }:
+        if tool_name == "maps_help":
+            return {}
+
+        if tool_name == "maps_geocode":
+            address = str(metadata.get("address") or "").strip()
+            if not address:
+                address = strip_prefixes(
+                    text,
+                    ("tim toa do", "tìm tọa độ", "geocode", "tim dia chi", "tìm địa chỉ", "dia chi", "địa chỉ"),
+                ).strip()
+            return with_optional_instruction(
+                {
+                    "address": address,
+                    "region": str(metadata.get("region") or "VN").strip(),
+                    "language": str(metadata.get("language") or "vi").strip(),
+                },
+                address,
+            )
+
+        if tool_name == "maps_reverse_geocode":
+            latitude = str(metadata.get("latitude") or "").strip()
+            longitude = str(metadata.get("longitude") or "").strip()
+            lat_lng = str(metadata.get("latLng") or metadata.get("lat_lng") or "").strip()
+            if not lat_lng and latitude and longitude:
+                lat_lng = f"{latitude},{longitude}"
+            if not lat_lng:
+                latitude, longitude = _extract_lat_lng(text)
+                if latitude and longitude:
+                    lat_lng = f"{latitude},{longitude}"
+            return with_optional_instruction(
+                {
+                    "latLng": lat_lng,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "language": str(metadata.get("language") or "vi").strip(),
+                },
+                lat_lng,
+                latitude,
+                longitude,
+            )
+
+        if tool_name == "maps_search_place":
+            query = str(metadata.get("query") or "").strip()
+            if not query:
+                query = strip_prefixes(
+                    text,
+                    ("tim dia diem", "tìm địa điểm", "tim quanh day", "tìm quanh đây", "nearby", "search place", "maps"),
+                ).strip()
+            return with_optional_instruction(
+                {
+                    "query": query,
+                    "locationBias": str(metadata.get("locationBias") or metadata.get("location_bias") or "").strip(),
+                    "region": str(metadata.get("region") or "VN").strip(),
+                    "language": str(metadata.get("language") or "vi").strip(),
+                    "maxResults": int(metadata.get("maxResults") or metadata.get("max_results") or 5),
+                    "openNow": bool(metadata.get("openNow") or metadata.get("open_now")),
+                },
+                query,
+            )
+
+        if tool_name == "maps_place_details":
+            place_id = str(metadata.get("placeId") or metadata.get("place_id") or "").strip()
+            return with_optional_instruction(
+                {
+                    "placeId": place_id,
+                    "language": str(metadata.get("language") or "vi").strip(),
+                },
+                place_id,
+            )
+
+        origin = str(metadata.get("origin") or "").strip()
+        destination = str(metadata.get("destination") or "").strip()
+        if not (origin and destination):
+            extracted_origin, extracted_destination = _extract_route_points(text)
+            origin = origin or extracted_origin
+            destination = destination or extracted_destination
+        return with_optional_instruction(
+            {
+                "origin": origin,
+                "destination": destination,
+                "travelMode": str(metadata.get("travelMode") or metadata.get("travel_mode") or "DRIVE").strip().upper(),
+                "departureTime": str(metadata.get("departureTime") or metadata.get("departure_time") or "").strip(),
+                "region": str(metadata.get("region") or "VN").strip(),
+                "language": str(metadata.get("language") or "vi").strip(),
+            },
+            origin,
+            destination,
+        )
 
     if tool_name == "drive_upload_file":
         file_id = str(metadata.get("fileId") or metadata.get("telegramFileId") or "").strip()

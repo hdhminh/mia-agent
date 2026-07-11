@@ -77,6 +77,14 @@ GITHUB_TOOL_NAMES = [
     "github_list_workflow_runs",
     "github_rerun_failed_workflow",
 ]
+MAPS_TOOL_NAMES = [
+    "maps_help",
+    "maps_geocode",
+    "maps_reverse_geocode",
+    "maps_search_place",
+    "maps_place_details",
+    "maps_compute_route",
+]
 WORKSPACE_TOOL_NAMES = [
     "drive_help",
     "drive_list_files",
@@ -127,6 +135,7 @@ AGENT_TOOLSETS: dict[str, list[str]] = {
     "calendar": MEMORY_TOOL_NAMES + CALENDAR_TOOL_NAMES,
     "gmail": MEMORY_TOOL_NAMES + GMAIL_TOOL_NAMES,
     "github": MEMORY_TOOL_NAMES + GITHUB_TOOL_NAMES,
+    "maps": MEMORY_TOOL_NAMES + MAPS_TOOL_NAMES,
     "workspace": MEMORY_TOOL_NAMES + WORKSPACE_TOOL_NAMES + TASK_TOOL_NAMES + CONTACT_TOOL_NAMES,
     "google_full": MEMORY_TOOL_NAMES + GOOGLE_FULL_TOOL_NAMES,
 }
@@ -196,6 +205,12 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "github_comment_pull_request": "github.comment_pull_request",
     "github_list_workflow_runs": "github.list_workflow_runs",
     "github_rerun_failed_workflow": "github.rerun_failed_workflow",
+    "maps_help": "maps.help",
+    "maps_geocode": "maps.geocode",
+    "maps_reverse_geocode": "maps.reverse_geocode",
+    "maps_search_place": "maps.search_place",
+    "maps_place_details": "maps.place_details",
+    "maps_compute_route": "maps.compute_route",
     "drive_help": "drive.help",
     "drive_list_files": "drive.list_files",
     "drive_search_file": "drive.search_file",
@@ -259,6 +274,8 @@ DIRECT_TOOL_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
     "github_list_releases": {"limit": 10},
     "github_list_pull_requests": {"limit": 10, "state": "open"},
     "github_list_issues": {"limit": 10, "state": "open"},
+    "maps_search_place": {"max_results": 5},
+    "maps_compute_route": {"travel_mode": "DRIVE"},
 }
 
 DIRECT_ROUTE_TOOLS = set(DIRECT_GATEWAY_TOOLS) | {"memory_recent", "time_now"}
@@ -311,6 +328,12 @@ DETERMINISTIC_DIRECT_TOOLS = {
     "github_search_code",
     "github_get_diff",
     "github_list_workflow_runs",
+    "maps_help",
+    "maps_geocode",
+    "maps_reverse_geocode",
+    "maps_search_place",
+    "maps_place_details",
+    "maps_compute_route",
     "drive_help",
     "docs_help",
     "sheets_help",

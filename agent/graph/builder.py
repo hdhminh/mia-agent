@@ -24,6 +24,7 @@ def build_mia_graph(service: Any, checkpointer: Any = None) -> CompiledStateGrap
 
     # Specialist nodes
     graph.add_node("specialist_github", partial(make_specialist_node("github"), service=service))
+    graph.add_node("specialist_maps", partial(make_specialist_node("maps"), service=service))
     graph.add_node("specialist_calendar", partial(make_specialist_node("calendar"), service=service))
     graph.add_node("specialist_gmail", partial(make_specialist_node("gmail"), service=service))
     graph.add_node("specialist_workspace", partial(make_specialist_node("workspace"), service=service))
@@ -53,6 +54,7 @@ def build_mia_graph(service: Any, checkpointer: Any = None) -> CompiledStateGrap
         route_to_specialist,
         {
             "github": "specialist_github",
+            "maps": "specialist_maps",
             "calendar": "specialist_calendar",
             "gmail": "specialist_gmail",
             "workspace": "specialist_workspace",
@@ -65,6 +67,7 @@ def build_mia_graph(service: Any, checkpointer: Any = None) -> CompiledStateGrap
     # All specialists route to the evaluator node
     specialists = [
         "specialist_github",
+        "specialist_maps",
         "specialist_calendar",
         "specialist_gmail",
         "specialist_workspace",

@@ -27,23 +27,44 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "value": "={{ $json.calendarId && $json.calendarId !== 'primary' ? $json.calendarId : 'primary' }}",
-          "mode": "id"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.after }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.before }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            }
+          ]
         },
-        "limit": 5,
-        "options": {
-          "timeMin": "={{ $json.after }}",
-          "timeMax": "={{ $json.before }}",
-          "query": "={{ $json.query }}"
-        }
+        "options": {}
       },
       "id": "1c567dbb-e7e3-4761-a00b-39620d77dd43",
       "name": "Google Calendar Find Delete",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         -768,
         48
@@ -58,7 +79,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nif (source.directEventId) {\n  return [{ json: { ...source, canDelete: true, eventId: source.directEventId, summary: source.query || 'Sự kiện đã chọn', start: '', end: '' } }];\n}\nif (!source.hasDeleteQuery) {\n  return [{ json: { ...source, canDelete: false } }];\n}\nconst rows = $input.all().map(item => item.json || {}).filter((event) => event && Object.keys(event).length > 0 && event.id);\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || '',\n    end: event.end?.dateTime || event.end?.date || ''\n  }\n}];"
+        "jsCode": "const source = $('Chuan Bi Xoa Lich').item.json;\nif (source.directEventId) {\n  return [{ json: { ...source, canDelete: true, eventId: source.directEventId, summary: source.query || 'Sự kiện đã chọn', start: '', end: '' } }];\n}\nif (!source.hasDeleteQuery) {\n  return [{ json: { ...source, canDelete: false } }];\n}\nconst rawData = $input.first().json || {};\nconst rows = (rawData.items || []).filter((event) => event && Object.keys(event).length > 0 && event.id);\nconst event = rows[0] || null;\nif (!event || !event.id) {\n  return [{ json: { ...source, canDelete: false, response: '⚠️ Không tìm thấy sự kiện phù hợp để xoá.' } }];\n}\nreturn [{\n  json: {\n    ...source,\n    canDelete: true,\n    eventId: event.id,\n    summary: event.summary || 'Không có tiêu đề',\n    start: event.start?.dateTime || event.start?.date || '',\n    end: event.end?.dateTime || event.end?.date || ''\n  }\n}];"
       },
       "id": "aa3ed762-0e89-49a0-8bdb-1abd1180f01d",
       "name": "Chon Lich Can Xoa",
@@ -91,19 +112,16 @@
     },
     {
       "parameters": {
-        "operation": "delete",
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
-        },
-        "eventId": "={{ $json.eventId }}",
+        "method": "DELETE",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events/{{ encodeURIComponent($json.eventId) }}",
         "options": {}
       },
       "id": "2f730cec-e1b0-4981-b6d0-4e0e481d7763",
       "name": "Google Calendar Delete",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         0,
         0

@@ -47,23 +47,19 @@
     },
     {
       "parameters": {
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
-        },
-        "start": "={{ $json.start }}",
-        "end": "={{ $json.end }}",
-        "additionalFields": {
-          "description": "={{ $json.description }}",
-          "location": "={{ $json.location }}",
-          "summary": "={{ $json.summary }}"
-        }
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { summary: $json.summary, description: $json.description, location: $json.location, start: { dateTime: $json.start, timeZone: $json.timezone }, end: { dateTime: $json.end, timeZone: $json.timezone } } }}",
+        "options": {}
       },
       "id": "de9748a1-4ed1-479c-8ef3-01f798e516ef",
       "name": "Google Calendar Create",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         0,
         0

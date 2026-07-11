@@ -1,0 +1,217 @@
+{
+  "name": "Sub-workflow: Google Maps Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "maps-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args && typeof source.args === 'object' ? source.args : source;\nconst tool = String(source.tool || '').trim();\nconst apiKey = String($env.GOOGLE_MAPS_API_KEY || '').trim();\nconst defaultLanguage = String($env.MIA_MAPS_DEFAULT_LANGUAGE || 'vi').trim() || 'vi';\nconst defaultRegion = String($env.MIA_MAPS_DEFAULT_REGION || 'VN').trim() || 'VN';\nconst maxPlaceResults = Math.max(1, Math.min(Number($env.MIA_MAPS_MAX_PLACE_RESULTS || 5), 10));\nif (tool !== 'maps.help' && !apiKey) {\n  return [{ json: { ok: false, tool, error: 'Missing GOOGLE_MAPS_API_KEY.' } }];\n}\nconst clean = (value) => String(value || '').trim();\nconst language = clean(args.language) || defaultLanguage;\nconst region = clean(args.region) || defaultRegion;\nlet method = 'GET';\nlet url = '';\nlet body = {};\nlet headers = {};\nlet fieldMask = '';\nlet helpMode = false;\nif (tool === 'maps.help') {\n  helpMode = true;\n} else if (tool === 'maps.geocode') {\n  const address = clean(args.address);\n  if (!address) return [{ json: { ok: false, tool, error: 'Address is required for geocoding.' } }];\n  url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&language=${encodeURIComponent(language)}&region=${encodeURIComponent(region)}&key=${encodeURIComponent(apiKey)}`;\n} else if (tool === 'maps.reverse_geocode') {\n  const latLng = clean(args.latLng) || `${clean(args.latitude)},${clean(args.longitude)}`.replace(/^,|,$/g, '');\n  if (!latLng || !/^-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?$/.test(latLng)) return [{ json: { ok: false, tool, error: 'latLng must be in \"lat,lng\" format.' } }];\n  url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(latLng)}&language=${encodeURIComponent(language)}&key=${encodeURIComponent(apiKey)}`;\n} else if (tool === 'maps.search_place') {\n  const query = clean(args.query);\n  if (!query) return [{ json: { ok: false, tool, error: 'Query is required for place search.' } }];\n  method = 'POST';\n  url = 'https://places.googleapis.com/v1/places:searchText';\n  headers = { 'X-Goog-Api-Key': apiKey };\n  fieldMask = 'places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.primaryType,places.rating,places.userRatingCount';\n  body = {\n    textQuery: query,\n    languageCode: language,\n    regionCode: region,\n    maxResultCount: Math.max(1, Math.min(Number(args.maxResults || maxPlaceResults), maxPlaceResults)),\n  };\n  if (clean(args.locationBias)) {\n    const pair = clean(args.locationBias).split(',').map((item) => item.trim());\n    if (pair.length === 2 && pair.every(Boolean)) {\n      body.locationBias = {\n        circle: {\n          center: { latitude: Number(pair[0]), longitude: Number(pair[1]) },\n          radius: 5000,\n        },\n      };\n    }\n  }\n  if (args.openNow) body.openNow = true;\n} else if (tool === 'maps.place_details') {\n  const placeId = clean(args.placeId);\n  if (!placeId) return [{ json: { ok: false, tool, error: 'placeId is required for place details.' } }];\n  url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${encodeURIComponent(language)}`;\n  headers = { 'X-Goog-Api-Key': apiKey };\n  fieldMask = 'id,displayName,formattedAddress,location,googleMapsUri,primaryType,nationalPhoneNumber,websiteUri,rating,userRatingCount,regularOpeningHours';\n} else if (tool === 'maps.compute_route') {\n  const origin = clean(args.origin);\n  const destination = clean(args.destination);\n  if (!origin || !destination) return [{ json: { ok: false, tool, error: 'Origin and destination are required for route computation.' } }];\n  method = 'POST';\n  url = 'https://routes.googleapis.com/directions/v2:computeRoutes';\n  headers = { 'X-Goog-Api-Key': apiKey };\n  fieldMask = 'routes.duration,routes.distanceMeters,routes.localizedValues,routes.legs,routes.viewport';\n  body = {\n    origin: { address: origin },\n    destination: { address: destination },\n    travelMode: clean(args.travelMode).toUpperCase() || 'DRIVE',\n    languageCode: language,\n    units: 'METRIC',\n  };\n  if (clean(args.departureTime)) body.departureTime = clean(args.departureTime);\n} else {\n  return [{ json: { ok: false, tool, error: `Unsupported Maps tool: ${tool}` } }];\n}\nreturn [{ json: { ...source, ok: true, tool, helpMode, method, url, body, headers, fieldMask, language, region } }];"
+      },
+      "id": "maps-normalize",
+      "name": "Normalize Maps Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "maps-can-continue",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.helpMode }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "maps-help-mode",
+      "name": "Help Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        740,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Maps Request').item.json || {};\nconst freeEssentials = '10.000';\nconst freePro = '5.000';\nconst freeEnterprise = '1.000';\nconst lines = [\n  'Google Maps hiện hỗ trợ các nhóm việc sau:',\n  '1. Tìm tọa độ từ địa chỉ hoặc tên địa điểm.',\n  '2. Tìm địa chỉ từ tọa độ.',\n  '3. Tìm địa điểm theo từ khóa như quán ăn, cà phê, ATM, khách sạn.',\n  '4. Xem chi tiết một địa điểm khi đã có placeId.',\n  '5. Tính tuyến đường giữa hai điểm và ước lượng quãng đường / thời gian.',\n  '',\n  'Guardrail chi phí:',\n  `- Luôn giới hạn kết quả tìm địa điểm ở mức thấp để tiết kiệm quota.`,\n  `- Theo trang pricing của Google Maps Platform, free usage cap mỗi SKU / tháng hiện là khoảng ${freeEssentials} lượt cho Essentials, ${freePro} cho Pro và ${freeEnterprise} cho Enterprise; tài khoản mới còn có trial credit riêng.`,\n  '- Nên bật budget alert trong Google Cloud để tránh vượt mức miễn phí.',\n];\nreturn [{ json: { ok: true, tool: source.tool || 'maps.help', text: lines.join('\\n'), result: { pricingReference: 'https://developers.google.com/maps/billing-and-pricing/pricing' }, links: ['https://developers.google.com/maps/billing-and-pricing/overview', 'https://developers.google.com/maps/billing-and-pricing/pricing'], meta: { requestId: source.requestId || '' } } }];"
+      },
+      "id": "maps-help-result",
+      "name": "Return Maps Help",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Api-Key",
+              "value": "={{ $json.headers['X-Goog-Api-Key'] || '' }}"
+            },
+            {
+              "name": "X-Goog-FieldMask",
+              "value": "={{ $json.fieldMask || '' }}"
+            }
+          ]
+        },
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "sendBody": "={{ ['POST','PATCH','PUT'].includes($json.method) }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "id": "maps-call-api",
+      "name": "Call Google Maps API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Maps Request').item.json || {};\nconst data = $json || {};\nconst tool = source.tool || '';\nconst failText = String(data.error_message || data.error?.message || data.message || '').trim();\nif (failText && tool.startsWith('maps.')) {\n  return [{ json: { ok: false, tool, text: failText, result: data, links: [], meta: { requestId: source.requestId || '' } } }];\n}\nfunction formatCoordinate(location) {\n  if (!location) return '';\n  if (location.latitude != null && location.longitude != null) return `${location.latitude}, ${location.longitude}`;\n  if (location.lat != null && location.lng != null) return `${location.lat}, ${location.lng}`;\n  return '';\n}\nlet text = 'Không có dữ liệu bản đồ phù hợp.';\nlet links = [];\nif (tool === 'maps.geocode' || tool === 'maps.reverse_geocode') {\n  const rows = Array.isArray(data.results) ? data.results : [];\n  if (rows.length) {\n    text = rows.slice(0, 5).map((item, index) => {\n      const coordinate = formatCoordinate(item.geometry?.location);\n      return `${index + 1}. ${item.formatted_address || '(không rõ địa chỉ)'}${coordinate ? ` | ${coordinate}` : ''}`;\n    }).join('\\n');\n  }\n} else if (tool === 'maps.search_place') {\n  const rows = Array.isArray(data.places) ? data.places : [];\n  if (rows.length) {\n    text = rows.map((item, index) => {\n      const coordinate = formatCoordinate(item.location);\n      const mapsLink = item.googleMapsUri || '';\n      if (mapsLink) links.push(mapsLink);\n      const rating = item.rating ? ` | rating ${item.rating}${item.userRatingCount ? ` (${item.userRatingCount})` : ''}` : '';\n      return `${index + 1}. ${item.displayName?.text || item.formattedAddress || '(không rõ tên)'} | ${item.formattedAddress || 'không rõ địa chỉ'}${coordinate ? ` | ${coordinate}` : ''}${rating}`;\n    }).join('\\n');\n  }\n} else if (tool === 'maps.place_details') {\n  const name = data.displayName?.text || '(không rõ tên)';\n  const address = data.formattedAddress || 'không rõ địa chỉ';\n  const coordinate = formatCoordinate(data.location);\n  const phone = data.nationalPhoneNumber ? `\\nSố điện thoại: ${data.nationalPhoneNumber}` : '';\n  const website = data.websiteUri ? `\\nWebsite: ${data.websiteUri}` : '';\n  const rating = data.rating ? `\\nĐánh giá: ${data.rating}${data.userRatingCount ? ` (${data.userRatingCount})` : ''}` : '';\n  if (data.googleMapsUri) links.push(data.googleMapsUri);\n  text = `${name}\\nĐịa chỉ: ${address}${coordinate ? `\\nTọa độ: ${coordinate}` : ''}${rating}${phone}${website}`;\n} else if (tool === 'maps.compute_route') {\n  const route = Array.isArray(data.routes) ? data.routes[0] : null;\n  if (route) {\n    const distance = route.localizedValues?.distance?.text || (route.distanceMeters ? `${Math.round(Number(route.distanceMeters) / 1000)} km` : 'không rõ');\n    const duration = route.localizedValues?.duration?.text || route.duration || 'không rõ';\n    const leg = Array.isArray(route.legs) ? route.legs[0] : null;\n    const startAddress = leg?.startLocation?.address || source.args?.origin || '';\n    const endAddress = leg?.endLocation?.address || source.args?.destination || '';\n    text = `Tuyến đường ${startAddress || 'điểm đi'} -> ${endAddress || 'điểm đến'}\\nQuãng đường: ${distance}\\nThời gian ước tính: ${duration}`;\n  }\n}\nreturn [{ json: { ok: true, tool, text, result: data, links: links.slice(0, 3), meta: { requestId: source.requestId || '' } } }];"
+      },
+      "id": "maps-normalize-result",
+      "name": "Normalize Maps Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, tool: $json.tool || '', text: String($json.error || 'Google Maps request rejected.'), result: {}, links: [], meta: {} } }];"
+      },
+      "id": "maps-return-error",
+      "name": "Return Maps Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Maps Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Maps Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Help Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Maps Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Help Mode?": {
+      "main": [
+        [
+          {
+            "node": "Return Maps Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Google Maps API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Google Maps API": {
+      "main": [
+        [
+          {
+            "node": "Normalize Maps Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

@@ -8,9 +8,11 @@
    route the action in `execution/gateway/workflow_mia_tool_gateway.json`.
 3. If it changes external state, add the gateway action to
    `DANGEROUS_GATEWAY_NAMES`; approval and idempotency then apply automatically.
-4. Regenerate the catalog:
+4. If it depends on a provider key or quota-bound API, document the required env
+   vars and cost guardrails in `.env.example` plus deployment docs.
+5. Regenerate the catalog:
    `python scripts/maintenance/generate_tool_catalog.py`.
-5. Run `python scripts/maintenance/validate_tool_contracts.py` and
+6. Run `python scripts/maintenance/validate_tool_contracts.py` and
    `python scripts/maintenance/validate_workflow_json.py`.
 
 `agent/tool_specs/catalog.yaml` is generated, not hand-edited. Its ToolSpec

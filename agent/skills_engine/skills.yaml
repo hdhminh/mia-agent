@@ -4,47 +4,182 @@
     {
       "name": "daily_briefing",
       "description": "Create a concise daily overview from calendar, email, tasks, and weather.",
-      "triggers": ["daily briefing", "tóm tắt ngày", "kế hoạch hôm nay", "briefing hôm nay"],
-      "required_capabilities": ["calendar_list_today", "gmail_list_inbox", "tasks_list_due", "weather_get"],
-      "steps": ["read today's calendar", "read important inbox items", "read due tasks", "fetch weather", "compose prioritized briefing"],
+      "triggers": [
+        "daily briefing",
+        "tóm tắt ngày",
+        "kế hoạch hôm nay",
+        "briefing hôm nay"
+      ],
+      "required_capabilities": [
+        "calendar_list_today",
+        "gmail_list_inbox",
+        "tasks_list_due",
+        "weather_get"
+      ],
+      "steps": [
+        "read today's calendar",
+        "read important inbox items",
+        "read due tasks",
+        "fetch weather",
+        "compose prioritized briefing"
+      ],
       "approval_points": [],
-      "success_criteria": ["calendar section exists", "priorities are explicit", "no external writes occur"]
+      "success_criteria": [
+        "calendar section exists",
+        "priorities are explicit",
+        "no external writes occur"
+      ]
     },
     {
       "name": "meeting_assistant",
       "description": "Resolve participants, find time, create a meeting, and prepare notes.",
-      "triggers": ["đặt lịch họp", "schedule a meeting", "meeting assistant", "sắp xếp cuộc họp"],
-      "required_capabilities": ["contacts_resolve_recipient", "calendar_find_free_slot", "calendar_create_event", "docs_create_doc", "gmail_send_email"],
-      "steps": ["resolve every participant", "find free slots", "present choices", "create event", "create meeting note", "send invitation"],
-      "approval_points": ["create calendar event", "send invitation"],
-      "success_criteria": ["participants are verified", "event id exists", "meeting note link exists"]
+      "triggers": [
+        "đặt lịch họp",
+        "schedule a meeting",
+        "meeting assistant",
+        "sắp xếp cuộc họp"
+      ],
+      "required_capabilities": [
+        "contacts_resolve_recipient",
+        "calendar_find_free_slot",
+        "calendar_create_event",
+        "docs_create_doc",
+        "gmail_send_email"
+      ],
+      "steps": [
+        "resolve every participant",
+        "find free slots",
+        "present choices",
+        "create event",
+        "create meeting note",
+        "send invitation"
+      ],
+      "approval_points": [
+        "create calendar event",
+        "send invitation"
+      ],
+      "success_criteria": [
+        "participants are verified",
+        "event id exists",
+        "meeting note link exists"
+      ]
     },
     {
       "name": "research_report",
       "description": "Research public sources and produce a traceable report.",
-      "triggers": ["research report", "nghiên cứu và viết báo cáo", "tìm nguồn và tổng hợp", "làm báo cáo nghiên cứu"],
-      "required_capabilities": ["search_web", "read_url", "summarize_url", "docs_create_doc"],
-      "steps": ["search sources", "read relevant sources", "deduplicate evidence", "synthesize findings", "create report document"],
-      "approval_points": ["create report document"],
-      "success_criteria": ["claims link to sources", "report has findings and limitations", "document link exists"]
+      "triggers": [
+        "research report",
+        "nghiên cứu và viết báo cáo",
+        "tìm nguồn và tổng hợp",
+        "làm báo cáo nghiên cứu"
+      ],
+      "required_capabilities": [
+        "search_web",
+        "read_url",
+        "summarize_url",
+        "docs_create_doc"
+      ],
+      "steps": [
+        "search sources",
+        "read relevant sources",
+        "deduplicate evidence",
+        "synthesize findings",
+        "create report document"
+      ],
+      "approval_points": [
+        "create report document"
+      ],
+      "success_criteria": [
+        "claims link to sources",
+        "report has findings and limitations",
+        "document link exists"
+      ]
     },
     {
       "name": "expense_receipt",
       "description": "Extract receipt data and record a verified expense.",
-      "triggers": ["xử lý hóa đơn", "expense receipt", "ghi chi phí", "scan hóa đơn"],
-      "required_capabilities": ["document_extract_fields", "drive_upload_file", "sheets_append_row"],
-      "steps": ["extract receipt fields", "show normalized values", "request confirmation", "upload receipt", "append expense row"],
-      "approval_points": ["upload receipt", "append expense row"],
-      "success_criteria": ["amount and date are verified", "receipt link exists", "sheet update succeeds"]
+      "triggers": [
+        "xử lý hóa đơn",
+        "expense receipt",
+        "ghi chi phí",
+        "scan hóa đơn"
+      ],
+      "required_capabilities": [
+        "document_extract_fields",
+        "drive_upload_file",
+        "sheets_append_row"
+      ],
+      "steps": [
+        "extract receipt fields",
+        "show normalized values",
+        "request confirmation",
+        "upload receipt",
+        "append expense row"
+      ],
+      "approval_points": [
+        "upload receipt",
+        "append expense row"
+      ],
+      "success_criteria": [
+        "amount and date are verified",
+        "receipt link exists",
+        "sheet update succeeds"
+      ]
     },
     {
       "name": "repository_review",
       "description": "Inspect a repository and produce an evidence-based engineering review.",
-      "triggers": ["review repository", "audit repo", "đánh giá toàn bộ dự án", "review codebase"],
-      "required_capabilities": ["github_get_repo_tree", "github_get_file", "github_search_code", "github_get_diff"],
-      "steps": ["map repository", "read runtime entry points", "inspect tests and deployment", "identify risks", "produce prioritized review"],
+      "triggers": [
+        "review repository",
+        "audit repo",
+        "đánh giá toàn bộ dự án",
+        "review codebase"
+      ],
+      "required_capabilities": [
+        "github_get_repo_tree",
+        "github_get_file",
+        "github_search_code",
+        "github_get_diff"
+      ],
+      "steps": [
+        "map repository",
+        "read runtime entry points",
+        "inspect tests and deployment",
+        "identify risks",
+        "produce prioritized review"
+      ],
       "approval_points": [],
-      "success_criteria": ["findings cite repository evidence", "priorities are explicit", "no write action occurs"]
+      "success_criteria": [
+        "findings cite repository evidence",
+        "priorities are explicit",
+        "no write action occurs"
+      ]
+    },
+    {
+      "name": "route_planner",
+      "description": "Find destinations and compute a practical route with Google Maps before the user commits to the trip.",
+      "triggers": [
+        "chỉ đường giúp mình",
+        "tìm đường đi",
+        "route planner",
+        "đi từ đâu tới đâu"
+      ],
+      "required_capabilities": [
+        "maps_search_place",
+        "maps_compute_route"
+      ],
+      "steps": [
+        "resolve or search the destination if needed",
+        "confirm origin and destination",
+        "compute the route",
+        "summarize distance, duration, and useful next steps"
+      ],
+      "approval_points": [],
+      "success_criteria": [
+        "origin and destination are explicit",
+        "route estimate is returned",
+        "no external writes occur"
+      ]
     }
   ]
 }

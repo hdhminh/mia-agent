@@ -54,6 +54,8 @@ def _infer_google_service(normalized: str) -> str:
     if not positive_services:
         return ""
     if len(positive_services) > 1:
+        if service_scores["maps"] > 0 and len(positive_services) == 1:
+            return "maps"
         if _has_multi_service_connector(normalized):
             return "google_full"
         gmail_actions = (
@@ -95,9 +97,31 @@ def _infer_google_service(normalized: str) -> str:
             return "workspace"
         return "google_full"
     service = positive_services[0]
+    if service == "maps":
+        return "maps"
     if service in {"drive", "docs", "sheets"}:
         return "workspace"
     return service
+
+
+def _infer_maps_hint(normalized: str, help_request: bool) -> tuple[str, bool]:
+    if help_request:
+        return "maps_help", True
+    if any_keyword_matches(normalized, ("toa do", "tọa độ", "lat", "lng", "kinh do", "kinh độ", "vi do", "vĩ độ")) and (
+        any_keyword_matches(normalized, ("dia chi", "địa chỉ", "o dau", "ở đâu", "gan dau", "gần đâu"))
+        or _matches_action(normalized, READ_ACTION_CUES)
+        or _matches_action(normalized, SEARCH_ACTION_CUES)
+    ):
+        return "maps_reverse_geocode", True
+    if any_keyword_matches(normalized, ("chi duong", "chỉ đường", "duong di", "đường đi", "route", "bao xa", "mất bao lâu", "mat bao lau")):
+        return "maps_compute_route", True
+    if any_keyword_matches(normalized, ("place id", "ma dia diem", "mã địa điểm", "chi tiet dia diem", "chi tiết địa điểm")):
+        return "maps_place_details", True
+    if any_keyword_matches(normalized, ("gan day", "gần đây", "nearby", "quan an", "cafe", "nha hang", "nhà hàng", "khach san", "khách sạn", "atm", "dia diem", "địa điểm")):
+        return "maps_search_place", True
+    if any_keyword_matches(normalized, ("dia chi", "địa chỉ", "toa do", "tọa độ", "geocode")):
+        return "maps_geocode", True
+    return "maps_search_place", False
 
 
 def _infer_calendar_hint(normalized: str, help_request: bool) -> tuple[str, bool]:

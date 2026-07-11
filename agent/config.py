@@ -117,7 +117,7 @@ class Settings:
             evaluator_mode=os.getenv("MIA_EVALUATOR_MODE", "hard").strip().lower(),
             evaluator_max_retries=int(os.getenv("MIA_EVALUATOR_MAX_RETRIES", "2")),
             owner_display_name=os.getenv("OWNER_DISPLAY_NAME", "User").strip(),
-            locale=os.getenv("MIA_LOCALE", "en").strip().lower(),
+            locale=os.getenv("MIA_LOCALE", "vi").strip().lower(),
         )
 
     def validate(self) -> None:

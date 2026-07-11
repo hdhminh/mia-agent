@@ -1,0 +1,72 @@
+﻿services:
+  memory-embedder:
+    build:
+      context: ./embedder
+    restart: unless-stopped
+    environment:
+      - EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "127.0.0.1:8010:8000"
+    volumes:
+      - memory_models:/models
+    networks:
+      - mia-core-net
+
+  mia-core:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.agent
+    restart: unless-stopped
+    depends_on:
+      - memory-embedder
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_HTTP_REFERER=${OPENROUTER_HTTP_REFERER:-https://n8n.example.com}
+      - OPENROUTER_X_TITLE=${OPENROUTER_X_TITLE:-Mia LangChain Core}
+      - PRIMARY_LLM_PROVIDER=${PRIMARY_LLM_PROVIDER:-openrouter}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - MIA_DEEPSEEK_MODEL=${MIA_DEEPSEEK_MODEL:-deepseek-v4-flash}
+      - MIA_MODEL=${MIA_MODEL:-openai/gpt-4.1-mini}
+      - MIA_POSTGRES_URI=${MIA_POSTGRES_URI:-postgresql://n8n:n8n_password@host.docker.internal:5432/vectordb?sslmode=disable}
+      - MIA_MEMORY_EMBEDDER_URL=${MIA_MEMORY_EMBEDDER_URL:-http://memory-embedder:8000/embed}
+      - MIA_TOOL_GATEWAY_URL=${MIA_TOOL_GATEWAY_URL:-http://host.docker.internal:5678/webhook/mia-tool}
+      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
+      - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_BASE_URL=${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      - MIA_GROQ_STT_MODEL=${MIA_GROQ_STT_MODEL:-whisper-large-v3-turbo}
+      - MIA_GROQ_TTS_MODEL=${MIA_GROQ_TTS_MODEL:-canopylabs/orpheus-v1-english}
+      - MIA_GROQ_TTS_VOICE=${MIA_GROQ_TTS_VOICE:-troy}
+      - MIA_GROQ_TTS_FORMAT=${MIA_GROQ_TTS_FORMAT:-wav}
+      - MIA_GROQ_VISION_MODEL=${MIA_GROQ_VISION_MODEL:-meta-llama/llama-4-scout-17b-16e-instruct}
+      - MIA_OCR_LANGUAGES=${MIA_OCR_LANGUAGES:-vie+eng}
+      - MIA_TIMEZONE=${MIA_TIMEZONE:-Asia/Ho_Chi_Minh}
+      - MIA_MODEL_TEMPERATURE=${MIA_MODEL_TEMPERATURE:-0}
+      - MIA_MODEL_MAX_TOKENS=${MIA_MODEL_MAX_TOKENS:-900}
+      - MIA_RECURSION_LIMIT=${MIA_RECURSION_LIMIT:-12}
+      - MIA_REQUEST_TIMEOUT_SECONDS=${MIA_REQUEST_TIMEOUT_SECONDS:-60}
+      - MIA_WEB_MAX_RESPONSE_BYTES=${MIA_WEB_MAX_RESPONSE_BYTES:-2097152}
+      - MIA_WEB_MAX_REDIRECTS=${MIA_WEB_MAX_REDIRECTS:-5}
+      - MIA_MEDIA_MAX_INPUT_BYTES=${MIA_MEDIA_MAX_INPUT_BYTES:-26214400}
+      - MIA_API_RATE_LIMIT_PER_MINUTE=${MIA_API_RATE_LIMIT_PER_MINUTE:-120}
+      - MIA_MCP_SERVERS_JSON=${MIA_MCP_SERVERS_JSON:-}
+      - MIA_AUTOMATION_POLL_SECONDS=${MIA_AUTOMATION_POLL_SECONDS:-30}
+      - MIA_EVALUATOR_MODE=${MIA_EVALUATOR_MODE:-hard}
+      - MIA_EVALUATOR_MAX_RETRIES=${MIA_EVALUATOR_MAX_RETRIES:-2}
+      - OWNER_DISPLAY_NAME=${OWNER_DISPLAY_NAME:-User}
+    ports:
+      - "0.0.0.0:8000:8000"
+    networks:
+      - mia-core-net
+
+volumes:
+  memory_models:
+
+networks:
+  mia-core-net:
+    driver: bridge

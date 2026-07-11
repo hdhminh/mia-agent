@@ -25,6 +25,8 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
     if looks_multi_step(request_text):
         if profile.domain in {"calendar", "gmail", "workspace", "google_full"}:
             return "google_full"
+        if profile.domain == "maps":
+            return "maps"
         return "general"
 
     if profile.domain == "calendar":
@@ -33,6 +35,8 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
         return "gmail"
     if profile.domain == "github":
         return "github"
+    if profile.domain == "maps":
+        return "maps"
     if profile.domain == "google_full":
         return "google_full"
     if profile.domain == "media":
@@ -45,7 +49,9 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
         return "gmail"
     if hint_tool.startswith("github_"):
         return "github"
-    if hint_tool.startswith(("drive_", "docs_", "sheets_")):
+    if hint_tool.startswith("maps_"):
+        return "maps"
+    if hint_tool.startswith(("drive_", "docs_", "sheets_", "tasks_")):
         return "workspace"
     return "general"
 

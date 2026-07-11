@@ -47,22 +47,40 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.calendarId || $json.payload?.calendarId || 'primary' }}"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($json.calendarId) }}/events",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "timeMin",
+              "value": "={{ $json.start }}"
+            },
+            {
+              "name": "timeMax",
+              "value": "={{ $json.end }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "orderBy",
+              "value": "startTime"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            }
+          ]
         },
-        "limit": 5,
-        "options": {
-          "timeMin": "={{ $json.start }}",
-          "timeMax": "={{ $json.end }}"
-        }
+        "options": {}
       },
       "id": "fba15e2a-caa8-467f-8d58-1de47b7d4ce0",
       "name": "Google Calendar Busy Check",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "alwaysOutputData": true,
       "position": [
         -1408,
@@ -77,7 +95,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric'\n  }).format(date);\n}\n\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false\n  }).format(date);\n}\n\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} đến ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\n\nconst source = $('Chuan Bi Kiem Tra Ranh').item.json || {};\nconst conflicts = $input.all().map((item) => item.json || {}).filter((event) => event.id || event.summary);\nconst available = conflicts.length === 0;\n\nlet text = `Mia kiểm tra khung ${formatRange(source.start, source.end)} rồi. `;\nif (available) {\n  text += 'Khung này đang rảnh.';\n} else {\n  text += `Khung này đang vướng ${conflicts.length} lịch:`;\n  conflicts.slice(0, 3).forEach((event, index) => {\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `\\n${index + 1}. ${title} — ${formatRange(start, end)}`;\n  });\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'calendar.check_availability',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: [],\n    result: { available, conflicts: conflicts.slice(0, 3) },\n    meta: { start: source.start || '', end: source.end || '' }\n  }\n}];\n"
+        "jsCode": "function toDate(value) {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric'\n  }).format(date);\n}\n\nfunction formatTime(date) {\n  return new Intl.DateTimeFormat('vi-VN', {\n    timeZone: 'Asia/Ho_Chi_Minh',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false\n  }).format(date);\n}\n\nfunction formatRange(startValue, endValue) {\n  const startDate = toDate(startValue);\n  const endDate = toDate(endValue);\n  if (!startDate) return startValue || '';\n  if (!endDate) return `${formatTime(startDate)}, ${formatDate(startDate)}`;\n  const sameDay = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });\n  if (sameDay) return `${formatTime(startDate)} - ${formatTime(endDate)}, ${formatDate(startDate)}`;\n  return `${formatTime(startDate)}, ${formatDate(startDate)} đến ${formatTime(endDate)}, ${formatDate(endDate)}`;\n}\n\nconst source = $('Chuan Bi Kiem Tra Ranh').item.json || {};\nconst rawData = $input.first().json || {};\nconst conflicts = (rawData.items || []).filter((event) => event && (event.id || event.summary));\nconst available = conflicts.length === 0;\n\nlet text = `Mia kiểm tra khung ${formatRange(source.start, source.end)} rồi. `;\nif (available) {\n  text += 'Khung này đang rảnh.';\n} else {\n  text += `Khung này đang vướng ${conflicts.length} lịch:`;\n  conflicts.slice(0, 3).forEach((event, index) => {\n    const title = event.summary || 'Không có tiêu đề';\n    const start = event.start?.dateTime || event.start?.date || '';\n    const end = event.end?.dateTime || event.end?.date || '';\n    text += `\\n${index + 1}. ${title} — ${formatRange(start, end)}`;\n  });\n}\n\nreturn [{\n  json: {\n    ok: true,\n    tool: 'calendar.check_availability',\n    chatId: source.chatId || '',\n    text: text.trim(),\n    links: [],\n    result: { available, conflicts: conflicts.slice(0, 3) },\n    meta: { start: source.start || '', end: source.end || '' }\n  }\n}];"
       },
       "id": "d276b0fa-5f23-4635-bed4-edd8c4ec0cbb",
       "name": "Format Kiem Tra Ranh",
