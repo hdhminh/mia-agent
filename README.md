@@ -13,6 +13,7 @@ Mia is an AI agent that manages your digital life through natural conversation:
 | Gmail         | Read, search, compose, reply emails             |
 | Calendar      | Schedule, reschedule, check availability        |
 | Google Maps   | Geocode, reverse geocode, place search, routing |
+| Smart Home    | Control Home Assistant devices, scenes, and room status |
 | Tasks/Contacts| Manage tasks and safely resolve recipients      |
 | Drive / Docs  | Full CRUD on Drive, Docs, and Sheets            |
 | Web           | Search, read URLs, summarize pages              |
@@ -125,6 +126,11 @@ Maps note:
 - Set `GOOGLE_MAPS_API_KEY` and keep `MIA_MAPS_MAX_PLACE_RESULTS` low by default to control quota.
 - Google Maps Platform pricing is now tracked by per-SKU monthly free usage caps instead of one shared monthly credit.
 
+Smart home note:
+- The stack can now run a local Home Assistant container at `http://<LAN-IP>:8123`.
+- Mia only controls entities carrying the Home Assistant label named by `MIA_HOME_ALLOWED_LABEL` (default `mia_allowed`).
+- Recommended first setup: connect Tuya, Xiaomi, and Google Cast directly in Home Assistant, assign Areas, then label only the entities Mia is allowed to touch.
+
 ---
 
 ## Documentation
@@ -137,6 +143,7 @@ Maps note:
 | [Execution Layer](docs/architecture/EXECUTION_LAYER.md)| n8n workflow design and gateway     |
 | [Capability Map](docs/skills/CAPABILITY_MAP.md)       | Full list of Mia's abilities        |
 | [Deployment](docs/deployment/SETUP.md)                | Production deployment guide         |
+| [Home Assistant setup](docs/deployment/HOME_ASSISTANT_SETUP.md) | Practical smart-home rollout |
 | [Platform upgrade](docs/deployment/UPGRADE_MIA_PLATFORM.md) | Migration and rollout checklist |
 | [Security model](docs/security/SECURITY_MODEL.md)      | Auth, approval and network controls  |
 | [Adding tools and skills](docs/skills/ADDING_TOOLS_AND_SKILLS.md) | Extension guide |
@@ -149,4 +156,3 @@ Maps note:
 
 This is **not** open-source software. Unauthorized copying, distribution, or use
 is strictly prohibited. See [LICENSE](LICENSE) for full terms.
-

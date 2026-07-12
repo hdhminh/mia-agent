@@ -31,6 +31,13 @@ cp .env.example .env
 | `MIA_POSTGRES_URI` | PostgreSQL URI connection string (defaults to internal container). |
 | `MIA_TOOL_GATEWAY_TOKEN` | Shared secret token to authenticate Python Agent Core -> n8n. |
 | `MIA_CORE_API_TOKEN` | Shared secret token to authenticate n8n -> Python Agent Core. |
+| `HOME_ASSISTANT_URL` | Base URL for Home Assistant, recommended `http://host.docker.internal:8123` from the n8n container. |
+| `HOME_ASSISTANT_TOKEN` | Home Assistant long-lived access token used by the smart-home workflow. |
+| `MIA_HOME_ALLOWED_LABEL` | Home Assistant label name Mia is allowed to control, default `mia_allowed`. |
+| `MIA_HOME_DASHBOARD_URL` | Local Lovelace URL shown back to the user, for example `http://192.168.1.10:8123`. |
+| `MIA_HOME_DEFAULT_AREA` | Optional default area such as `Phòng ngủ` to bias ambiguous device lookups. |
+| `MIA_HOME_ENTITY_ALIASES_JSON` | Optional JSON map from natural nicknames to exact entity IDs. |
+| `MIA_HOME_TTS_ENTITY_ID` | Optional TTS provider entity used when Mia speaks through a media player. |
 
 ---
 
@@ -41,11 +48,12 @@ Run the entire stack in the background:
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 
-This starts four core containers:
+This starts the core containers:
 1. `n8n`: The integration execution layer (runs on port `5678`).
 2. `postgres`: Stores user conversation checkpoints, learning insights, and long-term memory.
 3. `memory-embedder`: Serves semantic embeddings for text storage (runs on port `8010`).
 4. `mia-core`: The FastAPI Python agent engine (runs on port `8000`).
+5. `home-assistant`: Local smart-home dashboard and device hub (host network, usually `8123`).
 
 ---
 
@@ -58,4 +66,19 @@ python scripts/maintenance/sync_workflows.py execution/gateway/workflow_mia_tool
 
 # Sync other integration workflows as needed
 python scripts/maintenance/sync_workflows.py execution/integrations/google/calendar/workflow_sub_google_calendar_master.json
+python scripts/maintenance/sync_workflows.py --create-missing execution/integrations/homeassistant/workflow_sub_home_assistant_smart_home_master.json
 ```
+
+## 5. Home Assistant Labeling
+
+For Mia smart-home control:
+- Put devices into proper Home Assistant Areas such as `Phòng ngủ` and `Phòng tắm`.
+- Add the label `mia_allowed` only to entities Mia may control.
+- Optional: configure `MIA_HOME_ENTITY_ALIASES_JSON` for custom nicknames and `MIA_HOME_TTS_ENTITY_ID` for speaker announcements.
+- Use `python scripts/maintenance/bootstrap_home_assistant_inventory.py` after you have a token to inspect visible entities and generate alias suggestions.
+- Use `python scripts/maintenance/check_smarthome_readiness.py` for a quick end-to-end readiness report.
+- If an IR-controlled fan or air-conditioner shows as `unsupported`, prefer exposing Home Assistant `script` or `scene` entities and label those instead of the raw unsupported device.
+
+## 6. Practical Smart-Home Rollout
+
+For the full step-by-step rollout, naming guidance, and bootstrap commands, see [Home Assistant setup](HOME_ASSISTANT_SETUP.md).

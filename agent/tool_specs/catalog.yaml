@@ -1772,6 +1772,224 @@
       ]
     },
     {
+      "name": "smarthome_announce",
+      "action": "smarthome.announce",
+      "domain": "smarthome",
+      "description": "smarthome announce",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.announce",
+      "tags": [
+        "smarthome",
+        "announce"
+      ]
+    },
+    {
+      "name": "smarthome_help",
+      "action": "smarthome.help",
+      "domain": "smarthome",
+      "description": "smarthome help",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.help",
+      "tags": [
+        "smarthome",
+        "help"
+      ]
+    },
+    {
+      "name": "smarthome_list_areas",
+      "action": "smarthome.list_areas",
+      "domain": "smarthome",
+      "description": "smarthome list areas",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.list_areas",
+      "tags": [
+        "smarthome",
+        "list",
+        "areas"
+      ]
+    },
+    {
+      "name": "smarthome_list_devices",
+      "action": "smarthome.list_devices",
+      "domain": "smarthome",
+      "description": "smarthome list devices",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.list_devices",
+      "tags": [
+        "smarthome",
+        "list",
+        "devices"
+      ]
+    },
+    {
+      "name": "smarthome_room_status",
+      "action": "smarthome.room_status",
+      "domain": "smarthome",
+      "description": "smarthome room status",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.room_status",
+      "tags": [
+        "smarthome",
+        "room",
+        "status"
+      ]
+    },
+    {
+      "name": "smarthome_run_scene",
+      "action": "smarthome.run_scene",
+      "domain": "smarthome",
+      "description": "smarthome run scene",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.run_scene",
+      "tags": [
+        "smarthome",
+        "run",
+        "scene"
+      ]
+    },
+    {
+      "name": "smarthome_set_climate",
+      "action": "smarthome.set_climate",
+      "domain": "smarthome",
+      "description": "smarthome set climate",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.set_climate",
+      "tags": [
+        "smarthome",
+        "set",
+        "climate"
+      ]
+    },
+    {
+      "name": "smarthome_set_fan",
+      "action": "smarthome.set_fan",
+      "domain": "smarthome",
+      "description": "smarthome set fan",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.set_fan",
+      "tags": [
+        "smarthome",
+        "set",
+        "fan"
+      ]
+    },
+    {
+      "name": "smarthome_set_light",
+      "action": "smarthome.set_light",
+      "domain": "smarthome",
+      "description": "smarthome set light",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.set_light",
+      "tags": [
+        "smarthome",
+        "set",
+        "light"
+      ]
+    },
+    {
+      "name": "smarthome_set_media",
+      "action": "smarthome.set_media",
+      "domain": "smarthome",
+      "description": "smarthome set media",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.set_media",
+      "tags": [
+        "smarthome",
+        "set",
+        "media"
+      ]
+    },
+    {
+      "name": "smarthome_toggle",
+      "action": "smarthome.toggle",
+      "domain": "smarthome",
+      "description": "smarthome toggle",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.toggle",
+      "tags": [
+        "smarthome",
+        "toggle"
+      ]
+    },
+    {
+      "name": "smarthome_turn_off",
+      "action": "smarthome.turn_off",
+      "domain": "smarthome",
+      "description": "smarthome turn off",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.turn_off",
+      "tags": [
+        "smarthome",
+        "turn",
+        "off"
+      ]
+    },
+    {
+      "name": "smarthome_turn_on",
+      "action": "smarthome.turn_on",
+      "domain": "smarthome",
+      "description": "smarthome turn on",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "smarthome.turn_on",
+      "tags": [
+        "smarthome",
+        "turn",
+        "on"
+      ]
+    },
+    {
       "name": "summarize_url",
       "action": "web.summarize_url",
       "domain": "web",

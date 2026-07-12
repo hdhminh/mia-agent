@@ -68,6 +68,10 @@
 - `contacts_get`
 - `contacts_resolve_recipient`
 - `automation_list`
+- `smarthome_help`
+- `smarthome_list_areas`
+- `smarthome_list_devices`
+- `smarthome_room_status`
 
 ## Domain Agent Candidates
 
@@ -119,6 +123,22 @@
 - Google Tasks: list, due, overdue, create, update, complete, delete
 - Google Contacts: search, get, resolve recipient candidates
 - Automation: list, create, pause, resume, delete, run now
+
+### `smarthome`
+
+- `smarthome_help`
+- `smarthome_list_areas`
+- `smarthome_list_devices`
+- `smarthome_room_status`
+- `smarthome_turn_on`
+- `smarthome_turn_off`
+- `smarthome_toggle`
+- `smarthome_set_light`
+- `smarthome_set_climate`
+- `smarthome_set_fan`
+- `smarthome_set_media`
+- `smarthome_announce`
+- `smarthome_run_scene`
 
 ### Reusable Skills
 

@@ -180,6 +180,40 @@
         "route estimate is returned",
         "no external writes occur"
       ]
+    },
+    {
+      "name": "home_control",
+      "description": "Control Home Assistant devices in a room with safe target resolution and fast direct actions.",
+      "triggers": [
+        "bật đèn phòng ngủ",
+        "tắt máy lạnh",
+        "home control",
+        "điều khiển nhà thông minh"
+      ],
+      "required_capabilities": [
+        "smarthome_list_devices",
+        "smarthome_room_status",
+        "smarthome_turn_on",
+        "smarthome_turn_off",
+        "smarthome_set_light",
+        "smarthome_set_climate",
+        "smarthome_set_fan",
+        "smarthome_set_media",
+        "smarthome_run_scene"
+      ],
+      "steps": [
+        "resolve the target room or device inside the allowed Home Assistant scope",
+        "pick the smallest smart-home action that matches the user's intent",
+        "execute immediately when the target is clear",
+        "ask briefly only when the device match is ambiguous or missing",
+        "summarize the result in natural language"
+      ],
+      "approval_points": [],
+      "success_criteria": [
+        "the target room or device is explicit",
+        "only allowed devices are touched",
+        "the user receives the resulting state or action outcome"
+      ]
     }
   ]
 }

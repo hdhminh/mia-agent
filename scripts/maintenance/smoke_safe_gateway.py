@@ -101,6 +101,7 @@ def check_chat_case(name: str, text: str, expected_tool: str) -> None:
 
 def main() -> int:
     checks: list[tuple[str, str, dict[str, Any], str, bool | None]] = [
+        ("smarthome_help", "smarthome.help", {}, "nhà thông minh mia làm được gì", True),
         ("calendar_create_missing", "calendar.create_event", {}, "tạo lịch", False),
         ("gmail_send_missing", "gmail.send_email", {}, "gửi mail", False),
         (

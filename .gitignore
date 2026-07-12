@@ -5,6 +5,13 @@
 # Logs and databases
 logs/
 *.log
+infra/homeassistant/config/.HA_VERSION
+infra/homeassistant/config/.cloud/
+infra/homeassistant/config/.ha_run.lock
+infra/homeassistant/config/.storage/
+infra/homeassistant/config/home-assistant.log*
+infra/homeassistant/config/home-assistant_v2.db*
+infra/homeassistant/config/tts/
 
 # Pyenv / Virtual environments
 .venv/

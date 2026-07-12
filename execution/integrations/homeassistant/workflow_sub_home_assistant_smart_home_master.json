@@ -1,0 +1,397 @@
+{
+  "name": "Sub-workflow: Home Assistant Smart Home Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "smarthome-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args && typeof source.args === 'object' ? source.args : source;\nconst tool = String(source.tool || '').trim();\nconst baseUrl = String($env.HOME_ASSISTANT_URL || '').trim().replace(/\\/+$/, '');\nconst token = String($env.HOME_ASSISTANT_TOKEN || '').trim();\nconst allowedLabel = String($env.MIA_HOME_ALLOWED_LABEL || 'mia_allowed').trim();\nconst allowedDomains = String($env.MIA_HOME_ALLOWED_DOMAINS || 'light,switch,fan,climate,media_player,scene,script')\n  .split(',').map((item) => item.trim()).filter(Boolean);\nconst dashboardUrl = String($env.MIA_HOME_DASHBOARD_URL || '').trim();\nconst defaultArea = String($env.MIA_HOME_DEFAULT_AREA || '').trim();\nconst ttsEntityId = String($env.MIA_HOME_TTS_ENTITY_ID || '').trim();\nlet aliases = {};\ntry {\n  aliases = JSON.parse(String($env.MIA_HOME_ENTITY_ALIASES_JSON || '{}').trim() || '{}');\n} catch (error) {\n  aliases = {};\n}\nconst supportedTools = new Set([\n  'smarthome.help',\n  'smarthome.list_areas',\n  'smarthome.list_devices',\n  'smarthome.room_status',\n  'smarthome.turn_on',\n  'smarthome.turn_off',\n  'smarthome.toggle',\n  'smarthome.set_light',\n  'smarthome.set_climate',\n  'smarthome.set_fan',\n  'smarthome.set_media',\n  'smarthome.announce',\n  'smarthome.run_scene',\n]);\nif (!supportedTools.has(tool)) {\n  return [{ json: { ok: false, tool, text: `Unsupported smart home tool: ${tool}` } }];\n}\nif (tool !== 'smarthome.help' && (!baseUrl || !token)) {\n  return [{ json: { ok: false, tool, text: 'Thiếu HOME_ASSISTANT_URL hoặc HOME_ASSISTANT_TOKEN.' } }];\n}\nconst domainList = allowedDomains.map((item) => `'${String(item).replace(/'/g, \"\\\\'\")}'`).join(', ');\nconst inventoryTemplate = [\n  `{% set label_name = ${JSON.stringify(allowedLabel)} %}`,\n  `{% set allowed = label_entities(label_name) if label_name else states | map(attribute='entity_id') | list %}`,\n  `{% set ns = namespace(rows=[]) %}`,\n  `{% for entity_id in allowed %}`,\n  `{% set domain = entity_id.split('.')[0] %}`,\n  `{% if domain in [${domainList}] %}`,\n  `{% set ns.rows = ns.rows + [{` +\n    `'entity_id': entity_id, ` +\n    `'domain': domain, ` +\n    `'name': state_attr(entity_id, 'friendly_name') or entity_id, ` +\n    `'state': states(entity_id), ` +\n    `'area': area_name(entity_id) or '', ` +\n    `'labels': labels(entity_id), ` +\n    `'device_class': state_attr(entity_id, 'device_class'), ` +\n    `'supported_color_modes': state_attr(entity_id, 'supported_color_modes'), ` +\n    `'hvac_modes': state_attr(entity_id, 'hvac_modes'), ` +\n    `'fan_modes': state_attr(entity_id, 'fan_modes'), ` +\n    `'preset_modes': state_attr(entity_id, 'preset_modes'), ` +\n    `'volume_level': state_attr(entity_id, 'volume_level'), ` +\n    `'brightness': state_attr(entity_id, 'brightness')` +\n  `}] %}`,\n  `{% endif %}`,\n  `{% endfor %}`,\n  `{{ {'entities': ns.rows} | to_json }}`,\n].join('\\n');\nreturn [{ json: { ...source, ok: true, tool, baseUrl, token, allowedLabel, allowedDomains, dashboardUrl, defaultArea, ttsEntityId, aliases, inventoryTemplate, args } }];"
+      },
+      "id": "smarthome-normalize",
+      "name": "Normalize Smart Home Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "smarthome-can-continue",
+      "name": "Can Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.tool === 'smarthome.help' }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "smarthome-help-mode",
+      "name": "Help Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Smart Home Request').item.json || {};\nconst lines = [\n  'Home Assistant smart home hiện hỗ trợ các nhóm việc sau:',\n  '1. Liệt kê khu vực được Mia phép điều khiển.',\n  '2. Liệt kê thiết bị trong phạm vi label an toàn.',\n  '3. Xem nhanh trạng thái của một phòng.',\n  '4. Bật, tắt, hoặc đảo trạng thái thiết bị rõ ràng.',\n  '5. Chỉnh đèn, quạt, máy lạnh, loa và chạy scene.',\n  '6. Phát thông báo TTS nếu đã cấu hình MIA_HOME_TTS_ENTITY_ID.',\n  '',\n  'Guardrail hiện tại:',\n  `- Chỉ nhìn thấy entity có label ${source.allowedLabel || 'mia_allowed'}.`,\n  '- Khi khớp nhiều thiết bị hoặc tên mơ hồ, workflow sẽ trả về gợi ý để hỏi lại thay vì đoán.',\n  `- Dashboard local dự kiến: ${source.dashboardUrl || 'http://<LAN-IP>:8123'}`,\n];\nreturn [{ json: { ok: true, tool: source.tool || 'smarthome.help', text: lines.join('\\n'), result: { allowedLabel: source.allowedLabel || '', dashboardUrl: source.dashboardUrl || '' }, links: source.dashboardUrl ? [source.dashboardUrl] : [], meta: { requestId: source.requestId || '' } } }];"
+      },
+      "id": "smarthome-help-result",
+      "name": "Return Smart Home Help",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.baseUrl + '/api/template' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ template: $json.inventoryTemplate }) }}",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "alwaysOutputData": true,
+      "id": "smarthome-fetch-inventory",
+      "name": "Fetch Smart Home Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1020,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Smart Home Request').item.json || {};\nconst tool = source.tool || '';\nconst args = source.args || {};\nconst aliases = source.aliases && typeof source.aliases === 'object' ? source.aliases : {};\nfunction clean(value) { return String(value || '').trim(); }\nfunction norm(value) {\n  return clean(value)\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'd')\n    .replace(/[^a-z0-9\\s._-]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nfunction title(value) { return clean(value) || 'thiết bị'; }\nfunction parseInventory(payload) {\n  if (payload && typeof payload === 'object' && Array.isArray(payload.entities)) return payload.entities;\n  const text = typeof payload === 'string' ? payload : clean(payload?.data || payload?.body || payload?.text || payload?.output || '');\n  if (!text) return [];\n  try {\n    const parsed = JSON.parse(text);\n    return Array.isArray(parsed.entities) ? parsed.entities : [];\n  } catch (error) {\n    return [];\n  }\n}\nconst inventory = parseInventory($json);\nif (!inventory.length) {\n  return [{ json: { ok: false, tool, text: `Không thấy entity nào có label ${source.allowedLabel || 'mia_allowed'} trong Home Assistant.` } }];\n}\nconst areaInput = clean(args.area || args.room || source.defaultArea);\nconst queryInput = clean(args.target || args.device || args.query || args.scene || args.entityId || args.entity_id || args.message);\nconst areaNorm = norm(areaInput);\nconst queryNorm = norm(queryInput);\nconst aliasExact = aliases[queryNorm] || aliases[queryInput] || '';\nlet candidates = inventory.slice();\nif (areaNorm) {\n  candidates = candidates.filter((item) => norm(item.area) === areaNorm || norm(item.area).includes(areaNorm));\n}\nfunction listAreas() {\n  const unique = [...new Set(inventory.map((item) => clean(item.area)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));\n  const lines = unique.length ? unique.map((name, index) => `${index + 1}. ${name}`) : ['Chưa có area nào trong phạm vi điều khiển.'];\n  return { ok: true, tool, text: ['Các khu vực Mia đang nhìn thấy:', ...lines].join('\\n'), result: { areas: unique }, links: source.dashboardUrl ? [source.dashboardUrl] : [] };\n}\nfunction listDevices() {\n  let rows = candidates.slice();\n  if (queryNorm) {\n    rows = rows.filter((item) => [item.name, item.entity_id, item.domain].some((value) => norm(value).includes(queryNorm)));\n  }\n  const limit = Math.max(1, Math.min(Number(args.limit || 20) || 20, 50));\n  rows = rows.slice(0, limit);\n  const lines = rows.length\n    ? rows.map((item, index) => `${index + 1}. ${title(item.name)} | ${item.domain} | ${item.state}${item.area ? ` | ${item.area}` : ''}`)\n    : ['Không tìm thấy thiết bị phù hợp trong phạm vi cho phép.'];\n  return { ok: true, tool, text: ['Thiết bị smart home:', ...lines].join('\\n'), result: { devices: rows }, links: source.dashboardUrl ? [source.dashboardUrl] : [] };\n}\nfunction roomStatus() {\n  const rows = candidates.slice().sort((a, b) => String(a.domain).localeCompare(String(b.domain)) || String(a.name).localeCompare(String(b.name), 'vi'));\n  const roomName = areaInput || 'khu vực hiện tại';\n  const lines = rows.length\n    ? rows.map((item, index) => `${index + 1}. ${title(item.name)} | ${item.domain} | ${item.state}`)\n    : ['Không có entity nào trong khu vực này.'];\n  return { ok: true, tool, text: [`Trạng thái ${roomName}:`, ...lines].join('\\n'), result: { devices: rows, area: roomName }, links: source.dashboardUrl ? [source.dashboardUrl] : [] };\n}\nfunction preferredDomains() {\n  if (tool === 'smarthome.set_light') return ['light'];\n  if (tool === 'smarthome.set_climate') return ['climate'];\n  if (tool === 'smarthome.set_fan') return ['fan'];\n  if (tool === 'smarthome.set_media' || tool === 'smarthome.announce') return ['media_player'];\n  if (tool === 'smarthome.run_scene') return ['scene'];\n  return [];\n}\nfunction score(item) {\n  const itemName = norm(item.name);\n  const entityId = norm(item.entity_id);\n  const aliasId = clean(aliasExact);\n  if (aliasId && clean(item.entity_id) === aliasId) return 200;\n  if (queryNorm && entityId === queryNorm) return 190;\n  if (queryNorm && itemName === queryNorm) return 180;\n  if (queryNorm && entityId.endsWith(queryNorm)) return 140;\n  if (queryNorm && itemName.includes(queryNorm)) return 120;\n  if (queryNorm && entityId.includes(queryNorm)) return 110;\n  return 0;\n}\nfunction resolveTarget() {\n  const exactEntityId = clean(args.entityId || args.entity_id);\n  let rows = candidates.slice();\n  const domains = preferredDomains();\n  if (domains.length) rows = rows.filter((item) => domains.includes(clean(item.domain)));\n  if (exactEntityId) {\n    const found = rows.find((item) => clean(item.entity_id) === exactEntityId) || inventory.find((item) => clean(item.entity_id) === exactEntityId);\n    if (found) return { match: found, rows: [found] };\n  }\n  if (tool === 'smarthome.run_scene' && clean(args.scene)) {\n    const sceneNorm = norm(args.scene);\n    rows = rows.filter((item) => norm(item.name).includes(sceneNorm) || norm(item.entity_id).includes(sceneNorm));\n  }\n  const scored = rows.map((item) => ({ item, score: score(item) })).filter((row) => row.score > 0).sort((a, b) => b.score - a.score || title(a.item.name).localeCompare(title(b.item.name), 'vi'));\n  if (!queryNorm && rows.length === 1) return { match: rows[0], rows };\n  if (!scored.length) return { match: null, rows };\n  if (scored.length > 1 && scored[0].score === scored[1].score) return { match: null, rows: scored.slice(0, 5).map((row) => row.item) };\n  return { match: scored[0].item, rows: scored.map((row) => row.item) };\n}\nif (tool === 'smarthome.list_areas') return [{ json: listAreas() }];\nif (tool === 'smarthome.list_devices') return [{ json: listDevices() }];\nif (tool === 'smarthome.room_status') return [{ json: roomStatus() }];\nconst resolved = resolveTarget();\nif (!resolved.match) {\n  const hintLines = resolved.rows && resolved.rows.length\n    ? resolved.rows.slice(0, 5).map((item, index) => `${index + 1}. ${title(item.name)} | ${item.domain}${item.area ? ` | ${item.area}` : ''}`)\n    : ['Không tìm thấy target phù hợp trong phạm vi label an toàn.'];\n  return [{ json: { ok: false, tool, text: ['Mia chưa xác định chắc thiết bị cần điều khiển.', ...hintLines].join('\\n') } }];\n}\nconst target = resolved.match;\nlet serviceDomain = 'homeassistant';\nlet serviceName = 'turn_on';\nlet serviceData = { entity_id: target.entity_id };\nlet resultText = `Đã xử lý ${title(target.name)}.`;\nif (tool === 'smarthome.turn_off') { serviceName = 'turn_off'; resultText = `Đã tắt ${title(target.name)}.`; }\nelse if (tool === 'smarthome.toggle') { serviceName = 'toggle'; resultText = `Đã đảo trạng thái ${title(target.name)}.`; }\nelse if (tool === 'smarthome.set_light') {\n  serviceDomain = 'light'; serviceName = 'turn_on'; resultText = `Đã cập nhật đèn ${title(target.name)}.`;\n  if (Number(args.brightnessPct || 0) > 0) serviceData.brightness_pct = Number(args.brightnessPct);\n  if (Number(args.colorTempKelvin || 0) > 0) serviceData.color_temp_kelvin = Number(args.colorTempKelvin);\n  if (clean(args.rgbColor)) {\n    const rgb = clean(args.rgbColor).split(',').map((item) => Number(item.trim())).filter((value) => Number.isFinite(value));\n    if (rgb.length === 3) serviceData.rgb_color = rgb.slice(0, 3);\n  }\n  if (Number(args.transitionSeconds || 0) > 0) serviceData.transition = Number(args.transitionSeconds);\n}\nelse if (tool === 'smarthome.set_climate') {\n  serviceDomain = 'climate';\n  if (norm(args.hvacMode) === 'off') { serviceName = 'turn_off'; resultText = `Đã tắt điều hòa ${title(target.name)}.`; }\n  else if (Number(args.temperature || 0) > 0 || clean(args.hvacMode)) {\n    serviceName = 'set_temperature';\n    if (Number(args.temperature || 0) > 0) serviceData.temperature = Number(args.temperature);\n    if (clean(args.hvacMode)) serviceData.hvac_mode = clean(args.hvacMode);\n    resultText = `Đã cập nhật điều hòa ${title(target.name)}.`;\n  } else if (clean(args.fanMode)) {\n    serviceName = 'set_fan_mode'; serviceData.fan_mode = clean(args.fanMode); resultText = `Đã đổi fan mode cho ${title(target.name)}.`;\n  } else if (clean(args.swingMode)) {\n    serviceName = 'set_swing_mode'; serviceData.swing_mode = clean(args.swingMode); resultText = `Đã đổi swing mode cho ${title(target.name)}.`;\n  } else {\n    serviceName = 'turn_on'; resultText = `Đã bật ${title(target.name)}.`;\n  }\n}\nelse if (tool === 'smarthome.set_fan') {\n  serviceDomain = 'fan';\n  if (Number(args.percentage || 0) > 0) { serviceName = 'set_percentage'; serviceData.percentage = Number(args.percentage); resultText = `Đã chỉnh tốc độ ${title(target.name)}.`; }\n  else if (clean(args.presetMode)) { serviceName = 'set_preset_mode'; serviceData.preset_mode = clean(args.presetMode); resultText = `Đã đổi preset mode cho ${title(target.name)}.`; }\n  else if (clean(args.direction)) { serviceName = 'set_direction'; serviceData.direction = clean(args.direction); resultText = `Đã đổi hướng quạt ${title(target.name)}.`; }\n  else { serviceName = 'turn_on'; resultText = `Đã bật ${title(target.name)}.`; }\n}\nelse if (tool === 'smarthome.set_media') {\n  serviceDomain = 'media_player';\n  const action = norm(args.action || '');\n  if (Number(args.volumeLevel || 0) > 0) { serviceName = 'volume_set'; serviceData.volume_level = Number(args.volumeLevel); resultText = `Đã chỉnh âm lượng ${title(target.name)}.`; }\n  else if (clean(args.mediaContentId)) { serviceName = 'play_media'; serviceData.media_content_id = clean(args.mediaContentId); serviceData.media_content_type = clean(args.mediaContentType || 'music'); resultText = `Đã yêu cầu ${title(target.name)} phát nội dung.`; }\n  else if (action === 'pause') { serviceName = 'media_pause'; resultText = `Đã tạm dừng ${title(target.name)}.`; }\n  else if (action === 'stop') { serviceName = 'media_stop'; resultText = `Đã dừng ${title(target.name)}.`; }\n  else if (action === 'play') { serviceName = 'media_play'; resultText = `Đã tiếp tục phát trên ${title(target.name)}.`; }\n  else if (action === 'turn_off') { serviceName = 'turn_off'; resultText = `Đã tắt ${title(target.name)}.`; }\n  else { serviceName = 'media_play_pause'; resultText = `Đã đổi trạng thái phát cho ${title(target.name)}.`; }\n}\nelse if (tool === 'smarthome.announce') {\n  if (!clean(source.ttsEntityId)) {\n    return [{ json: { ok: false, tool, text: 'Thiếu MIA_HOME_TTS_ENTITY_ID nên chưa thể phát TTS qua loa.' } }];\n  }\n  serviceDomain = 'tts'; serviceName = 'speak';\n  serviceData = { entity_id: clean(source.ttsEntityId), media_player_entity_id: target.entity_id, message: clean(args.message || args.text || args.instruction) };\n  if (!serviceData.message) {\n    return [{ json: { ok: false, tool, text: 'Thiếu nội dung thông báo để phát qua loa.' } }];\n  }\n  resultText = `Đã phát thông báo trên ${title(target.name)}.`;\n}\nelse if (tool === 'smarthome.run_scene') {\n  serviceDomain = 'scene'; serviceName = 'turn_on'; resultText = `Đã chạy scene ${title(target.name)}.`;\n}\nreturn [{ json: { ok: true, tool, needsService: true, serviceUrl: `${source.baseUrl}/api/services/${serviceDomain}/${serviceName}`, serviceData, target, text: resultText, result: { resolvedTarget: target, serviceDomain, serviceName }, links: source.dashboardUrl ? [source.dashboardUrl] : [], meta: { requestId: source.requestId || '' } } }];"
+      },
+      "id": "smarthome-plan",
+      "name": "Plan Smart Home Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "smarthome-plan-ok",
+      "name": "Plan OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needsService }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "smarthome-needs-service",
+      "name": "Needs Service Call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.serviceUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Normalize Smart Home Request').item.json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.serviceData || {}) }}",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "alwaysOutputData": true,
+      "id": "smarthome-call-service",
+      "name": "Call Home Assistant Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const planned = $('Plan Smart Home Action').item.json || {};\nconst payload = $json || {};\nconst failure = String(payload.message || payload.error || payload.error_message || '').trim();\nif (failure) {\n  return [{ json: { ok: false, tool: planned.tool || '', text: failure } }];\n}\nreturn [{ json: { ok: true, tool: planned.tool || '', text: planned.text || 'Đã xử lý smart home.', result: payload, links: planned.links || [], meta: planned.meta || {} } }];"
+      },
+      "id": "smarthome-normalize-service-result",
+      "name": "Normalize Smart Home Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2260,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "smarthome-return-planned-result",
+      "name": "Return Planned Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, tool: $json.tool || '', text: String($json.text || $json.error || 'Smart home request rejected.') } }];"
+      },
+      "id": "smarthome-return-error",
+      "name": "Return Smart Home Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Smart Home Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Smart Home Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Help Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Smart Home Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Help Mode?": {
+      "main": [
+        [
+          {
+            "node": "Return Smart Home Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Smart Home Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Smart Home Inventory": {
+      "main": [
+        [
+          {
+            "node": "Plan Smart Home Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Smart Home Action": {
+      "main": [
+        [
+          {
+            "node": "Plan OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan OK?": {
+      "main": [
+        [
+          {
+            "node": "Needs Service Call?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Smart Home Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Service Call?": {
+      "main": [
+        [
+          {
+            "node": "Call Home Assistant Service",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Planned Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Home Assistant Service": {
+      "main": [
+        [
+          {
+            "node": "Normalize Smart Home Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Smart Home Result": {
+      "main": [
+        []
+      ]
+    },
+    "Return Planned Result": {
+      "main": [
+        []
+      ]
+    },
+    "Return Smart Home Error": {
+      "main": [
+        []
+      ]
+    },
+    "Return Smart Home Help": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

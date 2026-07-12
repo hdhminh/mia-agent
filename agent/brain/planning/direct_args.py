@@ -16,6 +16,10 @@ from agent.brain.parsers.common import SOFT_FOLLOWUP_PATTERN
 
 
 _LAT_LNG_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)")
+_SMARTHOME_FILLER_PATTERN = re.compile(
+    r"\b(mia|di|đi|nhe|nhé|nha|nhá|voi|với|dum|giup|giúp|ho|minh|mình|anh|oi|ơi)\b",
+    flags=re.IGNORECASE,
+)
 
 
 def _extract_lat_lng(value: str) -> tuple[str, str]:
@@ -35,6 +39,11 @@ def _extract_route_points(value: str) -> tuple[str, str]:
         if match:
             return match.group(1).strip(" ,.-"), match.group(2).strip(" ,.-")
     return "", ""
+
+
+def _cleanup_smarthome_target(value: str) -> str:
+    cleaned = _SMARTHOME_FILLER_PATTERN.sub(" ", str(value or ""))
+    return " ".join(cleaned.split()).strip(" ,.-")
 
 
 def build_direct_tool_args(
@@ -73,6 +82,11 @@ def build_direct_tool_args(
         if normalize_query_text(cleaned) in {"nay", "link nay", "bai nay", "trang nay"}:
             cleaned = ""
         return cleaned or fallback
+
+    def smarthome_target(prefixes: tuple[str, ...]) -> str:
+        raw = strip_prefixes(text, prefixes)
+        raw = strip_soft_followup(raw)
+        return _cleanup_smarthome_target(raw)
 
     if tool_name == "time_now":
         return {}
@@ -1737,5 +1751,23 @@ def build_direct_tool_args(
 
     if tool_name == "contacts_get":
         return {"resourceName": str(metadata.get("resourceName") or "").strip()}
+
+    if tool_name in {"smarthome_turn_on", "smarthome_turn_off", "smarthome_toggle"}:
+        if tool_name == "smarthome_turn_on":
+            target = smarthome_target(("bat", "bật", "mo", "mở", "turn on"))
+        elif tool_name == "smarthome_turn_off":
+            target = smarthome_target(("tat", "tắt", "dong", "đóng", "turn off"))
+        else:
+            target = smarthome_target(("dao", "đảo", "toggle"))
+        return with_optional_instruction({"target": target}, target)
+
+    if tool_name == "smarthome_run_scene":
+        scene = smarthome_target(
+            (
+                "bat", "bật", "tat", "tắt", "mo", "mở", "dong", "đóng",
+                "tang toc", "tăng tốc", "quay", "scene", "ngu canh", "ngữ cảnh",
+            )
+        )
+        return with_optional_instruction({"scene": scene}, scene)
 
     return dict(DIRECT_TOOL_DEFAULT_ARGS.get(tool_name, {}))

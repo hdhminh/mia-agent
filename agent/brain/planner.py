@@ -147,6 +147,66 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
             return RequestProfile(domain="general", hint_tool="automation_list", direct_confident=True, reason="automation list request")
         return RequestProfile(domain="general", hint_tool="automation_create", direct_confident=False, reason="automation request")
 
+    smarthome_device_cues = (
+        "smart home",
+        "nha thong minh",
+        "home assistant",
+        "google home",
+        "cast",
+        "loa",
+        "speaker",
+        "den",
+        "đèn",
+        "quat",
+        "quạt",
+        "may lanh",
+        "máy lạnh",
+        "dieu hoa",
+        "điều hòa",
+        "air purifier",
+        "may loc khong khi",
+        "máy lọc không khí",
+        "cong tac",
+        "công tắc",
+        "switch",
+        "scene",
+        "ngu phong",
+        "phong ngu",
+        "phòng ngủ",
+        "phong tam",
+        "phòng tắm",
+        "tuya",
+        "xiaomi",
+    )
+    if any_keyword_matches(normalized, smarthome_device_cues):
+        if any_keyword_matches(normalized, ("help", "huong dan", "hướng dẫn", "lam duoc gi", "làm được gì")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_help", direct_confident=True, reason="smart home help request")
+        if any_keyword_matches(normalized, ("khu vuc", "khu vực", "phong nao", "phòng nào", "areas", "rooms")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_list_areas", direct_confident=True, reason="smart home area list request")
+        if any_keyword_matches(normalized, ("trang thai", "trạng thái", "status", "dang bat gi", "đang bật gì", "dang mo gi", "đang mở gì")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_room_status", direct_confident=False, reason="smart home status request")
+        if any_keyword_matches(normalized, ("scene", "ngu canh", "ngữ cảnh")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_run_scene", direct_confident=True, reason="smart home scene request")
+        if any_keyword_matches(normalized, ("tang toc quat", "tăng tốc quạt", "quat quay", "quạt quay", "bat quat quay", "bật quạt quay", "tat quat quay", "tắt quạt quay")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_run_scene", direct_confident=True, reason="smart home fan scene request")
+        if any_keyword_matches(normalized, ("thong bao", "thông báo", "doc loa", "đọc loa", "noi loa", "nói loa", "tts")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_announce", direct_confident=False, reason="smart home announce request")
+        if any_keyword_matches(normalized, ("am luong", "âm lượng", "volume", "play", "pause", "stop", "phat nhac", "phát nhạc")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_set_media", direct_confident=False, reason="smart home media request")
+        if any_keyword_matches(normalized, ("do sang", "độ sáng", "brightness", "mau den", "màu đèn", "color temp", "nhiet mau", "nhiệt màu")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_set_light", direct_confident=False, reason="smart home light setting request")
+        if any_keyword_matches(normalized, ("nhiet do", "nhiệt độ", "hvac", "cool", "heat", "dry", "fan mode", "swing")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_set_climate", direct_confident=False, reason="smart home climate request")
+        if any_keyword_matches(normalized, ("toc do quat", "tốc độ quạt", "percentage", "preset mode", "speed")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_set_fan", direct_confident=False, reason="smart home fan request")
+        if any_keyword_matches(normalized, ("bat", "bật", "mo", "mở", "turn on")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_turn_on", direct_confident=True, reason="smart home turn on request")
+        if any_keyword_matches(normalized, ("tat", "tắt", "dong", "đóng", "turn off")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_turn_off", direct_confident=True, reason="smart home turn off request")
+        if any_keyword_matches(normalized, ("dao", "đảo", "toggle")):
+            return RequestProfile(domain="smarthome", hint_tool="smarthome_toggle", direct_confident=True, reason="smart home toggle request")
+        return RequestProfile(domain="smarthome", hint_tool="smarthome_list_devices", direct_confident=False, reason="smart home request")
+
     from agent.brain.parsers.common import HELP_REQUEST_CUES
     help_request = any(keyword_matches(normalized, cue) for cue in HELP_REQUEST_CUES)
 

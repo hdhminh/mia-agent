@@ -1,0 +1,77 @@
+# Starter package for future Home Assistant customization.
+# Copy parts of this file into a real package YAML only after the referenced
+# entity IDs exist in your Home Assistant instance.
+
+input_boolean:
+  mia_guest_mode:
+    name: Mia guest mode
+    icon: mdi:account-group
+
+scene:
+  - name: Mia ngủ ngon
+    id: mia_sleep_mode
+    entities:
+      light.den_phong_ngu:
+        state: "off"
+      switch.cong_tac_pc:
+        state: "off"
+
+script:
+  mia_good_night:
+    alias: Mia good night
+    sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: scene.mia_ngu_ngon
+  bat_quat_phong_ngu:
+    alias: Bật quạt phòng ngủ
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.bo_ir_phong_ngu
+        data:
+          device: fan
+          command: power_on
+  tat_quat_phong_ngu:
+    alias: Tắt quạt phòng ngủ
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.bo_ir_phong_ngu
+        data:
+          device: fan
+          command: power_off
+  bat_may_lanh_phong_ngu:
+    alias: Bật máy lạnh phòng ngủ
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.bo_ir_phong_ngu
+        data:
+          device: air_conditioning
+          command: power_on
+  tat_may_lanh_phong_ngu:
+    alias: Tắt máy lạnh phòng ngủ
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.bo_ir_phong_ngu
+        data:
+          device: air_conditioning
+          command: power_off
+
+automation:
+  - id: mia_bedroom_air_guard_example
+    alias: Mia bedroom air purifier reminder
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.may_loc_khong_khi_phong_ngu_pm25
+        above: 35
+    condition:
+      - condition: state
+        entity_id: input_boolean.mia_guest_mode
+        state: "off"
+    action:
+      - action: fan.turn_on
+        target:
+          entity_id: fan.may_loc_khong_khi_phong_ngu

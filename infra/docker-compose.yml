@@ -3,6 +3,8 @@ services:
     image: docker.n8n.io/n8nio/n8n
     container_name: n8n
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - N8N_HOST=${N8N_HOST:-n8n.example.com}
       - N8N_PORT=5678
@@ -22,6 +24,14 @@ services:
       - MIA_MAPS_DEFAULT_LANGUAGE=${MIA_MAPS_DEFAULT_LANGUAGE:-vi}
       - MIA_MAPS_DEFAULT_REGION=${MIA_MAPS_DEFAULT_REGION:-VN}
       - MIA_MAPS_MAX_PLACE_RESULTS=${MIA_MAPS_MAX_PLACE_RESULTS:-5}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://host.docker.internal:8123}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - MIA_HOME_ALLOWED_LABEL=${MIA_HOME_ALLOWED_LABEL:-mia_allowed}
+      - MIA_HOME_DASHBOARD_URL=${MIA_HOME_DASHBOARD_URL:-http://192.168.1.10:8123}
+      - MIA_HOME_ALLOWED_DOMAINS=${MIA_HOME_ALLOWED_DOMAINS:-light,switch,fan,climate,media_player,scene,script}
+      - MIA_HOME_DEFAULT_AREA=${MIA_HOME_DEFAULT_AREA:-}
+      - MIA_HOME_ENTITY_ALIASES_JSON=${MIA_HOME_ENTITY_ALIASES_JSON:-}
+      - MIA_HOME_TTS_ENTITY_ID=${MIA_HOME_TTS_ENTITY_ID:-}
       - MIA_CORE_URL=${MIA_CORE_URL:-http://mia-core:8000/mia/chat}
       - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
       - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
@@ -42,6 +52,20 @@ services:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     networks:
       - n8n-net
+
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: home-assistant
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TZ=${MIA_TIMEZONE:-Asia/Ho_Chi_Minh}
+    volumes:
+      - ./homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
 
   ollama:
     image: ollama/ollama:latest
