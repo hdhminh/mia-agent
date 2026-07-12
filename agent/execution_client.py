@@ -425,7 +425,7 @@ class N8nToolGatewayClient:
             envelope = build_tool_result_error_envelope(
                 tool_name=tool_name,
                 error_text=str(data.get("error") or f"{tool_name} failed."),
-                response_text=response_text or text,
+                response_text=text,
                 status_text=str(data.get("status") or data.get("code") or ""),
                 status_code=status_code or None,
                 retryable=bool(data.get("retryable") or data.get("canRetry")),
