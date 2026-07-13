@@ -115,6 +115,8 @@ DANGEROUS_GATEWAY_NAMES = {
     "github.create_pull_request",
     "github.comment_pull_request",
     "github.rerun_failed_workflow",
+    "code.apply_to_local",
+    "code.create_pull_request",
     "code.apply_to_existing_project",
     "code.publish_project",
 }

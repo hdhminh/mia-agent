@@ -203,10 +203,6 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if any_keyword_matches(normalized, ("shortlink", "short link", "rut gon link", "rút gọn link", "tao link ngan", "tạo link ngắn")):
         return RequestProfile(domain="general", hint_tool="shortlink_create", direct_confident=True, reason="shortlink request")
 
-    code_profile = _infer_code_profile(normalized)
-    if code_profile is not None:
-        return code_profile
-
     if any_keyword_matches(normalized, ("task", "tasks", "việc cần làm", "viec can lam", "to-do", "todo", "nhiem vu", "nhiệm vụ", "nhac nho", "nhắc nhở", "cong viec", "công việc", "remind", "reminder")):
         if any_keyword_matches(normalized, ("quá hạn", "qua han", "overdue")):
             return RequestProfile(domain="workspace", hint_tool="tasks_list_overdue", direct_confident=True, reason="overdue tasks request")
@@ -298,8 +294,12 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
 
     github_context = extract_github_repo_context(text, metadata)
     if github_context:
-        hint_tool, direct_confident = _infer_github_hint(normalized, metadata, help_request)
+        hint_tool, direct_confident = _infer_github_hint(normalized, github_context, help_request)
         return RequestProfile(domain="github", hint_tool=hint_tool, direct_confident=direct_confident, reason="github repo request")
+
+    code_profile = _infer_code_profile(normalized)
+    if code_profile is not None:
+        return code_profile
 
     explicit_url = ""
     if metadata:
