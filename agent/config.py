@@ -54,6 +54,10 @@ class Settings:
     evaluator_max_retries: int
     owner_display_name: str
     locale: str
+    code_enabled: bool
+    code_gateway_url: str
+    code_gateway_token: str
+    code_timeout_seconds: float
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -118,6 +122,10 @@ class Settings:
             evaluator_max_retries=int(os.getenv("MIA_EVALUATOR_MAX_RETRIES", "2")),
             owner_display_name=os.getenv("OWNER_DISPLAY_NAME", "User").strip(),
             locale=os.getenv("MIA_LOCALE", "vi").strip().lower(),
+            code_enabled=_env_bool("MIA_CODE_ENABLED", False),
+            code_gateway_url=os.getenv("MIA_CODE_GATEWAY_URL", os.getenv("MIA_CODE_RUNNER_URL", "")).strip(),
+            code_gateway_token=os.getenv("MIA_CODE_GATEWAY_TOKEN", os.getenv("MIA_CODE_RUNNER_TOKEN", "")).strip(),
+            code_timeout_seconds=float(os.getenv("MIA_CODE_TIMEOUT_SECONDS", os.getenv("MIA_CODE_RUNNER_TIMEOUT_SECONDS", "180"))),
         )
 
     def validate(self) -> None:
@@ -147,3 +155,5 @@ class Settings:
             raise RuntimeError("Mia redirect and rate limits are invalid.")
         if self.automation_poll_seconds < 5:
             raise RuntimeError("MIA_AUTOMATION_POLL_SECONDS must be at least 5.")
+        if self.code_enabled and not self.code_gateway_url:
+            raise RuntimeError("MIA_CODE_GATEWAY_URL is required when MIA_CODE_ENABLED=true.")

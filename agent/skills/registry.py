@@ -100,6 +100,15 @@ SMARTHOME_TOOL_NAMES = [
     "smarthome_announce",
     "smarthome_run_scene",
 ]
+CODE_TOOL_NAMES = [
+    "code_create_project",
+    "code_import_existing_project",
+    "code_work_on_project",
+    "code_project_status",
+    "code_project_diff",
+    "code_apply_to_existing_project",
+    "code_publish_project",
+]
 WORKSPACE_TOOL_NAMES = [
     "drive_help",
     "drive_list_files",
@@ -152,6 +161,7 @@ AGENT_TOOLSETS: dict[str, list[str]] = {
     "github": MEMORY_TOOL_NAMES + GITHUB_TOOL_NAMES,
     "maps": MEMORY_TOOL_NAMES + MAPS_TOOL_NAMES,
     "smarthome": MEMORY_TOOL_NAMES + SMARTHOME_TOOL_NAMES,
+    "code": MEMORY_TOOL_NAMES + CODE_TOOL_NAMES,
     "workspace": MEMORY_TOOL_NAMES + WORKSPACE_TOOL_NAMES + TASK_TOOL_NAMES + CONTACT_TOOL_NAMES,
     "google_full": MEMORY_TOOL_NAMES + GOOGLE_FULL_TOOL_NAMES,
 }

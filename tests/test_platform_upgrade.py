@@ -33,6 +33,8 @@ class PlatformSafetyTests(unittest.TestCase):
         self.assertTrue(should_require_confirmation("gmail.draft_email"))
         self.assertTrue(should_require_confirmation("drive.create_file"))
         self.assertTrue(should_require_confirmation("shortlink.create"))
+        self.assertTrue(should_require_confirmation("code.apply_to_local"))
+        self.assertTrue(should_require_confirmation("code.create_pull_request"))
         self.assertFalse(should_require_confirmation("contacts.search"))
 
     def test_idempotency_is_stable_and_sensitive_to_arguments(self) -> None:

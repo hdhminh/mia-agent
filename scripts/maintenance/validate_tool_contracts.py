@@ -53,7 +53,12 @@ def main() -> int:
     catalog_mapping = {
         str(row.get("name") or ""): str(row.get("action") or "")
         for row in catalog_rows
-        if isinstance(row, dict) and row.get("name") and row.get("action")
+        if (
+            isinstance(row, dict)
+            and row.get("name")
+            and row.get("action")
+            and str(row.get("executor") or "n8n") == "n8n"
+        )
     }
     missing = sorted(expected - actual)
     if missing:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from langchain.agents import AgentState, create_agent
@@ -454,8 +453,9 @@ class MiaAgentService:
             domain=agent_key,
             available=available,
             hint_tool=hint_tool,
-            limit=12 if agent_key == "google_full" else 10,
+            limit=14 if agent_key == "code" else 12 if agent_key == "google_full" else 10,
         )
+        recursion_limit = max(self.settings.recursion_limit, 28) if agent_key == "code" else self.settings.recursion_limit
         cache_key = (agent_key, tuple(selected))
         agent = self._dynamic_agents.get(cache_key)
         if agent is None:
@@ -466,7 +466,7 @@ class MiaAgentService:
                 {"messages": messages_payload},
                 config={
                     "configurable": {"thread_id": thread_id},
-                    "recursion_limit": self.settings.recursion_limit,
+                    "recursion_limit": recursion_limit,
                 },
                 context=context,
             ), "primary"
@@ -483,7 +483,7 @@ class MiaAgentService:
                     {"messages": messages_payload},
                     config={
                         "configurable": {"thread_id": thread_id},
-                        "recursion_limit": self.settings.recursion_limit,
+                        "recursion_limit": recursion_limit,
                     },
                     context=context,
                 ), "fallback"

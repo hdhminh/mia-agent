@@ -87,6 +87,6 @@ def supervisor_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
 
 def route_to_specialist(state: MiaGraphState) -> str:
     agent_key = state.get("agent_key") or "general"
-    if agent_key in {"github", "maps", "smarthome", "calendar", "gmail", "workspace", "google_full", "media", "general"}:
+    if agent_key in {"github", "maps", "smarthome", "code", "calendar", "gmail", "workspace", "google_full", "media", "general"}:
         return agent_key
     return "general"

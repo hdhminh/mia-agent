@@ -13,6 +13,7 @@ from agent.skills.google_maps import get_google_maps_tools
 from agent.skills.github_write import get_github_write_tools
 from agent.skills.productivity import get_productivity_tools
 from agent.skills.smarthome import get_smarthome_tools
+from agent.skills.code_runner import get_code_tools
 
 
 def build_tools(
@@ -31,4 +32,5 @@ def build_tools(
     tools.extend(get_google_maps_tools(tool_gateway))
     tools.extend(get_productivity_tools(tool_gateway))
     tools.extend(get_smarthome_tools(tool_gateway))
+    tools.extend(get_code_tools())
     return tools

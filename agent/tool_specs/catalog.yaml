@@ -2182,6 +2182,129 @@
         "weather",
         "get"
       ]
+    },
+    {
+      "name": "code_create_project",
+      "action": "code.create_project",
+      "domain": "code",
+      "description": "Create a managed OpenCode project",
+      "risk": "write",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.create_project",
+      "tags": [
+        "code",
+        "create",
+        "project"
+      ]
+    },
+    {
+      "name": "code_import_existing_project",
+      "action": "code.import_existing_project",
+      "domain": "code",
+      "description": "Import a local project into the OpenCode sandbox",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.import_existing_project",
+      "tags": [
+        "code",
+        "import",
+        "existing",
+        "project"
+      ]
+    },
+    {
+      "name": "code_work_on_project",
+      "action": "code.work_on_project",
+      "domain": "code",
+      "description": "Continue coding inside a managed OpenCode project",
+      "risk": "write",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.work_on_project",
+      "tags": [
+        "code",
+        "work",
+        "on",
+        "project"
+      ]
+    },
+    {
+      "name": "code_project_status",
+      "action": "code.project_status",
+      "domain": "code",
+      "description": "Show managed code project status",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.project_status",
+      "tags": [
+        "code",
+        "project",
+        "status"
+      ]
+    },
+    {
+      "name": "code_project_diff",
+      "action": "code.project_diff",
+      "domain": "code",
+      "description": "Show managed code project diff",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.project_diff",
+      "tags": [
+        "code",
+        "project",
+        "diff"
+      ]
+    },
+    {
+      "name": "code_apply_to_existing_project",
+      "action": "code.apply_to_existing_project",
+      "domain": "code",
+      "description": "Apply sandbox changes back to the imported local project",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.apply_to_existing_project",
+      "tags": [
+        "code",
+        "apply",
+        "to",
+        "existing",
+        "project"
+      ]
+    },
+    {
+      "name": "code_publish_project",
+      "action": "code.publish_project",
+      "domain": "code",
+      "description": "Push a branch or create a pull request for a managed project",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 120,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.publish_project",
+      "tags": [
+        "code",
+        "publish",
+        "project"
+      ]
     }
   ]
 }

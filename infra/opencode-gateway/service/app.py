@@ -1,0 +1,879 @@
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
+
+
+app = FastAPI(title="Mia OpenCode Gateway", version="1.0.0")
+
+PROJECT_META_DIR = ".mia-opencode"
+PROJECT_META_FILE = "project.json"
+DEFAULT_ALLOWED_COMMANDS = (
+    "git status",
+    "git diff",
+    "git log",
+    "git show",
+    "git branch",
+    "git rev-parse",
+    "git ls-files",
+    "git grep",
+    "python",
+    "python3",
+    "pytest",
+    "ruff",
+    "mypy",
+    "uv",
+    "pip install",
+    "pip3 install",
+    "npm install",
+    "npm run",
+    "npm test",
+    "pnpm install",
+    "pnpm run",
+    "pnpm test",
+    "yarn install",
+    "yarn run",
+    "yarn test",
+    "node",
+    "go",
+    "cargo",
+    "make",
+)
+DEFAULT_ALLOWED_REGISTRIES = (
+    "pypi.org",
+    "files.pythonhosted.org",
+    "registry.npmjs.org",
+    "github.com",
+    "api.github.com",
+    "proxy.golang.org",
+    "crates.io",
+    "index.crates.io",
+)
+
+
+class CodeGatewayError(RuntimeError):
+    """Operational error for the OpenCode gateway."""
+
+
+@dataclass(frozen=True)
+class ProjectRecord:
+    project_id: str
+    project_name: str
+    workspace_path: str
+    origin_type: str
+    source_path: str
+    session_id: str
+    branch: str
+    created_at: str
+    updated_at: str
+    title: str
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ProjectRecord":
+        return cls(
+            project_id=str(payload.get("project_id") or ""),
+            project_name=str(payload.get("project_name") or ""),
+            workspace_path=str(payload.get("workspace_path") or ""),
+            origin_type=str(payload.get("origin_type") or "workspace"),
+            source_path=str(payload.get("source_path") or ""),
+            session_id=str(payload.get("session_id") or ""),
+            branch=str(payload.get("branch") or "main"),
+            created_at=str(payload.get("created_at") or _now_iso()),
+            updated_at=str(payload.get("updated_at") or _now_iso()),
+            title=str(payload.get("title") or ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "project_id": self.project_id,
+            "project_name": self.project_name,
+            "workspace_path": self.workspace_path,
+            "origin_type": self.origin_type,
+            "source_path": self.source_path,
+            "session_id": self.session_id,
+            "branch": self.branch,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "title": self.title,
+        }
+
+
+class CreateProjectRequest(BaseModel):
+    project_name: str = Field(min_length=1)
+    instruction: str = ""
+    title: str = ""
+
+
+class ImportProjectRequest(BaseModel):
+    source_path: str = Field(min_length=1)
+    project_name: str = ""
+    instruction: str = ""
+    title: str = ""
+
+
+class WorkProjectRequest(BaseModel):
+    project_id: str = ""
+    instruction: str = Field(min_length=1)
+
+
+class StatusProjectRequest(BaseModel):
+    project_id: str = ""
+
+
+class DiffProjectRequest(BaseModel):
+    project_id: str = ""
+    max_chars: int = 30000
+
+
+class ApplyProjectRequest(BaseModel):
+    project_id: str = ""
+    confirmed: bool = False
+
+
+class PublishProjectRequest(BaseModel):
+    project_id: str = ""
+    confirmed: bool = False
+    mode: str = "push"
+    branch: str = ""
+    base: str = "main"
+    title: str = ""
+    body: str = ""
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _require_auth(auth_header: str | None) -> None:
+    token = os.getenv("MIA_CODE_GATEWAY_TOKEN", os.getenv("MIA_CODE_RUNNER_TOKEN", "")).strip()
+    if not token:
+        return
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token.")
+    provided = auth_header.split(" ", 1)[1].strip()
+    if provided != token:
+        raise HTTPException(status_code=401, detail="Invalid bearer token.")
+
+
+def _workspace_root() -> Path:
+    root = Path(os.getenv("MIA_CODE_WORKSPACE_ROOT", "/workspaces")).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _allowed_roots() -> list[Path]:
+    raw = os.getenv("MIA_CODE_ALLOWED_ROOTS", "/host-projects")
+    roots = []
+    for part in raw.split(","):
+        text = part.strip()
+        if text:
+            roots.append(Path(text).resolve())
+    return roots
+
+
+def _host_workspace_label() -> str:
+    return os.getenv("MIA_CODE_HOST_WORKSPACE_ROOT", "/home/huynhminh/Projects/mia-workspaces").strip()
+
+
+def _opencode_home() -> Path:
+    root = Path(os.getenv("MIA_CODE_OPENCODE_HOME", "/tmp/mia-opencode-home")).resolve()
+    (root / ".config" / "opencode").mkdir(parents=True, exist_ok=True)
+    (root / ".local" / "share" / "opencode").mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _opencode_bin() -> str:
+    return os.getenv("MIA_CODE_OPENCODE_BIN", "opencode").strip() or "opencode"
+
+
+def _timeout_seconds() -> int:
+    return max(30, int(float(os.getenv("MIA_CODE_TIMEOUT_SECONDS", os.getenv("MIA_CODE_RUNNER_TIMEOUT_SECONDS", "180")))))
+
+
+def _code_model() -> str:
+    raw = os.getenv("MIA_CODE_MODEL", "deepseek/deepseek-chat").strip()
+    if "/" in raw:
+        return raw
+    return f"deepseek/{raw}" if raw else "deepseek/deepseek-chat"
+
+
+def _code_model_parts() -> tuple[str, str]:
+    raw = _code_model()
+    if "/" in raw:
+        provider, model = raw.split("/", 1)
+        provider = provider.strip() or "deepseek"
+        model = model.strip()
+        if model:
+            return provider, model
+    return "deepseek", raw.strip() or "deepseek-chat"
+
+
+def _code_model_cli() -> str:
+    provider, model = _code_model_parts()
+    return f"{provider}/{model}"
+
+
+def _safe_slug(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9_-]+", "-", value.strip().lower())
+    normalized = normalized.strip("-")
+    return normalized[:64] or "mia-workspace"
+
+
+def _project_dir(project_id: str) -> Path:
+    return _workspace_root() / project_id
+
+
+def _project_meta_path(project_dir: Path) -> Path:
+    return project_dir / PROJECT_META_DIR / PROJECT_META_FILE
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_opencode_files() -> None:
+    home = _opencode_home()
+    config_path = home / ".config" / "opencode" / "opencode.json"
+    auth_path = home / ".local" / "share" / "opencode" / "auth.json"
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
+    deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip()
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    openrouter_base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip()
+    config = {
+        "$schema": "https://opencode.ai/config.json",
+        "model": _code_model(),
+        "permission": {
+            "*": "allow",
+            "read": {
+                "*": "allow",
+                "*.env": "deny",
+                "*.env.*": "deny",
+                "*.env.example": "allow",
+            },
+            "edit": {
+                "*": "allow",
+                ".env": "deny",
+                ".env.*": "deny",
+            },
+            "bash": {
+                "*": "deny",
+            },
+            "webfetch": "deny",
+            "websearch": "deny",
+        },
+        "agent": {
+            "build": {
+                "permission": {
+                    "bash": {"*": "deny"},
+                }
+            }
+        },
+        "share": "disabled",
+    }
+    for command in _allowed_command_prefixes():
+        config["permission"]["bash"][f"{command}*"] = "allow"
+        config["agent"]["build"]["permission"]["bash"][f"{command}*"] = "allow"
+    if deepseek_base_url:
+        config["provider"] = {
+            "deepseek": {
+                "options": {
+                    "baseURL": deepseek_base_url,
+                }
+            }
+        }
+    if openrouter_base_url:
+        providers = dict(config.get("provider") or {})
+        providers["openrouter"] = {
+            "options": {
+                "baseURL": openrouter_base_url,
+            }
+        }
+        config["provider"] = providers
+    _write_json(config_path, config)
+    auth_payload: dict[str, Any] = {}
+    if deepseek_key:
+        auth_payload["deepseek"] = {
+            "type": "api",
+            "key": deepseek_key,
+        }
+    if openrouter_key:
+        auth_payload["openrouter"] = {
+            "type": "api",
+            "key": openrouter_key,
+        }
+    if auth_payload:
+        _write_json(auth_path, auth_payload)
+
+
+def _allowed_command_prefixes() -> tuple[str, ...]:
+    raw = os.getenv("MIA_CODE_ALLOWED_COMMAND_PREFIXES", ",".join(DEFAULT_ALLOWED_COMMANDS))
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+def _allowed_registries() -> tuple[str, ...]:
+    raw = os.getenv("MIA_CODE_ALLOWED_REGISTRIES", ",".join(DEFAULT_ALLOWED_REGISTRIES))
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+def _command_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["HOME"] = str(_opencode_home())
+    return env
+
+
+def _run(cmd: list[str], *, cwd: Path | None = None, timeout: int | None = None) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            env=_command_env(),
+            text=True,
+            capture_output=True,
+            timeout=timeout or _timeout_seconds(),
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CodeGatewayError(f"Command timed out: {' '.join(cmd)}") from exc
+
+
+def _run_checked(cmd: list[str], *, cwd: Path | None = None, timeout: int | None = None) -> subprocess.CompletedProcess[str]:
+    result = _run(cmd, cwd=cwd, timeout=timeout)
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout or "").strip()
+        raise CodeGatewayError(message or f"Command failed: {' '.join(cmd)}")
+    return result
+
+
+def _ensure_git_repo(project_dir: Path) -> None:
+    if (project_dir / ".git").exists():
+        return
+    _run_checked(["git", "init", "-b", "main"], cwd=project_dir)
+    _run_checked(["git", "config", "user.email", "mia-opencode@example.local"], cwd=project_dir)
+    _run_checked(["git", "config", "user.name", "Mia OpenCode"], cwd=project_dir)
+    _run_checked(["git", "add", "-A"], cwd=project_dir)
+    status = _run_checked(["git", "status", "--short"], cwd=project_dir)
+    if status.stdout.strip():
+        _run_checked(["git", "commit", "-m", "mia-opencode baseline"], cwd=project_dir)
+    else:
+        _run_checked(["git", "commit", "--allow-empty", "-m", "mia-opencode baseline"], cwd=project_dir)
+
+
+def _load_project(project_id: str) -> ProjectRecord:
+    if not project_id:
+        projects = _list_projects()
+        if len(projects) == 1:
+            return projects[0]
+        if not projects:
+            raise CodeGatewayError("Chưa có project code nào. Hãy tạo mới hoặc import project trước.")
+        raise CodeGatewayError("Có nhiều project code đang tồn tại. Cần chỉ rõ project_id.")
+    project_dir = _project_dir(project_id)
+    meta_path = _project_meta_path(project_dir)
+    if not meta_path.exists():
+        raise CodeGatewayError(f"Không tìm thấy project_id '{project_id}'.")
+    return ProjectRecord.from_dict(_read_json(meta_path))
+
+
+def _save_project(record: ProjectRecord) -> None:
+    project_dir = Path(record.workspace_path)
+    _write_json(_project_meta_path(project_dir), record.to_dict())
+
+
+def _list_projects() -> list[ProjectRecord]:
+    projects: list[ProjectRecord] = []
+    for child in sorted(_workspace_root().iterdir()):
+        meta_path = _project_meta_path(child)
+        if meta_path.exists():
+            projects.append(ProjectRecord.from_dict(_read_json(meta_path)))
+    return projects
+
+
+def _workspace_summary(record: ProjectRecord) -> dict[str, Any]:
+    project_dir = Path(record.workspace_path)
+    status = _run(["git", "status", "--short"], cwd=project_dir)
+    changed_files = []
+    for line in status.stdout.splitlines():
+        line = line.strip()
+        if len(line) >= 4:
+            changed_files.append(line[3:].strip())
+    return {
+        "project_id": record.project_id,
+        "project_name": record.project_name,
+        "workspace_path": record.workspace_path,
+        "workspace_host_root": _host_workspace_label(),
+        "origin_type": record.origin_type,
+        "source_path": record.source_path,
+        "session_id": record.session_id,
+        "branch": record.branch,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+        "changed_files": changed_files,
+        "git_status": status.stdout.strip(),
+    }
+
+
+def _diff_text(project_dir: Path, *, max_chars: int) -> str:
+    status_text = _run_checked(["git", "status", "--short"], cwd=project_dir).stdout.strip()
+    diff_text = _run_checked(["git", "diff", "--binary"], cwd=project_dir).stdout.strip()
+    parts = []
+    if status_text:
+        parts.append("Git status:\n" + status_text)
+    if diff_text:
+        parts.append(diff_text)
+    text = "\n\n".join(parts).strip()
+    if len(text) > max_chars:
+        return text[:max_chars] + "\n... [diff truncated]"
+    return text
+
+
+def _copy_project(src: Path, dest: Path) -> None:
+    ignore_patterns = shutil.ignore_patterns(".git", ".env", ".env.*", "__pycache__", ".pytest_cache")
+    shutil.copytree(src, dest, dirs_exist_ok=True, ignore=ignore_patterns)
+
+
+def _validate_allowed_source(source_path: Path) -> None:
+    allowed_roots = _allowed_roots()
+    if not any(source_path == root or root in source_path.parents for root in allowed_roots):
+        allowed = ", ".join(str(root) for root in allowed_roots)
+        raise CodeGatewayError(f"Project local nằm ngoài vùng được phép import/apply. Allowed roots: {allowed}")
+
+
+def _build_prompt(record: ProjectRecord, instruction: str) -> str:
+    allowed_commands = ", ".join(_allowed_command_prefixes())
+    allowed_registries = ", ".join(_allowed_registries())
+    lines = [
+        "You are OpenCode working for Mia inside a controlled coding workspace.",
+        "Rules:",
+        "- Stay strictly inside the current working directory.",
+        "- Do not attempt to read secrets or .env files.",
+        f"- Shell commands are restricted; prefer only these command prefixes when truly needed: {allowed_commands}.",
+        f"- If installing dependencies is necessary, use package managers only and stay within trusted registries: {allowed_registries}.",
+        "- Avoid destructive git operations.",
+        "- Make the smallest effective set of changes, then stop.",
+        "",
+        "Task:",
+        instruction.strip(),
+    ]
+    if record.origin_type == "imported" and record.source_path:
+        lines.insert(
+            2,
+            f"- This workspace is a sandbox copy of an external project. Source path: {record.source_path}. Do not assume writes will sync back automatically.",
+        )
+    return "\n".join(lines).strip()
+
+
+def _latest_session_id(project_dir: Path) -> str:
+    result = _run_checked(
+        [_opencode_bin(), "session", "list", "--format", "json", "-n", "1"],
+        cwd=project_dir,
+        timeout=60,
+    )
+    payload = json.loads(result.stdout or "[]")
+    if isinstance(payload, list) and payload:
+        latest = payload[0]
+        if isinstance(latest, dict):
+            return str(latest.get("id") or latest.get("sessionID") or "")
+    return ""
+
+
+def _run_opencode(record: ProjectRecord, instruction: str) -> tuple[str, str]:
+    project_dir = Path(record.workspace_path)
+    prompt = _build_prompt(record, instruction)
+    cmd = [
+        _opencode_bin(),
+        "run",
+        "--auto",
+        "--agent",
+        "build",
+        "--model",
+        _code_model_cli(),
+        "--dir",
+        str(project_dir),
+    ]
+    if record.session_id:
+        cmd.extend(["--session", record.session_id])
+    else:
+        title = record.title or f"Mia: {record.project_name}"
+        cmd.extend(["--title", title])
+    cmd.append(prompt)
+    result = _run(cmd, cwd=project_dir, timeout=_timeout_seconds())
+    session_id = _latest_session_id(project_dir)
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout or "").strip()
+        raise CodeGatewayError(message or "OpenCode không hoàn thành được tác vụ này.")
+    output = (result.stdout or "").strip()
+    return output, session_id
+
+
+def _sync_back_to_source(record: ProjectRecord) -> list[str]:
+    if record.origin_type != "imported" or not record.source_path:
+        raise CodeGatewayError("Chỉ project import từ repo local mới có thể apply ngược về source.")
+    source_path = Path(record.source_path).resolve()
+    _validate_allowed_source(source_path)
+    project_dir = Path(record.workspace_path)
+    diff_names = _run_checked(["git", "diff", "--name-status"], cwd=project_dir).stdout.splitlines()
+    touched: list[str] = []
+    for line in diff_names:
+        parts = line.split("\t")
+        if not parts:
+            continue
+        status = parts[0]
+        if status.startswith("R") and len(parts) >= 3:
+            old_rel = parts[1]
+            new_rel = parts[2]
+            old_path = source_path / old_rel
+            new_path = source_path / new_rel
+            if old_path.exists():
+                old_path.unlink()
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(project_dir / new_rel, new_path)
+            touched.extend([old_rel, new_rel])
+            continue
+        rel = parts[-1]
+        source_file = source_path / rel
+        workspace_file = project_dir / rel
+        if status.startswith("D"):
+            if source_file.exists():
+                source_file.unlink()
+            touched.append(rel)
+            continue
+        if workspace_file.is_file():
+            source_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(workspace_file, source_file)
+            touched.append(rel)
+    return touched
+
+
+def _commit_workspace_snapshot(project_dir: Path, message: str) -> None:
+    _run_checked(["git", "add", "-A"], cwd=project_dir)
+    status = _run_checked(["git", "status", "--short"], cwd=project_dir)
+    if status.stdout.strip():
+        _run_checked(["git", "commit", "-m", message], cwd=project_dir)
+
+
+def _extract_github_remote(remote: str) -> tuple[str, str] | None:
+    text = remote.strip()
+    if not text:
+        return None
+    patterns = (
+        r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/.]+)(?:\.git)?$",
+        r"api\.github\.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/.]+)$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group("owner"), match.group("repo")
+    return None
+
+
+def _create_github_pr(owner: str, repo: str, branch: str, base: str, title: str, body: str) -> str:
+    import httpx
+
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if not token:
+        raise CodeGatewayError("Thiếu GITHUB_TOKEN nên chưa thể tạo pull request.")
+    response = httpx.post(
+        f"https://api.github.com/repos/{owner}/{repo}/pulls",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json={
+            "title": title,
+            "head": branch,
+            "base": base,
+            "body": body,
+        },
+        timeout=30,
+    )
+    if response.status_code >= 400:
+        try:
+            detail = response.json()
+        except ValueError:
+            detail = response.text
+        raise CodeGatewayError(f"GitHub tạo PR lỗi HTTP {response.status_code}: {detail}")
+    payload = response.json()
+    return str(payload.get("html_url") or "")
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    _write_opencode_files()
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    _write_opencode_files()
+    return {
+        "ok": True,
+        "workspace_root": str(_workspace_root()),
+        "model": _code_model(),
+        "allowed_roots": [str(root) for root in _allowed_roots()],
+    }
+
+
+@app.post("/projects/create")
+def create_project(
+    body: CreateProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    _write_opencode_files()
+    try:
+        slug = _safe_slug(body.project_name)
+        project_id = f"{slug}-{uuid.uuid4().hex[:8]}"
+        project_dir = _project_dir(project_id)
+        project_dir.mkdir(parents=True, exist_ok=False)
+        record = ProjectRecord(
+            project_id=project_id,
+            project_name=body.project_name.strip(),
+            workspace_path=str(project_dir),
+            origin_type="workspace",
+            source_path="",
+            session_id="",
+            branch="main",
+            created_at=_now_iso(),
+            updated_at=_now_iso(),
+            title=body.title.strip(),
+        )
+        _save_project(record)
+        _ensure_git_repo(project_dir)
+        output = ""
+        session_id = ""
+        if body.instruction.strip():
+            output, session_id = _run_opencode(record, body.instruction)
+            record = ProjectRecord.from_dict({**record.to_dict(), "session_id": session_id, "updated_at": _now_iso()})
+            _save_project(record)
+        summary = _workspace_summary(record)
+        host_path = f"{_host_workspace_label().rstrip('/')}/{project_id}"
+        text = "\n".join(
+            [
+                f"Mia đã tạo workspace code mới: {record.project_name}",
+                f"- project_id: {record.project_id}",
+                f"- Workspace host path: {host_path}",
+                f"- Model code: {_code_model()}",
+                "- Ghi trực tiếp trong workspace riêng được bật.",
+                output.strip() if output.strip() else "",
+            ]
+        ).strip()
+        return {"ok": True, "text": text, "project": summary, "output": output}
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/projects/import")
+def import_project(
+    body: ImportProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    _write_opencode_files()
+    try:
+        source_path = Path(body.source_path).resolve()
+        if not source_path.exists() or not source_path.is_dir():
+            raise HTTPException(status_code=404, detail="Source project path không tồn tại hoặc không phải thư mục.")
+        _validate_allowed_source(source_path)
+        project_name = body.project_name.strip() or source_path.name
+        slug = _safe_slug(project_name)
+        project_id = f"{slug}-{uuid.uuid4().hex[:8]}"
+        project_dir = _project_dir(project_id)
+        _copy_project(source_path, project_dir)
+        record = ProjectRecord(
+            project_id=project_id,
+            project_name=project_name,
+            workspace_path=str(project_dir),
+            origin_type="imported",
+            source_path=str(source_path),
+            session_id="",
+            branch="main",
+            created_at=_now_iso(),
+            updated_at=_now_iso(),
+            title=body.title.strip(),
+        )
+        _save_project(record)
+        _ensure_git_repo(project_dir)
+        output = ""
+        session_id = ""
+        if body.instruction.strip():
+            output, session_id = _run_opencode(record, body.instruction)
+            record = ProjectRecord.from_dict({**record.to_dict(), "session_id": session_id, "updated_at": _now_iso()})
+            _save_project(record)
+        summary = _workspace_summary(record)
+        text = "\n".join(
+            [
+                f"Mia đã import project vào sandbox code: {record.project_name}",
+                f"- project_id: {record.project_id}",
+                f"- Source path: {record.source_path}",
+                f"- Workspace path: {record.workspace_path}",
+                "- Chưa ghi ngược về source cho tới khi anh xác nhận apply.",
+                output.strip() if output.strip() else "",
+            ]
+        ).strip()
+        return {"ok": True, "text": text, "project": summary, "output": output}
+    except HTTPException:
+        raise
+    except CodeGatewayError as exc:
+        status = 403 if "Allowed roots" in str(exc) else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+
+@app.post("/projects/work")
+def work_project(
+    body: WorkProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    _write_opencode_files()
+    try:
+        record = _load_project(body.project_id)
+        output, session_id = _run_opencode(record, body.instruction)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    updated = ProjectRecord.from_dict({**record.to_dict(), "session_id": session_id, "updated_at": _now_iso()})
+    _save_project(updated)
+    summary = _workspace_summary(updated)
+    text = "\n".join(
+        [
+            f"Mia đã tiếp tục project code: {updated.project_name}",
+            f"- project_id: {updated.project_id}",
+            f"- session_id: {updated.session_id or 'n/a'}",
+            output.strip(),
+        ]
+    ).strip()
+    return {"ok": True, "text": text, "project": summary, "output": output}
+
+
+@app.post("/projects/status")
+def project_status(
+    body: StatusProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        if not body.project_id:
+            projects = [_workspace_summary(project) for project in _list_projects()]
+            return {"ok": True, "projects": projects, "text": json.dumps(projects, ensure_ascii=False, indent=2)}
+        record = _load_project(body.project_id)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    summary = _workspace_summary(record)
+    return {"ok": True, "project": summary, "text": json.dumps(summary, ensure_ascii=False, indent=2)}
+
+
+@app.post("/projects/diff")
+def project_diff(
+    body: DiffProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        diff = _diff_text(Path(record.workspace_path), max_chars=max(1000, body.max_chars))
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not diff:
+        diff = "(không có thay đổi so với baseline)"
+    text = "\n".join(
+        [
+            f"Diff hiện tại của project {record.project_name}:",
+            diff,
+        ]
+    )
+    return {"ok": True, "project_id": record.project_id, "diff": diff, "text": text}
+
+
+@app.post("/projects/apply")
+def apply_project(
+    body: ApplyProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        if not body.confirmed:
+            return {
+                "ok": True,
+                "needs_confirmation": True,
+                "text": f"Project {record.project_name} sẽ ghi ngược về source local. Cần confirmed=true để tiếp tục.",
+            }
+        touched = _sync_back_to_source(record)
+        _commit_workspace_snapshot(Path(record.workspace_path), "mia-opencode synced to source")
+        updated = ProjectRecord.from_dict({**record.to_dict(), "updated_at": _now_iso()})
+        _save_project(updated)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    text = "\n".join(
+        [
+            f"Mia đã apply thay đổi của project {record.project_name} về source local.",
+            f"- Source path: {record.source_path}",
+            f"- File touched: {', '.join(touched) if touched else '(không có thay đổi)'}",
+        ]
+    )
+    return {"ok": True, "text": text, "touched_files": touched}
+
+
+@app.post("/projects/publish")
+def publish_project(
+    body: PublishProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        if not body.confirmed:
+            return {
+                "ok": True,
+                "needs_confirmation": True,
+                "text": f"Project {record.project_name} sẽ publish lên Git remote. Cần confirmed=true để tiếp tục.",
+            }
+        project_dir = Path(record.workspace_path)
+        _run_checked(["git", "config", "user.email", "mia-opencode@example.local"], cwd=project_dir)
+        _run_checked(["git", "config", "user.name", "Mia OpenCode"], cwd=project_dir)
+        _run_checked(["git", "add", "-A"], cwd=project_dir)
+        status = _run_checked(["git", "status", "--short"], cwd=project_dir)
+        if status.stdout.strip():
+            _run_checked(["git", "commit", "-m", body.title.strip() or "Mia OpenCode update"], cwd=project_dir)
+        branch = body.branch.strip() or f"mia/{record.project_id}"
+        _run_checked(["git", "checkout", "-B", branch], cwd=project_dir)
+        remote = _run_checked(["git", "remote", "get-url", "origin"], cwd=project_dir).stdout.strip()
+        _run_checked(["git", "push", "-u", "origin", branch], cwd=project_dir, timeout=max(60, _timeout_seconds()))
+        pr_url = ""
+        if body.mode.strip().lower() == "pr":
+            parsed = _extract_github_remote(remote)
+            if not parsed:
+                raise CodeGatewayError("Remote hiện tại không phải GitHub nên chưa thể tạo pull request tự động.")
+            owner, repo = parsed
+            pr_url = _create_github_pr(
+                owner=owner,
+                repo=repo,
+                branch=branch,
+                base=body.base.strip() or "main",
+                title=body.title.strip() or f"Mia OpenCode update for {record.project_name}",
+                body=body.body.strip(),
+            )
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    lines = [
+        f"Mia đã publish project {record.project_name}.",
+        f"- Branch: {branch}",
+        f"- Remote: {remote}",
+    ]
+    if pr_url:
+        lines.append(f"- Pull request: {pr_url}")
+    return {"ok": True, "text": "\n".join(lines), "branch": branch, "remote": remote, "pull_request_url": pr_url}

@@ -50,6 +50,31 @@ def main() -> int:
                 "tags": name.split("_"),
             }
         )
+    code_tools = {
+        "code_create_project": ("code.create_project", "Create a managed OpenCode project", "write", "never"),
+        "code_import_existing_project": ("code.import_existing_project", "Import a local project into the OpenCode sandbox", "read", "never"),
+        "code_work_on_project": ("code.work_on_project", "Continue coding inside a managed OpenCode project", "write", "never"),
+        "code_project_status": ("code.project_status", "Show managed code project status", "read", "never"),
+        "code_project_diff": ("code.project_diff", "Show managed code project diff", "read", "never"),
+        "code_apply_to_existing_project": ("code.apply_to_existing_project", "Apply sandbox changes back to the imported local project", "external_write", "always"),
+        "code_publish_project": ("code.publish_project", "Push a branch or create a pull request for a managed project", "external_write", "always"),
+    }
+    for name, (action, description, risk, approval) in code_tools.items():
+        tools.append(
+            {
+                "name": name,
+                "action": action,
+                "domain": "code",
+                "description": description,
+                "risk": risk,
+                "approval": approval,
+                "idempotent": risk == "external_write",
+                "timeout_seconds": 120,
+                "executor": "opencode-gateway",
+                "workflow_key": action,
+                "tags": name.split("_"),
+            }
+        )
     target = ROOT / "agent/tool_specs/catalog.yaml"
     target.write_text(json.dumps({"version": 1, "tools": tools}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"generated {len(tools)} ToolSpec entries")

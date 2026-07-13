@@ -29,6 +29,8 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
             return "maps"
         if profile.domain == "smarthome":
             return "smarthome"
+        if profile.domain == "code":
+            return "code"
         return "general"
 
     if profile.domain == "calendar":
@@ -41,6 +43,8 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
         return "maps"
     if profile.domain == "smarthome":
         return "smarthome"
+    if profile.domain == "code":
+        return "code"
     if profile.domain == "google_full":
         return "google_full"
     if profile.domain == "media":
@@ -57,6 +61,8 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
         return "maps"
     if hint_tool.startswith("smarthome_"):
         return "smarthome"
+    if hint_tool.startswith("code_"):
+        return "code"
     if hint_tool.startswith(("drive_", "docs_", "sheets_", "tasks_")):
         return "workspace"
     return "general"

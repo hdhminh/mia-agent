@@ -33,8 +33,6 @@ services:
       - MIA_HOME_ENTITY_ALIASES_JSON=${MIA_HOME_ENTITY_ALIASES_JSON:-}
       - MIA_HOME_TTS_ENTITY_ID=${MIA_HOME_TTS_ENTITY_ID:-}
       - MIA_CORE_URL=${MIA_CORE_URL:-http://mia-core:8000/mia/chat}
-      - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
-      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
       - OWNER_DISPLAY_NAME=${OWNER_DISPLAY_NAME:-User}
     ports:
       - "127.0.0.1:5678:5678"
@@ -110,31 +108,66 @@ services:
     networks:
       - n8n-net
 
+  mia-opencode:
+    build:
+      context: ..
+      dockerfile: infra/opencode-gateway/Dockerfile
+    container_name: mia-opencode
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - MIA_CODE_GATEWAY_TOKEN=${MIA_CODE_GATEWAY_TOKEN:-${MIA_CODE_RUNNER_TOKEN:-}}
+      - MIA_CODE_RUNNER_TOKEN=${MIA_CODE_RUNNER_TOKEN:-}
+      - MIA_CODE_ALLOWED_ROOTS=${MIA_CODE_ALLOWED_ROOTS:-/host-projects}
+      - MIA_CODE_WORKSPACE_ROOT=${MIA_CODE_WORKSPACE_ROOT:-/workspaces}
+      - MIA_CODE_HOST_WORKSPACE_ROOT=${MIA_CODE_HOST_WORKSPACE_ROOT:-/home/huynhminh/Projects/mia-workspaces}
+      - MIA_CODE_TIMEOUT_SECONDS=${MIA_CODE_TIMEOUT_SECONDS:-180}
+      - MIA_CODE_MODEL=${MIA_CODE_MODEL:-openrouter/deepseek/deepseek-v4-flash}
+      - MIA_CODE_ALLOWED_REGISTRIES=${MIA_CODE_ALLOWED_REGISTRIES:-pypi.org,files.pythonhosted.org,registry.npmjs.org,github.com,api.github.com,proxy.golang.org,crates.io,index.crates.io}
+      - MIA_CODE_ALLOWED_COMMAND_PREFIXES=${MIA_CODE_ALLOWED_COMMAND_PREFIXES:-git status,git diff,git log,git show,git branch,git rev-parse,git ls-files,git grep,python,python3,pytest,ruff,mypy,uv,pip install,pip3 install,npm install,npm run,npm test,pnpm install,pnpm run,pnpm test,yarn install,yarn run,yarn test,node,go,cargo,make}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    ports:
+      - "127.0.0.1:8015:8015"
+    volumes:
+      - /home/huynhminh/Projects:/host-projects
+      - /home/huynhminh/Projects/mia-workspaces:/workspaces
+    networks:
+      - n8n-net
+
   mia-core:
     build:
       context: ..
       dockerfile: infra/Dockerfile.agent
     container_name: mia-core
     restart: unless-stopped
+    env_file:
+      - ../.env
     depends_on:
       - postgres
       - memory-embedder
       - n8n
+      - mia-opencode
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_HTTP_REFERER=${OPENROUTER_HTTP_REFERER:-https://n8n.example.com}
       - OPENROUTER_X_TITLE=${OPENROUTER_X_TITLE:-Mia LangChain Core}
       - PRIMARY_LLM_PROVIDER=${PRIMARY_LLM_PROVIDER:-openrouter}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       - MIA_DEEPSEEK_MODEL=${MIA_DEEPSEEK_MODEL:-deepseek-v4-flash}
       - MIA_MODEL=${MIA_MODEL:-openai/gpt-4.1-mini}
-      - MIA_POSTGRES_URI=${MIA_POSTGRES_URI:-postgresql://n8n:n8n_password@postgres:5432/vectordb?sslmode=disable}
       - MIA_MEMORY_EMBEDDER_URL=${MIA_MEMORY_EMBEDDER_URL:-http://memory-embedder:8000/embed}
       - MIA_TOOL_GATEWAY_URL=${MIA_TOOL_GATEWAY_URL:-http://n8n:5678/webhook/mia-tool}
-      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN:-}
-      - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN:-}
+      - MIA_CODE_ENABLED=${MIA_CODE_ENABLED:-false}
+      - MIA_CODE_GATEWAY_URL=${MIA_CODE_GATEWAY_URL:-http://mia-opencode:8015}
+      - MIA_CODE_RUNNER_URL=${MIA_CODE_RUNNER_URL:-http://mia-opencode:8015}
+      - MIA_CODE_GATEWAY_TOKEN=${MIA_CODE_GATEWAY_TOKEN:-${MIA_CODE_RUNNER_TOKEN:-}}
+      - MIA_CODE_RUNNER_TOKEN=${MIA_CODE_RUNNER_TOKEN:-}
+      - MIA_CODE_TIMEOUT_SECONDS=${MIA_CODE_TIMEOUT_SECONDS:-180}
+      - MIA_CODE_RUNNER_TIMEOUT_SECONDS=${MIA_CODE_RUNNER_TIMEOUT_SECONDS:-180}
+      - MIA_CODE_MODEL=${MIA_CODE_MODEL:-openrouter/deepseek/deepseek-v4-flash}
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
       - MIA_MAPS_DEFAULT_LANGUAGE=${MIA_MAPS_DEFAULT_LANGUAGE:-vi}
       - MIA_MAPS_DEFAULT_REGION=${MIA_MAPS_DEFAULT_REGION:-VN}
@@ -151,6 +184,9 @@ services:
       - MIA_MODEL_TEMPERATURE=${MIA_MODEL_TEMPERATURE:-0}
       - MIA_MODEL_MAX_TOKENS=${MIA_MODEL_MAX_TOKENS:-900}
       - MIA_RECURSION_LIMIT=${MIA_RECURSION_LIMIT:-12}
+      - MIA_PROMPT_CACHE_ENABLED=${MIA_PROMPT_CACHE_ENABLED:-true}
+      - MIA_PROMPT_CACHE_NAMESPACE=${MIA_PROMPT_CACHE_NAMESPACE:-mia}
+      - MIA_PROMPT_CACHE_VERSION=${MIA_PROMPT_CACHE_VERSION:-v1}
       - MIA_REQUEST_TIMEOUT_SECONDS=${MIA_REQUEST_TIMEOUT_SECONDS:-60}
       - MIA_WEB_MAX_RESPONSE_BYTES=${MIA_WEB_MAX_RESPONSE_BYTES:-2097152}
       - MIA_WEB_MAX_REDIRECTS=${MIA_WEB_MAX_REDIRECTS:-5}

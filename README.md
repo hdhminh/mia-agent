@@ -18,6 +18,7 @@ Mia is an AI agent that manages your digital life through natural conversation:
 | Drive / Docs  | Full CRUD on Drive, Docs, and Sheets            |
 | Web           | Search, read URLs, summarize pages              |
 | GitHub        | Browse repos and perform confirmed write actions |
+| Code Agent    | Create managed workspaces, import local repos, code through OpenCode, review diffs, and publish with confirmation |
 | Media         | OCR, document analysis, transcription, TTS      |
 | Memory        | Long-term memory with semantic search (pgvector)|
 | Automation    | Run reusable skills now or on cron schedules    |
@@ -146,6 +147,7 @@ Smart home note:
 | [Home Assistant setup](docs/deployment/HOME_ASSISTANT_SETUP.md) | Practical smart-home rollout |
 | [Platform upgrade](docs/deployment/UPGRADE_MIA_PLATFORM.md) | Migration and rollout checklist |
 | [Security model](docs/security/SECURITY_MODEL.md)      | Auth, approval and network controls  |
+| [Code agent setup](docs/deployment/CODE_AGENT_SETUP.md) | OpenCode workspace flow and publish controls |
 | [Adding tools and skills](docs/skills/ADDING_TOOLS_AND_SKILLS.md) | Extension guide |
 
 ---

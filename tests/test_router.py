@@ -29,5 +29,11 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(decision.route_type, "agentic_multistep")
         self.assertEqual(decision.agent_key, "google_full")
 
+    def test_route_request_code_agent(self):
+        decision = route_request("sửa bug trong repo mia-agent rồi chạy test")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+        self.assertEqual(decision.hint_tool, "code_work_on_project")
+
 if __name__ == "__main__":
     unittest.main()
