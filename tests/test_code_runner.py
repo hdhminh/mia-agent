@@ -68,6 +68,35 @@ def test_opencode_create_project_and_diff(tmp_path, monkeypatch):
     diff = client.post("/projects/diff", json={"project_id": project_id})
     assert diff.status_code == 200
     assert "agent-output.txt" in diff.json()["diff"]
+    assert project_id == "demo-code"
+
+
+def test_opencode_create_project_reuses_existing_name(tmp_path, monkeypatch):
+    fake_bin = tmp_path / "fake-opencode"
+    _write_fake_opencode(fake_bin)
+
+    monkeypatch.setenv("MIA_CODE_WORKSPACE_ROOT", str(tmp_path / "workspaces"))
+    monkeypatch.setenv("MIA_CODE_OPENCODE_BIN", str(fake_bin))
+    monkeypatch.setenv("MIA_CODE_MODEL", "deepseek/deepseek-chat")
+    monkeypatch.delenv("MIA_CODE_GATEWAY_TOKEN", raising=False)
+    monkeypatch.delenv("MIA_CODE_RUNNER_TOKEN", raising=False)
+
+    client = TestClient(app)
+
+    created = client.post("/projects/create", json={"project_name": "demo-portfolio", "instruction": "tạo file demo"})
+    assert created.status_code == 200
+    first = created.json()["project"]
+    assert first["project_id"] == "demo-portfolio"
+
+    reused = client.post("/projects/create", json={"project_name": "demo-portfolio", "instruction": "thêm thay đổi mới"})
+    assert reused.status_code == 200
+    second = reused.json()["project"]
+    assert second["project_id"] == "demo-portfolio"
+    assert "không tạo bản trùng mới" in reused.json()["text"]
+
+    workspace_root = Path(tmp_path / "workspaces")
+    projects = [path.name for path in workspace_root.iterdir() if path.is_dir()]
+    assert projects == ["demo-portfolio"]
 
 
 def test_opencode_import_and_apply_back_to_source(tmp_path, monkeypatch):
@@ -99,6 +128,7 @@ def test_opencode_import_and_apply_back_to_source(tmp_path, monkeypatch):
     applied = client.post("/projects/apply", json={"project_id": project_id, "confirmed": True})
     assert applied.status_code == 200
     assert (repo / "app.py").read_text(encoding="utf-8") == "VALUE = 2\n"
+    assert project_id == "demo"
 
 
 def test_opencode_import_blocks_outside_allowed_roots(tmp_path, monkeypatch):

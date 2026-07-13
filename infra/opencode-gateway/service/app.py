@@ -5,7 +5,6 @@ import os
 import re
 import shutil
 import subprocess
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -403,6 +402,35 @@ def _list_projects() -> list[ProjectRecord]:
     return projects
 
 
+def _find_project_by_name(project_name: str) -> ProjectRecord | None:
+    wanted_slug = _safe_slug(project_name)
+    wanted_name = _normalize_name(project_name)
+    for project in _list_projects():
+        if _safe_slug(project.project_name) == wanted_slug:
+            return project
+        if _normalize_name(project.project_name) == wanted_name:
+            return project
+    return None
+
+
+def _normalize_name(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
+
+
+def _resolve_project_id(project_name: str) -> str:
+    project_id = _safe_slug(project_name)
+    existing_dir = _project_dir(project_id)
+    if not existing_dir.exists():
+        return project_id
+    existing = _load_project(project_id)
+    if _normalize_name(existing.project_name) == _normalize_name(project_name):
+        return project_id
+    raise CodeGatewayError(
+        f"Tên project '{project_name}' bị trùng slug với project khác đang có: '{existing.project_name}'. "
+        "Hãy đổi tên project rõ hơn thay vì tạo bản trùng."
+    )
+
+
 def _workspace_summary(record: ProjectRecord) -> dict[str, Any]:
     project_dir = Path(record.workspace_path)
     status = _run(["git", "status", "--short"], cwd=project_dir)
@@ -636,24 +664,31 @@ def create_project(
     _require_auth(authorization)
     _write_opencode_files()
     try:
-        slug = _safe_slug(body.project_name)
-        project_id = f"{slug}-{uuid.uuid4().hex[:8]}"
-        project_dir = _project_dir(project_id)
-        project_dir.mkdir(parents=True, exist_ok=False)
-        record = ProjectRecord(
-            project_id=project_id,
-            project_name=body.project_name.strip(),
-            workspace_path=str(project_dir),
-            origin_type="workspace",
-            source_path="",
-            session_id="",
-            branch="main",
-            created_at=_now_iso(),
-            updated_at=_now_iso(),
-            title=body.title.strip(),
-        )
-        _save_project(record)
-        _ensure_git_repo(project_dir)
+        requested_name = body.project_name.strip()
+        existing = _find_project_by_name(requested_name)
+        reused_existing = existing is not None
+        if existing is not None:
+            record = existing
+            project_id = existing.project_id
+            project_dir = Path(existing.workspace_path)
+        else:
+            project_id = _resolve_project_id(requested_name)
+            project_dir = _project_dir(project_id)
+            project_dir.mkdir(parents=True, exist_ok=False)
+            record = ProjectRecord(
+                project_id=project_id,
+                project_name=requested_name,
+                workspace_path=str(project_dir),
+                origin_type="workspace",
+                source_path="",
+                session_id="",
+                branch="main",
+                created_at=_now_iso(),
+                updated_at=_now_iso(),
+                title=body.title.strip(),
+            )
+            _save_project(record)
+            _ensure_git_repo(project_dir)
         output = ""
         session_id = ""
         if body.instruction.strip():
@@ -664,11 +699,19 @@ def create_project(
         host_path = f"{_host_workspace_label().rstrip('/')}/{project_id}"
         text = "\n".join(
             [
-                f"Mia đã tạo workspace code mới: {record.project_name}",
+                (
+                    f"Mia đã tiếp tục workspace code sẵn có: {record.project_name}"
+                    if reused_existing
+                    else f"Mia đã tạo workspace code mới: {record.project_name}"
+                ),
                 f"- project_id: {record.project_id}",
                 f"- Workspace host path: {host_path}",
                 f"- Model code: {_code_model()}",
-                "- Ghi trực tiếp trong workspace riêng được bật.",
+                (
+                    "- Mia tái sử dụng đúng project hiện có, không tạo bản trùng mới."
+                    if reused_existing
+                    else "- Ghi trực tiếp trong workspace riêng được bật."
+                ),
                 output.strip() if output.strip() else "",
             ]
         ).strip()
@@ -690,24 +733,38 @@ def import_project(
             raise HTTPException(status_code=404, detail="Source project path không tồn tại hoặc không phải thư mục.")
         _validate_allowed_source(source_path)
         project_name = body.project_name.strip() or source_path.name
-        slug = _safe_slug(project_name)
-        project_id = f"{slug}-{uuid.uuid4().hex[:8]}"
-        project_dir = _project_dir(project_id)
-        _copy_project(source_path, project_dir)
-        record = ProjectRecord(
-            project_id=project_id,
-            project_name=project_name,
-            workspace_path=str(project_dir),
-            origin_type="imported",
-            source_path=str(source_path),
-            session_id="",
-            branch="main",
-            created_at=_now_iso(),
-            updated_at=_now_iso(),
-            title=body.title.strip(),
-        )
-        _save_project(record)
-        _ensure_git_repo(project_dir)
+        existing = _find_project_by_name(project_name)
+        reused_existing = existing is not None
+        if existing is not None:
+            if existing.origin_type != "imported":
+                raise CodeGatewayError(
+                    f"Đã có workspace tên '{project_name}' nhưng đó là project nội bộ, không phải project import từ local."
+                )
+            if Path(existing.source_path).resolve() != source_path:
+                raise CodeGatewayError(
+                    f"Đã có project import tên '{project_name}' nhưng đang trỏ tới source khác: {existing.source_path}"
+                )
+            record = existing
+            project_id = existing.project_id
+            project_dir = Path(existing.workspace_path)
+        else:
+            project_id = _resolve_project_id(project_name)
+            project_dir = _project_dir(project_id)
+            _copy_project(source_path, project_dir)
+            record = ProjectRecord(
+                project_id=project_id,
+                project_name=project_name,
+                workspace_path=str(project_dir),
+                origin_type="imported",
+                source_path=str(source_path),
+                session_id="",
+                branch="main",
+                created_at=_now_iso(),
+                updated_at=_now_iso(),
+                title=body.title.strip(),
+            )
+            _save_project(record)
+            _ensure_git_repo(project_dir)
         output = ""
         session_id = ""
         if body.instruction.strip():
@@ -717,11 +774,19 @@ def import_project(
         summary = _workspace_summary(record)
         text = "\n".join(
             [
-                f"Mia đã import project vào sandbox code: {record.project_name}",
+                (
+                    f"Mia đã tiếp tục sandbox code đã import: {record.project_name}"
+                    if reused_existing
+                    else f"Mia đã import project vào sandbox code: {record.project_name}"
+                ),
                 f"- project_id: {record.project_id}",
                 f"- Source path: {record.source_path}",
                 f"- Workspace path: {record.workspace_path}",
-                "- Chưa ghi ngược về source cho tới khi anh xác nhận apply.",
+                (
+                    "- Mia tái sử dụng đúng project import hiện có, không tạo bản trùng mới."
+                    if reused_existing
+                    else "- Chưa ghi ngược về source cho tới khi anh xác nhận apply."
+                ),
                 output.strip() if output.strip() else "",
             ]
         ).strip()
