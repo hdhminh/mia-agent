@@ -19,6 +19,7 @@ def make_specialist_node(agent_key: str):
             context=context,
             query=state["request"].text,
             hint_tool=state.get("hint_tool", ""),
+            request_metadata=state["request"].metadata,
         )
 
         messages = list(result.get("messages", []))

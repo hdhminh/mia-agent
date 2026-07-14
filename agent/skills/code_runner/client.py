@@ -45,3 +45,13 @@ class CodeRunnerClient:
         if not isinstance(data, dict):
             raise CodeRunnerError("Mia OpenCode gateway trả payload không hợp lệ.")
         return data
+
+    def list_projects(self) -> list[dict[str, Any]]:
+        data = self.request("projects/status", {"project_id": ""})
+        projects = data.get("projects")
+        if isinstance(projects, list):
+            return [item for item in projects if isinstance(item, dict)]
+        project = data.get("project")
+        if isinstance(project, dict):
+            return [project]
+        return []

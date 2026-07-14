@@ -20,6 +20,7 @@ def build_tools(
     *,
     memory_repo: MemoryRepository,
     tool_gateway: N8nToolGatewayClient,
+    code_default_project_id: str = "",
 ) -> list:
     tools = []
     tools.extend(get_memory_tools(memory_repo))
@@ -32,5 +33,5 @@ def build_tools(
     tools.extend(get_google_maps_tools(tool_gateway))
     tools.extend(get_productivity_tools(tool_gateway))
     tools.extend(get_smarthome_tools(tool_gateway))
-    tools.extend(get_code_tools())
+    tools.extend(get_code_tools(default_project_id=code_default_project_id))
     return tools

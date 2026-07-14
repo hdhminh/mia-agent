@@ -44,6 +44,7 @@ from agent.persona.system_prompt import SYSTEM_PROMPT
 from agent.i18n import t
 from agent.skills.github_handler import GitHubHandler
 from agent.brain.followup_handler import FollowupHandler
+from agent.skills.code_runner.client import CodeRunnerClient, CodeRunnerError
 
 
 def _build_trim_history_middleware(max_tokens: int):
@@ -126,11 +127,56 @@ class MiaAgentService:
             memory_repo=self.memory_repo,
             tool_gateway=self.tool_gateway,
         )
+        self.code_runner_client = CodeRunnerClient(
+            base_url=self.settings.code_gateway_url,
+            token=self.settings.code_gateway_token,
+            timeout_seconds=self.settings.code_timeout_seconds,
+        )
         self.github_handler = GitHubHandler(self)
         self.followup_handler = FollowupHandler(self)
         self.agents = self._build_agents()
         self.fallback_agents = self._build_fallback_agents()
         self.graph = build_mia_graph(self, checkpointer=self.checkpointer)
+
+    @staticmethod
+    def _normalize_code_project_name(value: str) -> str:
+        return normalize_query_text(str(value or "")).replace("/", " ").replace("_", " ").replace("-", " ").strip()
+
+    def _resolve_active_code_project(self, request: MiaChatRequest) -> dict[str, Any]:
+        if not self.settings.code_enabled:
+            return {}
+        metadata = request.metadata if isinstance(request.metadata, dict) else {}
+        active = metadata.get("active_code_project")
+        if isinstance(active, dict) and active.get("project_id"):
+            return active
+        try:
+            projects = self.code_runner_client.list_projects()
+        except CodeRunnerError:
+            return {}
+        if not projects:
+            return {}
+        if len(projects) == 1:
+            return projects[0]
+
+        normalized_text = self._normalize_code_project_name(request.text)
+        if not normalized_text:
+            return {}
+        for project in projects:
+            project_id = self._normalize_code_project_name(str(project.get("project_id") or ""))
+            project_name = self._normalize_code_project_name(str(project.get("project_name") or ""))
+            if project_id and project_id in normalized_text:
+                return project
+            if project_name and project_name in normalized_text:
+                return project
+        return {}
+
+    def _enrich_request_metadata(self, request: MiaChatRequest) -> MiaChatRequest:
+        metadata = dict(request.metadata or {})
+        active_project = self._resolve_active_code_project(request)
+        if active_project:
+            metadata["active_code_project"] = active_project
+        request.metadata = metadata
+        return request
 
     @staticmethod
     def _learning_scopes(*, route_domain: str, agent_key: str, hint_tool: str) -> list[str]:
@@ -400,15 +446,19 @@ class MiaAgentService:
             prompt_cache_key=self._prompt_cache_key(scope, provider_used=provider_used),
         )
 
-    def _build_tool_registry(self) -> dict[str, Any]:
+    def _build_tool_registry(self, *, code_default_project_id: str = "") -> dict[str, Any]:
         tools = build_tools(
             memory_repo=self.memory_repo,
             tool_gateway=self.tool_gateway,
+            code_default_project_id=code_default_project_id,
         )
         return {tool.name: tool for tool in tools}
 
-    def _build_agent(self, *, tool_names: list[str], model: Any):
-        tools = [self.tool_registry[name] for name in tool_names]
+    def _build_agent(self, *, tool_names: list[str], model: Any, code_default_project_id: str = ""):
+        tool_registry = self.tool_registry
+        if code_default_project_id:
+            tool_registry = self._build_tool_registry(code_default_project_id=code_default_project_id)
+        tools = [tool_registry[name] for name in tool_names]
         return create_agent(
             model=model,
             tools=tools,
@@ -446,6 +496,7 @@ class MiaAgentService:
         context: MiaContext,
         query: str = "",
         hint_tool: str = "",
+        request_metadata: dict[str, Any] | None = None,
     ):
         available = caps.AGENT_TOOLSETS[agent_key]
         selected = self.capability_broker.select_tool_names(
@@ -456,10 +507,19 @@ class MiaAgentService:
             limit=14 if agent_key == "code" else 12 if agent_key == "google_full" else 10,
         )
         recursion_limit = max(self.settings.recursion_limit, 28) if agent_key == "code" else self.settings.recursion_limit
-        cache_key = (agent_key, tuple(selected))
+        code_default_project_id = ""
+        if agent_key == "code" and isinstance(request_metadata, dict):
+            active_project = request_metadata.get("active_code_project")
+            if isinstance(active_project, dict):
+                code_default_project_id = str(active_project.get("project_id") or "").strip()
+        cache_key = (agent_key, tuple(selected), code_default_project_id)
         agent = self._dynamic_agents.get(cache_key)
         if agent is None:
-            agent = self._build_agent(tool_names=selected, model=self.agent_models[agent_key])
+            agent = self._build_agent(
+                tool_names=selected,
+                model=self.agent_models[agent_key],
+                code_default_project_id=code_default_project_id,
+            )
             self._dynamic_agents[cache_key] = agent
         try:
             return agent.invoke(
@@ -474,7 +534,11 @@ class MiaAgentService:
             fallback_agent = self._dynamic_fallback_agents.get(cache_key)
             fallback_model = self.agent_fallback_models.get(agent_key)
             if fallback_agent is None and fallback_model is not None:
-                fallback_agent = self._build_agent(tool_names=selected, model=fallback_model)
+                fallback_agent = self._build_agent(
+                    tool_names=selected,
+                    model=fallback_model,
+                    code_default_project_id=code_default_project_id,
+                )
                 self._dynamic_fallback_agents[cache_key] = fallback_agent
             if fallback_agent is None:
                 raise
@@ -561,6 +625,7 @@ class MiaAgentService:
         return self.github_handler._try_github_search_followup(request)
 
     def chat(self, request: MiaChatRequest) -> MiaChatResponse:
+        request = self._enrich_request_metadata(request)
         thread_id = request.resolved_thread_id()
         request_id = request.resolved_request_id()
         context = MiaContext(

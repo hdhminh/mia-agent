@@ -45,6 +45,20 @@ def supervisor_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
                 "content": f"Attachment metadata: {request.metadata}",
             }
         )
+        active_project = request.metadata.get("active_code_project")
+        if isinstance(active_project, dict) and active_project.get("project_id"):
+            project_id = str(active_project.get("project_id") or "").strip()
+            project_name = str(active_project.get("project_name") or project_id).strip()
+            messages_payload.append(
+                {
+                    "role": "system",
+                    "content": (
+                        f"Code project hiện hành của người dùng là '{project_name}'"
+                        f" (project_id: {project_id}). Nếu yêu cầu là chỉnh/sửa/thêm code tiếp theo,"
+                        " hãy ưu tiên tiếp tục trên project này bằng tool code_work_on_project thay vì hỏi lại project."
+                    ),
+                }
+            )
     scopes = service._learning_scopes(
         route_domain=route.domain,
         agent_key=agent_key,

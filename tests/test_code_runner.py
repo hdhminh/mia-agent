@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,3 +145,24 @@ def test_opencode_import_blocks_outside_allowed_roots(tmp_path, monkeypatch):
     client = TestClient(app)
     response = client.post("/projects/import", json={"source_path": str(outside)})
     assert response.status_code == 403
+
+
+def test_code_tools_use_default_project_id_when_missing(monkeypatch):
+    from agent.skills.code_runner.tools import get_code_tools
+
+    captured: list[tuple[str, dict[str, object]]] = []
+
+    def fake_run(endpoint: str, payload: dict[str, object]) -> str:
+        captured.append((endpoint, payload))
+        return "ok"
+
+    with patch("agent.skills.code_runner.tools._run", side_effect=fake_run):
+        tools = {tool.name: tool for tool in get_code_tools(default_project_id="demo-coffee")}
+        tools["code_work_on_project"].func(project_id="", instruction="thêm about")
+        tools["code_project_diff"].func(project_id="", max_chars=1234)
+        tools["code_publish_project"].func(project_id="", confirmed=False)
+
+    assert captured[0] == ("projects/work", {"project_id": "demo-coffee", "instruction": "thêm about"})
+    assert captured[1] == ("projects/diff", {"project_id": "demo-coffee", "max_chars": 1234})
+    assert captured[2][0] == "projects/publish"
+    assert captured[2][1]["project_id"] == "demo-coffee"

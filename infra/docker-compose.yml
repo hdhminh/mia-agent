@@ -117,13 +117,10 @@ services:
     env_file:
       - ../.env
     environment:
-      - MIA_CODE_GATEWAY_TOKEN=${MIA_CODE_GATEWAY_TOKEN:-${MIA_CODE_RUNNER_TOKEN:-}}
-      - MIA_CODE_RUNNER_TOKEN=${MIA_CODE_RUNNER_TOKEN:-}
       - MIA_CODE_ALLOWED_ROOTS=${MIA_CODE_ALLOWED_ROOTS:-/host-projects}
       - MIA_CODE_WORKSPACE_ROOT=${MIA_CODE_WORKSPACE_ROOT:-/workspaces}
       - MIA_CODE_HOST_WORKSPACE_ROOT=${MIA_CODE_HOST_WORKSPACE_ROOT:-/home/huynhminh/Projects/mia-workspaces}
       - MIA_CODE_TIMEOUT_SECONDS=${MIA_CODE_TIMEOUT_SECONDS:-180}
-      - MIA_CODE_MODEL=${MIA_CODE_MODEL:-openrouter/deepseek/deepseek-v4-flash}
       - MIA_CODE_ALLOWED_REGISTRIES=${MIA_CODE_ALLOWED_REGISTRIES:-pypi.org,files.pythonhosted.org,registry.npmjs.org,github.com,api.github.com,proxy.golang.org,crates.io,index.crates.io}
       - MIA_CODE_ALLOWED_COMMAND_PREFIXES=${MIA_CODE_ALLOWED_COMMAND_PREFIXES:-git status,git diff,git log,git show,git branch,git rev-parse,git ls-files,git grep,python,python3,pytest,ruff,mypy,uv,pip install,pip3 install,npm install,npm run,npm test,pnpm install,pnpm run,pnpm test,yarn install,yarn run,yarn test,node,go,cargo,make}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
@@ -158,14 +155,8 @@ services:
       - MIA_DEEPSEEK_MODEL=${MIA_DEEPSEEK_MODEL:-deepseek-v4-flash}
       - MIA_MEMORY_EMBEDDER_URL=${MIA_MEMORY_EMBEDDER_URL:-http://memory-embedder:8000/embed}
       - MIA_TOOL_GATEWAY_URL=${MIA_TOOL_GATEWAY_URL:-http://n8n:5678/webhook/mia-tool}
-      - MIA_CODE_ENABLED=${MIA_CODE_ENABLED:-false}
-      - MIA_CODE_GATEWAY_URL=${MIA_CODE_GATEWAY_URL:-http://mia-opencode:8015}
-      - MIA_CODE_RUNNER_URL=${MIA_CODE_RUNNER_URL:-http://mia-opencode:8015}
-      - MIA_CODE_GATEWAY_TOKEN=${MIA_CODE_GATEWAY_TOKEN:-${MIA_CODE_RUNNER_TOKEN:-}}
-      - MIA_CODE_RUNNER_TOKEN=${MIA_CODE_RUNNER_TOKEN:-}
       - MIA_CODE_TIMEOUT_SECONDS=${MIA_CODE_TIMEOUT_SECONDS:-180}
       - MIA_CODE_RUNNER_TIMEOUT_SECONDS=${MIA_CODE_RUNNER_TIMEOUT_SECONDS:-180}
-      - MIA_CODE_MODEL=${MIA_CODE_MODEL:-openrouter/deepseek/deepseek-v4-flash}
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
       - MIA_MAPS_DEFAULT_LANGUAGE=${MIA_MAPS_DEFAULT_LANGUAGE:-vi}
       - MIA_MAPS_DEFAULT_REGION=${MIA_MAPS_DEFAULT_REGION:-VN}

@@ -32,7 +32,12 @@ def _run(endpoint: str, payload: dict[str, Any]) -> str:
         return f"Code runner chưa thực hiện được thao tác này: {exc}"
 
 
-def get_code_tools() -> list:
+def get_code_tools(default_project_id: str = "") -> list:
+    default_project_id = str(default_project_id or "").strip()
+
+    def resolve_project_id(project_id: str = "") -> str:
+        return str(project_id or "").strip() or default_project_id
+
     @tool("code_create_project")
     def create_project(project_name: str, instruction: str = "", title: str = "") -> str:
         """Create a new dedicated code workspace in Mia's managed workspace root and optionally start coding."""
@@ -61,22 +66,22 @@ def get_code_tools() -> list:
     @tool("code_work_on_project")
     def work_on_project(project_id: str = "", instruction: str = "") -> str:
         """Continue coding on a managed project. If project_id is omitted and only one project exists, Mia will use it."""
-        return _run("projects/work", {"project_id": project_id, "instruction": instruction})
+        return _run("projects/work", {"project_id": resolve_project_id(project_id), "instruction": instruction})
 
     @tool("code_project_status")
     def project_status(project_id: str = "") -> str:
         """Show status for one managed code project, or all projects if project_id is omitted."""
-        return _run("projects/status", {"project_id": project_id})
+        return _run("projects/status", {"project_id": resolve_project_id(project_id)})
 
     @tool("code_project_diff")
     def project_diff(project_id: str = "", max_chars: int = 30000) -> str:
         """Show the current git diff for one managed code project."""
-        return _run("projects/diff", {"project_id": project_id, "max_chars": max_chars})
+        return _run("projects/diff", {"project_id": resolve_project_id(project_id), "max_chars": max_chars})
 
     @tool("code_apply_to_existing_project")
     def apply_to_existing_project(project_id: str = "", confirmed: bool = False) -> str:
         """Apply sandbox changes back to the original imported local project after explicit approval."""
-        return _run("projects/apply", {"project_id": project_id, "confirmed": confirmed})
+        return _run("projects/apply", {"project_id": resolve_project_id(project_id), "confirmed": confirmed})
 
     @tool("code_publish_project")
     def publish_project(
@@ -92,7 +97,7 @@ def get_code_tools() -> list:
         return _run(
             "projects/publish",
             {
-                "project_id": project_id,
+                "project_id": resolve_project_id(project_id),
                 "title": title,
                 "body": body,
                 "branch": branch,

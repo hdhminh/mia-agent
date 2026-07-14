@@ -286,6 +286,48 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if any_keyword_matches(normalized, ("github help", "help github", "github huong dan", "github hướng dẫn", "help repo github")):
         return RequestProfile(domain="github", hint_tool="github_help", direct_confident=True, reason="github help request")
 
+    active_code_project = {}
+    if metadata:
+        candidate = metadata.get("active_code_project")
+        if isinstance(candidate, dict) and candidate.get("project_id"):
+            active_code_project = candidate
+    if active_code_project:
+        code_followup_cues = (
+            "them",
+            "thêm",
+            "sua",
+            "sửa",
+            "chinh",
+            "chỉnh",
+            "doi",
+            "đổi",
+            "xoa",
+            "xóa",
+            "cap nhat",
+            "cập nhật",
+            "them section",
+            "thêm section",
+            "them about",
+            "thêm about",
+            "hero",
+            "button",
+            "nut",
+            "nút",
+            "html",
+            "css",
+            "javascript",
+            "js",
+            "landing page",
+            "portfolio",
+            "responsive",
+            "giao dien",
+            "giao diện",
+            "trang",
+            "page",
+        )
+        if any_keyword_matches(normalized, code_followup_cues):
+            return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="active code project followup")
+
     if any_keyword_matches(normalized, GITHUB_ACCOUNT_REPO_CUES):
         return RequestProfile(domain="github", hint_tool="github_list_user_repos", direct_confident=True, reason="github account repos request")
 

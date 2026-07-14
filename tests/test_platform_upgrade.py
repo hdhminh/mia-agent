@@ -4,15 +4,19 @@ import json
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from agent.approval import is_cancellation_text, is_confirmation_text, should_require_confirmation
 from agent.automation import compute_next_run
 from agent.brain.capability_broker import CapabilityBroker
+from agent.brain.planner import infer_request_profile
 from agent.execution_journal import build_idempotency_key, canonical_args_hash
 from agent.mcp_adapter import MCPAdapter
 from agent.rate_limit import SlidingWindowRateLimiter
+from agent.service import MiaAgentService
 from agent.skills_engine.engine import SkillEngine, SkillSpec
 from agent.tool_specs import ToolCatalog
+from agent.models import MiaChatRequest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,6 +109,32 @@ class PlatformCapabilityTests(unittest.TestCase):
         self.assertEqual((next_run.hour, next_run.minute), (8, 0))
         with self.assertRaises(ValueError):
             compute_next_run("tomorrow morning", after=base)
+
+    def test_active_code_project_followup_routes_to_code(self) -> None:
+        profile = infer_request_profile(
+            "thêm section about nữa đi",
+            metadata={
+                "active_code_project": {
+                    "project_id": "demo-coffee",
+                    "project_name": "demo-coffee",
+                }
+            },
+        )
+        self.assertEqual(profile.domain, "code")
+        self.assertEqual(profile.hint_tool, "code_work_on_project")
+
+    def test_service_resolves_named_code_project_from_request_text(self) -> None:
+        service = object.__new__(MiaAgentService)
+        service.settings = SimpleNamespace(code_enabled=True)
+        service.code_runner_client = SimpleNamespace(
+            list_projects=lambda: [
+                {"project_id": "demo-coffee", "project_name": "demo-coffee"},
+                {"project_id": "demo-portfolio", "project_name": "demo-portfolio"},
+            ]
+        )
+        request = MiaChatRequest(chat_id="1", text="thêm section about vào demo-coffee", metadata={})
+        active = service._resolve_active_code_project(request)
+        self.assertEqual(active.get("project_id"), "demo-coffee")
 
 
 class PlatformWorkflowContractTests(unittest.TestCase):
