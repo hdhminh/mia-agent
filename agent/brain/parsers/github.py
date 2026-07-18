@@ -8,7 +8,10 @@ from agent.brain.parsers.common import (
     keyword_matches,
     normalize_query_text,
     _matches_action,
+    CREATE_ACTION_CUES,
+    UPDATE_ACTION_CUES,
     READ_ACTION_CUES,
+    SEND_ACTION_CUES,
     VIEW_ACTION_CUES,
 )
 
@@ -158,12 +161,22 @@ def _infer_github_hint(
             return "github_list_releases", True
         return "github_list_releases", True
     if item_type == "pull_request" or any_keyword_matches(normalized, GITHUB_PULL_CUES):
+        if any_keyword_matches(normalized, ("tao pr", "tạo pr", "tao pull request", "tạo pull request", "create pull request", "open pull request")):
+            return "github_create_pull_request", False
+        if any_keyword_matches(normalized, ("comment", "binh luan", "bình luận", "nhan xet", "nhận xét")):
+            return "github_comment_pull_request", False
         if number or any_keyword_matches(normalized, ("detail", "chi tiet", "chi tiết", "read", "doc", "open")):
             return "github_get_pull_request", True
         if any_keyword_matches(normalized, ("list", "liet ke", "liệt kê", "danh sach", "danh sách", "xem", "show", "open", "closed", "all")):
             return "github_list_pull_requests", True
         return "github_list_pull_requests", True
     if item_type == "issue" or any_keyword_matches(normalized, GITHUB_ISSUE_CUES):
+        if _matches_action(normalized, CREATE_ACTION_CUES) or any_keyword_matches(normalized, ("create issue", "open issue")):
+            return "github_create_issue", False
+        if _matches_action(normalized, UPDATE_ACTION_CUES) or any_keyword_matches(normalized, ("close issue", "dong issue", "đóng issue", "reopen issue")):
+            return "github_update_issue", False
+        if _matches_action(normalized, SEND_ACTION_CUES) or any_keyword_matches(normalized, ("comment", "binh luan", "bình luận", "nhan xet", "nhận xét")):
+            return "github_comment_issue", False
         if number or any_keyword_matches(normalized, ("detail", "chi tiet", "chi tiết", "read", "doc", "open")):
             return "github_get_issue", True
         if any_keyword_matches(normalized, ("list", "liet ke", "liệt kê", "danh sach", "danh sách", "xem", "show", "open", "closed", "all")):

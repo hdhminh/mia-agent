@@ -45,5 +45,29 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(decision.domain, "general")
         self.assertEqual(decision.agent_key, "general")
 
+    def test_drive_folder_project_request_does_not_route_to_code(self):
+        decision = route_request("tạo folder dự án mới")
+        self.assertEqual(decision.domain, "workspace")
+        self.assertEqual(decision.agent_key, "workspace")
+        self.assertEqual(decision.hint_tool, "drive_create_folder")
+
+    def test_sheet_and_drive_multi_intent_does_not_route_to_code(self):
+        decision = route_request("xem file drive gần đây rồi thêm dòng vào sheet doanh thu")
+        self.assertEqual(decision.domain, "workspace")
+        self.assertEqual(decision.agent_key, "google_full")
+        self.assertEqual(decision.hint_tool, "drive_create_file")
+
+    def test_explicit_code_folder_creation_still_routes_to_code(self):
+        decision = route_request("tạo folder mới trong Projects để code landing page html css")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+        self.assertEqual(decision.hint_tool, "code_create_project")
+
+    def test_code_workspace_status_routes_to_code_status(self):
+        decision = route_request("kiểm tra workspace code hiện có")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+        self.assertEqual(decision.hint_tool, "code_project_status")
+
 if __name__ == "__main__":
     unittest.main()

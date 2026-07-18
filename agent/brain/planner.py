@@ -97,6 +97,32 @@ def is_current_time_request(normalized: str) -> bool:
 
 
 def _infer_code_profile(normalized: str) -> RequestProfile | None:
+    code_specific_context_cues = (
+        "code",
+        "coding",
+        "repo",
+        "repository",
+        "source",
+        "pull request",
+        "pr",
+        "branch",
+        "commit",
+        "diff",
+        "patch",
+        "lint",
+        "build",
+        "pytest",
+        "html",
+        "css",
+        "javascript",
+        "js",
+        "frontend",
+        "landing page",
+        "portfolio",
+        "sandbox",
+        "workspace code",
+        "opencode",
+    )
     code_workspace_creation_cues = (
         "tao folder",
         "tạo folder",
@@ -112,7 +138,7 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         "chuan bi workspace",
         "chuẩn bị workspace",
     )
-    if any_keyword_matches(normalized, code_workspace_creation_cues):
+    if any_keyword_matches(normalized, code_workspace_creation_cues) and any_keyword_matches(normalized, code_specific_context_cues):
         return RequestProfile(domain="code", hint_tool="code_create_project", direct_confident=False, reason="code workspace creation request")
     if any_keyword_matches(normalized, ("diff", "patch")):
         return RequestProfile(domain="code", hint_tool="code_project_diff", direct_confident=False, reason="code diff request")
@@ -120,6 +146,8 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         return RequestProfile(domain="code", hint_tool="code_import_existing_project", direct_confident=False, reason="code import request")
     if any_keyword_matches(normalized, ("pr", "pull request", "branch", "commit", "push", "publish")):
         return RequestProfile(domain="code", hint_tool="code_publish_project", direct_confident=False, reason="code publish request")
+    if any_keyword_matches(normalized, ("code status", "workspace code", "kiem tra code", "kiểm tra code", "kiem tra workspace code", "kiểm tra workspace code")):
+        return RequestProfile(domain="code", hint_tool="code_project_status", direct_confident=False, reason="code project status request")
 
     explicit_code_phrases = (
         "sua code",
@@ -144,36 +172,6 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
     if any_keyword_matches(normalized, explicit_code_phrases):
         return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="coding request")
 
-    code_target_cues = (
-        "code",
-        "coding",
-        "repo",
-        "repository",
-        "project",
-        "source",
-        "pull request",
-        "pr",
-        "branch",
-        "commit",
-        "diff",
-        "patch",
-        "lint",
-        "build",
-        "pytest",
-        "file",
-        "folder",
-        "html",
-        "css",
-        "javascript",
-        "js",
-        "frontend",
-        "landing page",
-        "section",
-        "about",
-        "portfolio",
-        "sandbox",
-        "workspace code",
-    )
     code_action_cues = (
         "them",
         "thêm",
@@ -197,10 +195,14 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         "run",
         "chay",
         "chạy",
+        "kiem tra",
+        "kiểm tra",
+        "check",
+        "status",
         "build",
         "lint",
     )
-    if any_keyword_matches(normalized, code_target_cues) and any_keyword_matches(normalized, code_action_cues):
+    if any_keyword_matches(normalized, code_specific_context_cues) and any_keyword_matches(normalized, code_action_cues):
         return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="coding request")
     return None
 

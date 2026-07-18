@@ -93,6 +93,7 @@ CASES: list[RouteCase] = [
     ),
     RouteCase("tìm code Session trong repo psf/requests", "direct_deterministic", "github", "github_search_code", "github", "github code search"),
     RouteCase("xem diff octocat/Hello-World master...octocat-patch-1", "direct_deterministic", "github", "github_get_diff", "github", "github diff"),
+    RouteCase("tạo issue test trong repo octocat/Hello-World tiêu đề Smoke", "agentic_domain", "github", "github_create_issue", "github", "github write issue requires approval"),
     RouteCase("https://example.com/article-1", "direct_deterministic", "general", "read_url", "general", "plain URL should read directly"),
     RouteCase("tóm tắt link này https://example.com/article-2", "direct_deterministic", "general", "summarize_url", "general", "explicit URL summary"),
     RouteCase("https://example.com/article-3 link này nói gì về học phí?", "agentic_domain", "general", "ask_url", "general", "explicit URL question"),

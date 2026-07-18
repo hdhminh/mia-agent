@@ -111,6 +111,13 @@ class TestRequestParserGitHubReadOnlyExpansion(unittest.TestCase):
         args = build_direct_tool_args("github_get_issue", f"xem issue #7 {url}")
         self.assertEqual(args["number"], "7")
 
+    def test_github_create_issue_routes_to_write_tool(self) -> None:
+        route = route_request("tạo issue test trong repo octocat/hello-world tiêu đề Smoke")
+
+        self.assertEqual(route.route_type, "agentic_domain")
+        self.assertEqual(route.domain, "github")
+        self.assertEqual(route.hint_tool, "github_create_issue")
+
 
 class TestRequestParserGitHubStructuredArgs(unittest.TestCase):
     def test_github_list_releases_direct_args_do_not_need_instruction(self) -> None:
