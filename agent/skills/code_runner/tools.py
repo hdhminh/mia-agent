@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 from typing import Any
 
 from langchain.tools import tool
@@ -32,6 +34,20 @@ def _run(endpoint: str, payload: dict[str, Any]) -> str:
         return f"Code runner chưa thực hiện được thao tác này: {exc}"
 
 
+def _translate_host_source_path(source_path: str) -> str:
+    raw = str(source_path or "").strip()
+    if not raw:
+        return raw
+    try:
+        path = Path(raw).expanduser().resolve()
+        host_root = Path(os.getenv("MIA_CODE_HOST_PROJECTS_ROOT", "/home/huynhminh/Projects")).expanduser().resolve()
+        container_root = Path(os.getenv("MIA_CODE_CONTAINER_PROJECTS_ROOT", "/host-projects")).resolve()
+        relative = path.relative_to(host_root)
+    except (OSError, ValueError):
+        return raw
+    return str(container_root / relative)
+
+
 def get_code_tools(default_project_id: str = "") -> list:
     default_project_id = str(default_project_id or "").strip()
 
@@ -56,7 +72,7 @@ def get_code_tools(default_project_id: str = "") -> list:
         return _run(
             "projects/import",
             {
-                "source_path": source_path,
+                "source_path": _translate_host_source_path(source_path),
                 "project_name": project_name,
                 "instruction": instruction,
                 "title": title,

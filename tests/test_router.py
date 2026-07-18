@@ -35,5 +35,15 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(decision.agent_key, "code")
         self.assertEqual(decision.hint_tool, "code_work_on_project")
 
+    def test_project_memory_question_does_not_route_to_code(self):
+        decision = route_request("mật danh dự án trong bài test smoke là gì?")
+        self.assertEqual(decision.domain, "general")
+        self.assertEqual(decision.agent_key, "general")
+
+    def test_generic_project_question_does_not_route_to_code(self):
+        decision = route_request("demo-coffee là project gì vậy?")
+        self.assertEqual(decision.domain, "general")
+        self.assertEqual(decision.agent_key, "general")
+
 if __name__ == "__main__":
     unittest.main()

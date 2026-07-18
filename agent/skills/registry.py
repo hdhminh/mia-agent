@@ -9,7 +9,14 @@ def build_capability_overview_text() -> str:
     return t("skills.capability_overview")
 
 
-MEMORY_TOOL_NAMES = ["memory_search", "memory_recent", "memory_write"]
+MEMORY_TOOL_NAMES = [
+    "memory_search",
+    "memory_recent",
+    "memory_write",
+    "memory_pending_proposals",
+    "memory_accept_proposal",
+    "memory_reject_proposal",
+]
 WEB_TOOL_NAMES = ["read_url", "summarize_url", "ask_url"]
 SIMPLE_TOOL_NAMES = ["weather_get", "gold_get_price", "news_get", "search_web", "shortlink_create", "time_now"] + WEB_TOOL_NAMES
 MEDIA_TOOL_NAMES = [

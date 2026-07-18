@@ -79,9 +79,12 @@ services:
       - n8n-net
 
   postgres:
-    image: pgvector/pgvector:pg16
+    build:
+      context: ./postgres17
+    image: mia-postgres17-textsearch:pg17
     container_name: postgres
     restart: unless-stopped
+    command: ["postgres", "-c", "shared_preload_libraries=pg_textsearch"]
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-n8n}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
@@ -89,7 +92,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data_17:/var/lib/postgresql/data
     networks:
       - n8n-net
 
@@ -197,6 +200,9 @@ volumes:
     name: n8n_n8n_data
   ollama_data:
   pg_data:
+  pg_data_17:
+    external: true
+    name: n8n_pg_data_17
   memory_models:
 
 networks:

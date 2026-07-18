@@ -59,6 +59,14 @@ def supervisor_node(state: MiaGraphState, service: Any) -> dict[str, Any]:
                     ),
                 }
             )
+    memory_context = str(state.get("memory_context") or "").strip()
+    if memory_context:
+        messages_payload.append(
+            {
+                "role": "system",
+                "content": memory_context,
+            }
+        )
     scopes = service._learning_scopes(
         route_domain=route.domain,
         agent_key=agent_key,

@@ -10,6 +10,7 @@ from agent.graph.state import MiaGraphState
 from agent.graph.nodes.composer import response_composer_node
 from agent.graph.nodes.evaluator import evaluator_node, route_after_evaluator
 from agent.graph.nodes.ingress import ingress_node, route_after_ingress
+from agent.graph.nodes.memory_retriever import memory_retriever_node
 from agent.graph.nodes.memory_writer import memory_writer_node
 from agent.graph.nodes.specialist import make_specialist_node
 from agent.graph.nodes.supervisor import route_to_specialist, supervisor_node
@@ -20,6 +21,7 @@ def build_mia_graph(service: Any, checkpointer: Any = None) -> CompiledStateGrap
 
     # Add nodes (bind service parameter)
     graph.add_node("ingress", partial(ingress_node, service=service))
+    graph.add_node("memory_retriever", partial(memory_retriever_node, service=service))
     graph.add_node("supervisor", partial(supervisor_node, service=service))
 
     # Specialist nodes
@@ -47,9 +49,11 @@ def build_mia_graph(service: Any, checkpointer: Any = None) -> CompiledStateGrap
         route_after_ingress,
         {
             "resolved": "memory_writer",
-            "needs_specialist": "supervisor",
+            "needs_specialist": "memory_retriever",
         },
     )
+
+    graph.add_edge("memory_retriever", "supervisor")
 
     graph.add_conditional_edges(
         "supervisor",

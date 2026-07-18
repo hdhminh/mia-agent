@@ -1,11 +1,23 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_textsearch;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'pg_textsearch extension is not installed or cannot be enabled; Mia memory will use pg_trgm lexical fallback. (%)', SQLERRM;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS mia_memory_items (
   id BIGSERIAL PRIMARY KEY,
   chat_id TEXT NOT NULL,
+  owner_id TEXT NOT NULL DEFAULT '',
+  thread_id TEXT NOT NULL DEFAULT '',
   fingerprint TEXT NOT NULL UNIQUE,
   memory_type TEXT NOT NULL DEFAULT 'general',
+  memory_kind TEXT NOT NULL DEFAULT 'semantic',
+  status TEXT NOT NULL DEFAULT 'active',
   title TEXT NOT NULL DEFAULT '',
   content TEXT NOT NULL,
   source_text TEXT NOT NULL DEFAULT '',
@@ -13,6 +25,9 @@ CREATE TABLE IF NOT EXISTS mia_memory_items (
   importance INTEGER NOT NULL DEFAULT 3,
   confidence DOUBLE PRECISION NOT NULL DEFAULT 0.75,
   source TEXT NOT NULL DEFAULT 'mia_langchain_core',
+  evidence JSONB NOT NULL DEFAULT '[]'::JSONB,
+  valid_from TIMESTAMPTZ,
+  valid_to TIMESTAMPTZ,
   last_used_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ,
   superseded_by BIGINT REFERENCES mia_memory_items(id) ON DELETE SET NULL,
@@ -24,14 +39,23 @@ CREATE TABLE IF NOT EXISTS mia_memory_items (
 
 ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS confidence DOUBLE PRECISION NOT NULL DEFAULT 0.75;
 ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'mia_langchain_core';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS owner_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS thread_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS memory_kind TEXT NOT NULL DEFAULT 'semantic';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS evidence JSONB NOT NULL DEFAULT '[]'::JSONB;
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS valid_from TIMESTAMPTZ;
+ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS valid_to TIMESTAMPTZ;
 ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
 ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE mia_memory_items ADD COLUMN IF NOT EXISTS superseded_by BIGINT REFERENCES mia_memory_items(id) ON DELETE SET NULL;
+UPDATE mia_memory_items SET owner_id = chat_id WHERE owner_id = '';
 
 CREATE TABLE IF NOT EXISTS mia_memory_chunks (
   id BIGSERIAL PRIMARY KEY,
   item_id BIGINT NOT NULL REFERENCES mia_memory_items(id) ON DELETE CASCADE,
   chat_id TEXT NOT NULL,
+  owner_id TEXT NOT NULL DEFAULT '',
   chunk_index INTEGER NOT NULL,
   chunk_text TEXT NOT NULL,
   embedding VECTOR(384) NOT NULL,
@@ -39,11 +63,59 @@ CREATE TABLE IF NOT EXISTS mia_memory_chunks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE mia_memory_chunks ADD COLUMN IF NOT EXISTS owner_id TEXT NOT NULL DEFAULT '';
+UPDATE mia_memory_chunks c
+SET owner_id = i.owner_id
+FROM mia_memory_items i
+WHERE c.item_id = i.id AND c.owner_id = '';
+
+CREATE TABLE IF NOT EXISTS mia_memory_relations (
+  id BIGSERIAL PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  source_item_id BIGINT NOT NULL REFERENCES mia_memory_items(id) ON DELETE CASCADE,
+  relation_type TEXT NOT NULL,
+  target_item_id BIGINT NOT NULL REFERENCES mia_memory_items(id) ON DELETE CASCADE,
+  weight DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (owner_id, source_item_id, relation_type, target_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS mia_memory_proposals (
+  id BIGSERIAL PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  chat_id TEXT NOT NULL,
+  thread_id TEXT NOT NULL DEFAULT '',
+  request_id TEXT NOT NULL DEFAULT '',
+  memory_type TEXT NOT NULL DEFAULT 'general',
+  memory_kind TEXT NOT NULL DEFAULT 'semantic',
+  title TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL,
+  tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  importance INTEGER NOT NULL DEFAULT 3,
+  confidence DOUBLE PRECISION NOT NULL DEFAULT 0.65,
+  source_text TEXT NOT NULL DEFAULT '',
+  evidence JSONB NOT NULL DEFAULT '[]'::JSONB,
+  status TEXT NOT NULL DEFAULT 'pending',
+  rejection_reason TEXT NOT NULL DEFAULT '',
+  accepted_item_id BIGINT REFERENCES mia_memory_items(id) ON DELETE SET NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '24 hours'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_updated
   ON mia_memory_items (chat_id, updated_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_mia_memory_items_owner_updated
+  ON mia_memory_items (owner_id, updated_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_mia_memory_items_chat_type
   ON mia_memory_items (chat_id, memory_type, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_items_owner_kind
+  ON mia_memory_items (owner_id, memory_kind, status, updated_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_mia_memory_items_tags
   ON mia_memory_items USING GIN (tags);
@@ -54,11 +126,26 @@ CREATE INDEX IF NOT EXISTS idx_mia_memory_items_active_expiry
 CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_chat_created
   ON mia_memory_chunks (chat_id, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_owner_created
+  ON mia_memory_chunks (owner_id, created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_text_trgm
   ON mia_memory_chunks USING GIN (chunk_text gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_mia_memory_chunks_embedding_hnsw
   ON mia_memory_chunks USING HNSW (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_relations_owner_source
+  ON mia_memory_relations (owner_id, source_item_id, relation_type);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_relations_owner_target
+  ON mia_memory_relations (owner_id, target_item_id, relation_type);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_proposals_owner_status
+  ON mia_memory_proposals (owner_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_mia_memory_proposals_expiry
+  ON mia_memory_proposals (status, expires_at);
 
 CREATE TABLE IF NOT EXISTS mia_learning_events (
   id BIGSERIAL PRIMARY KEY,

@@ -99,10 +99,11 @@ def response_composer_node(state: MiaGraphState, service: Any) -> dict[str, Any]
     )
     final_text = normalized_cap_visible_links(final_text, limit=3)
 
-    trace = {
+    trace = dict(state.get("trace") or {})
+    trace.update({
         "llm": service._cache_trace(final_message, scope=f"agent:{agent_key}", provider_used=provider_used),
         "provider": provider_used,
-    }
+    })
     if summary_trace:
         trace["tool_summary"] = summary_trace
 

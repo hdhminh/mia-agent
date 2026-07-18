@@ -47,7 +47,21 @@ class CapabilityBroker:
                 score += 2
             scored.append((score, name))
         scored.sort(key=lambda item: (-item[0], available_names.index(item[1])))
-        memory_names = [name for name in available_names if name in {"memory_search", "memory_recent", "memory_write"}]
+        core_memory_names = {"memory_search", "memory_recent", "memory_write"}
+        proposal_memory_names = {
+            "memory_pending_proposals",
+            "memory_accept_proposal",
+            "memory_reject_proposal",
+        }
+        proposal_tokens = {"memory", "memories", "proposal", "proposals", "duyet", "duyệt", "bo", "bỏ", "chap", "chấp", "nhan", "nhận"}
+        pinned_memory = set(core_memory_names)
+        if query_tokens & proposal_tokens:
+            pinned_memory |= proposal_memory_names
+        memory_names = [
+            name
+            for name in available_names
+            if name in pinned_memory
+        ]
         ranked = [name for _, name in scored if name not in memory_names]
         selected = memory_names + ranked[: max(1, limit - len(memory_names))]
         if hint_tool in available_names and hint_tool not in selected:

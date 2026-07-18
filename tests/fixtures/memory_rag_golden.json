@@ -1,0 +1,56 @@
+{
+  "memories": [
+    {
+      "id": "language_vi",
+      "kind": "semantic",
+      "importance": 5,
+      "text": "Người dùng ưu tiên Mia trả lời thuần tiếng Việt, tránh trộn tiếng Anh nếu không cần thiết."
+    },
+    {
+      "id": "active_code_project",
+      "kind": "episodic",
+      "importance": 5,
+      "text": "Project code hiện hành là demo-coffee trong workspace code của Mia."
+    },
+    {
+      "id": "bedroom_light_alias",
+      "kind": "semantic",
+      "importance": 4,
+      "text": "Trong phòng ngủ, câu 'đèn ngủ' nên hiểu là đèn chính khi người dùng nói bật đèn ngủ hoặc tắt đèn ngủ."
+    },
+    {
+      "id": "home_fast_mode",
+      "kind": "procedural",
+      "importance": 4,
+      "text": "Smart home chạy theo mode nhanh: câu lệnh rõ thì thực thi ngay, chỉ hỏi lại khi thiết bị mơ hồ hoặc tác động nhiều thiết bị."
+    },
+    {
+      "id": "postgres_memory_direction",
+      "kind": "semantic",
+      "importance": 3,
+      "text": "Hướng memory đã chọn là giữ PostgreSQL, nâng RAG architecture, không chuyển toàn bộ sang Qdrant."
+    }
+  ],
+  "queries": [
+    {
+      "text": "Mia nên trả lời tiếng gì để đừng bị lẫn English?",
+      "expected_id": "language_vi"
+    },
+    {
+      "text": "thêm section about vào project đang làm",
+      "expected_id": "active_code_project"
+    },
+    {
+      "text": "bật đèn ngủ mia",
+      "expected_id": "bedroom_light_alias"
+    },
+    {
+      "text": "điều khiển nhà thông minh có cần hỏi lại không",
+      "expected_id": "home_fast_mode"
+    },
+    {
+      "text": "memory dùng postgres hay qdrant",
+      "expected_id": "postgres_memory_direction"
+    }
+  ]
+}

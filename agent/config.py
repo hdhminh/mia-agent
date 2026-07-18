@@ -58,6 +58,11 @@ class Settings:
     code_gateway_url: str
     code_gateway_token: str
     code_timeout_seconds: float
+    memory_rag_enabled: bool
+    memory_rag_limit: int
+    memory_rag_threshold: float
+    memory_rag_token_budget: int
+    memory_proposals_enabled: bool
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -126,6 +131,11 @@ class Settings:
             code_gateway_url=os.getenv("MIA_CODE_GATEWAY_URL", os.getenv("MIA_CODE_RUNNER_URL", "")).strip(),
             code_gateway_token=os.getenv("MIA_CODE_GATEWAY_TOKEN", os.getenv("MIA_CODE_RUNNER_TOKEN", "")).strip(),
             code_timeout_seconds=float(os.getenv("MIA_CODE_TIMEOUT_SECONDS", os.getenv("MIA_CODE_RUNNER_TIMEOUT_SECONDS", "180"))),
+            memory_rag_enabled=_env_bool("MIA_MEMORY_RAG_ENABLED", True),
+            memory_rag_limit=int(os.getenv("MIA_MEMORY_RAG_LIMIT", "5")),
+            memory_rag_threshold=float(os.getenv("MIA_MEMORY_RAG_THRESHOLD", "0.42")),
+            memory_rag_token_budget=int(os.getenv("MIA_MEMORY_RAG_TOKEN_BUDGET", "600")),
+            memory_proposals_enabled=_env_bool("MIA_MEMORY_PROPOSALS_ENABLED", True),
         )
 
     def validate(self) -> None:
@@ -157,3 +167,5 @@ class Settings:
             raise RuntimeError("MIA_AUTOMATION_POLL_SECONDS must be at least 5.")
         if self.code_enabled and not self.code_gateway_url:
             raise RuntimeError("MIA_CODE_GATEWAY_URL is required when MIA_CODE_ENABLED=true.")
+        if self.memory_rag_limit < 1 or self.memory_rag_token_budget < 200:
+            raise RuntimeError("Mia memory RAG settings are invalid.")

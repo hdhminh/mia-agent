@@ -644,6 +644,8 @@ class MiaAgentService:
             "messages": [],
             "tools_called": [],
             "evidence": [],
+            "retrieved_memories": [],
+            "memory_context": "",
             "pending_memory_writes": [],
             "memory_written": False,
         }

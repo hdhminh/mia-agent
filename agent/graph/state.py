@@ -35,6 +35,8 @@ class MiaGraphState(TypedDict, total=False):
     response: MiaChatResponse | None
 
     # Memory
+    retrieved_memories: list[dict[str, Any]]
+    memory_context: str
     pending_memory_writes: list[dict[str, Any]]
     memory_written: bool
 

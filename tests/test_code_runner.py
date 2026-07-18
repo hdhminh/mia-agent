@@ -166,3 +166,33 @@ def test_code_tools_use_default_project_id_when_missing(monkeypatch):
     assert captured[1] == ("projects/diff", {"project_id": "demo-coffee", "max_chars": 1234})
     assert captured[2][0] == "projects/publish"
     assert captured[2][1]["project_id"] == "demo-coffee"
+
+
+def test_code_import_translates_host_projects_path(monkeypatch):
+    from agent.skills.code_runner.tools import get_code_tools
+
+    captured = []
+
+    def fake_run(endpoint: str, payload: dict):
+        captured.append((endpoint, payload))
+        return {"text": "ok"}
+
+    monkeypatch.setenv("MIA_CODE_HOST_PROJECTS_ROOT", "/home/huynhminh/Projects")
+    monkeypatch.setenv("MIA_CODE_CONTAINER_PROJECTS_ROOT", "/host-projects")
+
+    with patch("agent.skills.code_runner.tools._run", side_effect=fake_run):
+        tools = {tool.name: tool for tool in get_code_tools()}
+        tools["code_import_existing_project"].func(
+            source_path="/home/huynhminh/Projects/mia-agent",
+            project_name="mia-agent",
+        )
+
+    assert captured[0] == (
+        "projects/import",
+        {
+            "source_path": "/host-projects/mia-agent",
+            "project_name": "mia-agent",
+            "instruction": "",
+            "title": "",
+        },
+    )
