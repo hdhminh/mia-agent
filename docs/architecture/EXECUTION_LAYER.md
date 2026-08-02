@@ -10,11 +10,14 @@ The execution layer is composed of n8n workflows that serve as the action runtim
 execution/
 ├── gateway/         ⚡ Tool Gateway & Error Fix webhook endpoints
 ├── integrations/    🔌 Domain action-level leaf workflows
-│   ├── google/      - calendar, gmail, drive, docs, sheets
+│   ├── google/      - calendar, gmail, drive, docs, sheets, tasks, contacts, maps
 │   ├── github/      - GitHub integrations
 │   ├── media/       - Media services
-│   ├── simple/      - news, gold, weather, search
+│   ├── homeassistant/ - Smart Home master
+│   ├── simple/      - news, gold, weather, search, notify telegram
 │   ├── web/         - URL read, summarize, ask
+│   ├── memory/      - memory write/search/recent
+│   ├── automation/  - automation master
 │   └── shortlink/   - worker redirect & shortlinks
 ├── monitors/        🚨 Alerting & monitors
 └── legacy/          ⏳ Legacy workflows being phased out
@@ -28,11 +31,16 @@ All tool executions run through a single unified endpoint:
 
 ### Tool Gateway (`workflow_mia_tool_gateway.json`)
 Receives execution requests from the Python Agent Core. It:
-1. Validates the incoming token payload.
-2. Extracts the `action` identifier (e.g., `calendar.create_event`, `web.read_url`, `github.get_release`).
-3. Normalizes the structured args for the selected workflow, including web `fetchStrategy` and GitHub repo context for release / pull request / issue lookups.
-4. Dispatches the parameters to the correct leaf integration workflow via an internal `Execute Workflow` node.
-5. Gathers outputs, formats them into the stable `ok/text/result/links/meta` contract, and returns them to the Python Agent Core.
+1. Validates the incoming `x-mia-tool-token` in **constant time** (fails closed when unset).
+2. Rejects private/local URLs for `web.read_url` / `web.summarize_url` / `web.ask_url` (SSRF guard).
+3. Extracts the `action` identifier (e.g., `calendar.create_event`, `web.read_url`, `github.get_release`, `notify.telegram`).
+4. Normalizes the structured args for the selected workflow, including web `fetchStrategy` and GitHub repo context for release / pull request / issue lookups.
+5. Dispatches the parameters to the correct leaf integration workflow via an internal `Execute Workflow` node.
+6. Gathers outputs, formats them into the stable `ok/text/result/links/meta` contract, and returns them to the Python Agent Core.
+
+All exported workflows carry a 60s timeout on HTTP request nodes and
+`continueRegularOutput` on fallible nodes, so external failures surface as a
+normal error result instead of hanging silently.
 
 ---
 
@@ -46,7 +54,9 @@ python scripts/maintenance/sync_workflows.py execution/gateway/workflow_mia_tool
 ```
 
 ### Auto Sync daemon
-`scripts/sync/auto_sync.py` periodically scans files for changes and pushes them automatically to the API.
+`scripts/sync/sync_daemon.sh` (installed hourly in the system cron) validates
+every exported workflow with `scripts/sync/auto_sync.py`, which refuses to
+commit on the default branch and is dry-run by default.
 
 ---
 

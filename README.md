@@ -18,10 +18,10 @@ Mia is an AI agent that manages your digital life through natural conversation:
 | Drive / Docs  | Full CRUD on Drive, Docs, and Sheets            |
 | Web           | Search, read URLs, summarize pages              |
 | GitHub        | Browse repos and perform confirmed write actions |
-| Code Agent    | Create managed workspaces, import local repos, code through OpenCode, review diffs, and publish with confirmation |
+| Code Agent    | Create managed workspaces, import local repos, code through OpenCode, review/optimize/test/lint projects, fix issues, and publish with confirmation |
+| Automation    | Run reusable skills now or on cron schedules; every scheduled run delivers its result back to the chat |
 | Media         | OCR, document analysis, transcription, TTS      |
 | Memory        | Automatic hybrid Memory RAG with pgvector, pg_textsearch/pg_trgm, owner scope, and approval proposals |
-| Automation    | Run reusable skills now or on cron schedules    |
 | Utilities     | News, weather, gold prices, shortlinks, MCP     |
 
 ---
@@ -96,11 +96,15 @@ reasoning (Python) from tool execution (n8n workflows).
 
 - **Memory RAG:** upgraded from optional semantic search to automatic retrieval-augmented memory.
 - **Hybrid retrieval:** combines dense `pgvector` search with lexical ranking and Reciprocal Rank Fusion.
-- **Database:** production compose now targets PostgreSQL 17 with `pg_textsearch`; schema still falls back to `pg_trgm` if the extension is unavailable.
-- **Safety:** memory is owner-scoped by `owner_id`; automatic memory proposals require approval before becoming durable.
-- **Code Agent:** OpenCode runs in managed workspaces under `mia-workspaces`, supports local repo import, diff review, apply/publish confirmation, and DeepSeek V4 Flash through the code gateway.
+- **Database:** production compose now targets PostgreSQL 17 with `pg_textsearch`; schema still falls back to `pg_trgm` if the extension is unavailable; schema applications are tracked in `mia_schema_migrations`.
+- **Safety:** memory is owner-scoped by `owner_id`; automatic memory proposals require approval before becoming durable; `memory.write` rejects content that looks like a secret.
+- **Code Agent:** OpenCode runs in managed workspaces under `mia-workspaces`, supports local repo import, diff review, apply/publish confirmation, and DeepSeek V4 Flash through the code gateway. The code toolset now also includes `code_review_project`, `code_optimize_project`, `code_run_test`, `code_run_lint`, and `code_fix_from_issue`. All external code writes (apply, publish, PR) go through the centralized approval flow — the model can no longer self-approve.
+- **Dev-first routing:** natural-language dev requests ("review code", "sửa lỗi dòng 42 file service.py", "viết test cho hàm X") route to the code agent before the GitHub branch; generic "công việc" / "tự động hóa" no longer hijack questions into Tasks/Automation tools.
+- **Streaming:** `/mia/chat/stream` emits SSE progress events while the graph runs, so long agent calls no longer wait silently.
+- **Automation delivery:** every scheduled automation now sends its result to the originating Telegram chat (not just `remind_me`), suppressed during `MIA_REMINDER_QUIET_HOURS`.
 - **Smart Home:** Home Assistant integration is label-gated with `MIA_HOME_ALLOWED_LABEL`.
-- **Verification:** route eval currently passes `82/82`; live `/mia/chat` smoke currently passes `8/8`; unit test suite passes `186/186`.
+- **Gateway hardening:** n8n Tool Gateway rejects private/local URLs for web fetch (SSRF), compares the gateway token in constant time, and every exported workflow carries a 60s HTTP timeout plus `continueRegularOutput` on fallible nodes.
+- **Verification:** route eval currently passes `93/93`; unit and contract test suite passes `249/249`.
 
 ## Measured Verification
 
@@ -108,8 +112,8 @@ These numbers come from deterministic local checks and one live `/mia/chat` smok
 
 | Check | Result | What It Measures |
 |-------|--------|------------------|
-| Unit and contract tests | `186/186` passed | Python contracts, tool payloads, workflow JSON expectations, routing regressions |
-| Route quality eval | `82/82` passed | Intent routing across general, Google Workspace, GitHub, multi-intent, and media requests |
+| Unit and contract tests | `249/249` passed | Python contracts, tool payloads, workflow JSON expectations, routing regressions, api auth, SSRF guard, skills engine, follow-up handler |
+| Route quality eval | `93/93` passed | Intent routing across general, Google Workspace, GitHub, multi-intent, media, and dev requests |
 | Multi-intent route eval | `25/25` passed | Mixed requests such as Drive + Docs + Sheets without misrouting to Code |
 | Memory RAG golden eval | `Recall@5 = 1.00`, `MRR = 0.90` | Whether the right memory appears in the top retrieved chunks |
 | Live chat smoke | `8/8` passed | Real `/mia/chat` calls against the running Docker stack |
@@ -177,10 +181,17 @@ Memory note:
 - `MIA_MEMORY_RAG_ENABLED=true` enables automatic memory retrieval before the supervisor.
 - `MIA_MEMORY_RAG_LIMIT`, `MIA_MEMORY_RAG_THRESHOLD`, and `MIA_MEMORY_RAG_TOKEN_BUDGET` control how much retrieved context reaches the model.
 - PostgreSQL remains the source of truth; memory chunks use 384-dimensional embeddings from the local embedder service.
+- `python scripts/maintenance/consolidate_memory.py` marks duplicate memory items as superseded.
+
+Model note:
+- `MIA_MODEL_MAX_TOKENS` (default 1600) caps the answer length; the model itself is configured via `MIA_MODEL` / `MIA_DEEPSEEK_MODEL`.
+- `MIA_REMINDER_QUIET_HOURS` (default `23-7`) suppresses scheduled reminders overnight.
+- `/mia/chat/stream` returns SSE progress events; `MiaChatRequest.locale` (`vi`|`en`) overrides the global `MIA_LOCALE` per conversation.
 
 Verification note:
 - Run route quality checks with `python scripts/dev/eval_route_quality.py`.
 - Run real chat smoke tests against the running service with `python scripts/maintenance/live_chat_smoke.py`.
+- Hourly workflow validation is handled by `scripts/sync/sync_daemon.sh` (installed in the system cron).
 
 ---
 

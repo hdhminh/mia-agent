@@ -9,6 +9,7 @@ Mia Agent uses a state machine built with LangGraph to orchestrate reasoning, sp
 ```mermaid
 graph TD
     ingress["ingress (Entry Point)"]
+    memory_retriever["memory_retriever"]
     supervisor["supervisor"]
     evaluator["evaluator"]
     response_composer["response_composer"]
@@ -17,6 +18,9 @@ graph TD
 
     %% Specialist nodes
     github["specialist_github"]
+    maps["specialist_maps"]
+    smarthome["specialist_smarthome"]
+    code["specialist_code"]
     calendar["specialist_calendar"]
     gmail["specialist_gmail"]
     workspace["specialist_workspace"]
@@ -26,10 +30,14 @@ graph TD
 
     %% Ingress routing
     ingress -->|resolved| memory_writer
-    ingress -->|needs_specialist| supervisor
+    ingress -->|needs_specialist| memory_retriever
+    memory_retriever --> supervisor
 
     %% Supervisor routing
     supervisor -->|github| github
+    supervisor -->|maps| maps
+    supervisor -->|smarthome| smarthome
+    supervisor -->|code| code
     supervisor -->|calendar| calendar
     supervisor -->|gmail| gmail
     supervisor -->|workspace| workspace
@@ -39,6 +47,9 @@ graph TD
 
     %% Specialist transitions
     github --> evaluator
+    maps --> evaluator
+    smarthome --> evaluator
+    code --> evaluator
     calendar --> evaluator
     gmail --> evaluator
     workspace --> evaluator
@@ -67,16 +78,25 @@ The entry point of the graph. It performs lightweight, fast operations:
 
 If the request is resolved in Ingress, the graph bypasses the agent loop and moves directly to `memory_writer`. Otherwise, it transitions to `supervisor`.
 
+### Memory Retriever Node (`memory_retriever`)
+Runs before the supervisor when memory RAG is enabled: embeds the query,
+searches the hybrid pgvector + pg_textsearch index (owner-scoped), and injects
+a compact memory context into the state for the supervisor prompt. Low-signal
+messages ("hi", "ok") skip retrieval.
+
 ### Supervisor Node (`supervisor`)
 Prepares the state payload for the specialized agent. It:
 1. Gathers context, history, and metadata.
 2. Injects domain-specific guidance (e.g., Gmail guidance).
 3. Injects self-improvement feedback insights retrieved from the learning repository.
-4. Routes the request to one of 7 specialist nodes.
+4. Routes the request to one of 10 specialist nodes.
 
 ### Specialist Nodes
 Each specialist is a LangChain agent running with a subset of tools configured for that domain:
 - `specialist_github`: For code reading, diff analysis, repo search, release, pull request, and issue drill-down.
+- `specialist_maps`: Google Maps geocoding, place search, routing.
+- `specialist_smarthome`: Home Assistant device and scene control.
+- `specialist_code`: Dev agent — managed OpenCode workspaces plus the full GitHub toolset; covers review/optimize/test/lint/fix-issue workflows.
 - `specialist_calendar`: Calendar events management.
 - `specialist_gmail`: Inbox viewing, search, drafting, reply.
 - `specialist_workspace`: Drive, Docs, Sheets management.

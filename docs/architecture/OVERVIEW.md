@@ -26,6 +26,8 @@ Agent Core (FastAPI / LangGraph)
   - MiaAgentService Orchestrator
   - Ingress Node: Check for confirmations, follow-ups
   - Router: Analyze request and select execution path
+  - Memory Retriever: automatic owner-scoped hybrid RAG before the supervisor
+  - Streaming: /mia/chat/stream emits SSE progress events per node
    │
    ├───────────────────────────────┐
    │                               │
@@ -33,21 +35,22 @@ Agent Core (FastAPI / LangGraph)
 DirectExecutor                   LangGraph Specialist Node
   - Fast execution for cheap,      - LangChain agent executing domain tools
     deterministic read tasks       - History trim & retry middlewares
-  - Maps to: weather, gold,        - Maps to: calendar, gmail, maps, drive,
-    news, search, shortlinks,        docs, sheets, github, media, google_full
-    maps lookups
+  - Maps to: weather, gold,        - Maps to: calendar, gmail, maps, smarthome,
+    news, search, shortlinks,        code (OpenCode dev agent), drive, docs,
+    maps lookups                     sheets, github, media, google_full
    │                               │
    └───────────────┬───────────────┘
                    │
                    ▼ (HTTP request)
 n8n Tool Gateway Webhook
-  - Auth token verification
+  - Constant-time auth token verification
+  - SSRF guard: rejects private/local URLs for web fetch tools
   - Maps capability string (e.g. `gmail.send_email`) to leaf workflow
   - Runs execution workflow & returns normalized response
    │
    ▼
 Response Normalizer (Agent Core)
-  - Sanitize markdown text
+  - Sanitize markdown text (code responses preserve backticks/headings)
   - Recover/cap links
   - Enforce formatting rules
    │
@@ -103,6 +106,15 @@ Mia is structured around functional domains. Every domain contains action-level 
   - `github.get_file`: Read file contents.
   - `github.search_code`: Search code in repo.
   - `github.get_diff`: View code diff.
+  - Write actions (issues, PRs, branches, files) require confirmation.
+
+### Code Domain (dev agent)
+- **Implementation**: `infra/opencode-gateway/service/app.py`, `agent/skills/code_runner/`
+- **Capabilities**:
+  - `code_create_project` / `code_import_existing_project`: managed workspaces.
+  - `code_work_on_project` / `code_project_status` / `code_project_diff`.
+  - `code_review_project` / `code_optimize_project` / `code_run_test` / `code_run_lint` / `code_fix_from_issue`.
+  - `code_apply_to_existing_project` / `code_publish_project`: external writes, approval required.
 
 ### Media Domain
 - **Capabilities**:
@@ -111,3 +123,6 @@ Mia is structured around functional domains. Every domain contains action-level 
   - `document_summarize`: Summarize PDFs or DOCX files.
   - `audio_transcribe`: Transcribe speech to text.
   - `tts_speak`: Convert text to speech.
+
+### Smart Home Domain
+- **Capabilities**: device/scene control in Home Assistant, label-gated by `MIA_HOME_ALLOWED_LABEL`.

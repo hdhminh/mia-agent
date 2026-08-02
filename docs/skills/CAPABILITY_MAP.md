@@ -68,10 +68,13 @@
 - `contacts_get`
 - `contacts_resolve_recipient`
 - `automation_list`
+- `notify_telegram`
 - `smarthome_help`
 - `smarthome_list_areas`
 - `smarthome_list_devices`
 - `smarthome_room_status`
+- `code_project_status`
+- `code_project_diff`
 
 ## Domain Agent Candidates
 
@@ -140,6 +143,24 @@
 - `smarthome_announce`
 - `smarthome_run_scene`
 
+### `code` (dev agent — code + github tools)
+
+- `code_create_project`
+- `code_import_existing_project`
+- `code_work_on_project`
+- `code_project_status`
+- `code_project_diff`
+- `code_review_project`
+- `code_optimize_project`
+- `code_run_test`
+- `code_run_lint`
+- `code_fix_from_issue`
+- `code_apply_to_existing_project` (approval required)
+- `code_publish_project` (approval required)
+
+Dev requests ("review code", "sửa lỗi file X", "viết test", "tối ưu code") route
+here before the GitHub branch; github issue/PR reads still go to `github`.
+
 ### Reusable Skills
 
 - `daily_briefing`
@@ -147,6 +168,9 @@
 - `research_report`
 - `expense_receipt`
 - `repository_review`
+- `route_planner`
+- `home_control`
+- `remind_me`
 
 ### `workspace`
 

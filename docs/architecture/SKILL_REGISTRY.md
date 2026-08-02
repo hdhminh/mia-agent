@@ -14,39 +14,28 @@ Tools map capability names to execution webhook triggers handled by n8n.
 Specialists have distinct tool parameters defined in `AGENT_TOOLSETS`:
 
 - **`general`**:
-  - `gold_get_price`
-  - `weather_get`
-  - `news_get`
-  - `search_web`
-  - `shortlink_create`
+  - `gold_get_price`, `weather_get`, `news_get`, `search_web`, `shortlink_create`
+  - `time_now`, `notify_telegram` + web tools (`read_url`, `summarize_url`, `ask_url`)
+- **`code`** (dev agent — code + github tools):
+  - `code_create_project`, `code_import_existing_project`, `code_work_on_project`
+  - `code_project_status`, `code_project_diff`
+  - `code_review_project`, `code_optimize_project`, `code_run_test`, `code_run_lint`, `code_fix_from_issue`
+  - `code_apply_to_existing_project`, `code_publish_project` (both require centralized approval)
+  - Plus the full `github_*` read/write toolset
 - **`media`**:
-  - `image_ocr`
-  - `image_describe`
-  - `document_summarize`
-  - `audio_transcribe`
-  - `tts_speak`
+  - `image_ocr`, `image_describe`, `document_summarize`, `audio_transcribe`, `tts_speak`
 - **`calendar`**:
-  - `calendar_list_today`
-  - `calendar_list_tomorrow`
-  - `calendar_find_event`
-  - `calendar_create_event`
-  - `calendar_delete_event`
-  - `calendar_check_availability`
+  - `calendar_list_today`, `calendar_list_tomorrow`, `calendar_find_event`
+  - `calendar_create_event`, `calendar_delete_event`, `calendar_check_availability`, `calendar_reschedule_event`
 - **`gmail`**:
-  - `gmail_list_inbox`
-  - `gmail_search_email`
-  - `gmail_read_email`
-  - `gmail_send_email`
-  - `gmail_draft_email`
-  - `gmail_reply_email`
+  - `gmail_list_inbox`, `gmail_search_email`, `gmail_read_email`
+  - `gmail_send_email`, `gmail_draft_email`, `gmail_reply_email`
 - **`workspace`**:
-  - `drive_list_files`
-  - `drive_search_file`
-  - `drive_create_folder`
-  - `docs_read_doc`
-  - `docs_create_doc`
-  - `sheets_append_row`
-  - `sheets_update_cell`
+  - Drive, Docs, Sheets, Tasks, Contacts tools (see `registry.py`)
+- **`github`**, **`maps`**, **`smarthome`**, **`google_full`**: domain-specific toolsets in `registry.py`
+
+Deterministic direct tools (routed without the agent loop) are listed in
+`DETERMINISTIC_DIRECT_TOOLS` and mapped to gateway actions in `DIRECT_GATEWAY_TOOLS`.
 
 ---
 
@@ -54,24 +43,25 @@ Specialists have distinct tool parameters defined in `AGENT_TOOLSETS`:
 
 When a Python tool is executed, it routes request payload parameters through `N8nToolGatewayClient`:
 - **Webhook Endpoint**: `POST /webhook/mia-tool`
-- **Authentication**: Bearer Token (`MIA_TOOL_GATEWAY_TOKEN`)
+- **Authentication**: shared secret via `x-mia-tool-token` header (`MIA_TOOL_GATEWAY_TOKEN`), compared in constant time
 - **JSON Payload Contract**:
   ```json
   {
-    "action": "gmail.send_email",
+    "tool": "gmail.send_email",
     "args": {
       "to": "recipient@example.com",
       "subject": "Hello",
       "body": "World"
     },
-    "context": {
-      "chat_id": "12345",
-      "user_id": "67890",
-      "request_id": "req-xyz",
-      "timezone": "Asia/Ho_Chi_Minh"
-    }
+    "chatId": "12345",
+    "userId": "67890",
+    "requestId": "req-xyz",
+    "deliveryMode": "return",
+    "text": "raw user request text"
   }
   ```
+- The gateway rejects private/local URLs for `web.read_url` / `web.summarize_url` / `web.ask_url` (SSRF guard).
+- Dangerous tools create a pending action in `mia_pending_actions` and require explicit user confirmation before execution.
 
 ---
 

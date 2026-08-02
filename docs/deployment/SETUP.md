@@ -38,6 +38,12 @@ cp .env.example .env
 | `MIA_HOME_DEFAULT_AREA` | Optional default area such as `Phòng ngủ` to bias ambiguous device lookups. |
 | `MIA_HOME_ENTITY_ALIASES_JSON` | Optional JSON map from natural nicknames to exact entity IDs. |
 | `MIA_HOME_TTS_ENTITY_ID` | Optional TTS provider entity used when Mia speaks through a media player. |
+| `MIA_MODEL` / `MIA_DEEPSEEK_MODEL` | Primary model identifiers (OpenRouter / DeepSeek). |
+| `MIA_MODEL_MAX_TOKENS` | Max answer tokens (default 1600). Low values truncate long answers. |
+| `MIA_REMINDER_QUIET_HOURS` | Suppress scheduled reminders overnight, e.g. `23-7` (default). |
+| `MIA_CODE_GATEWAY_URL` / `MIA_CODE_GATEWAY_TOKEN` | OpenCode gateway base URL and bearer secret. |
+| `MIA_CODE_WORKSPACE_ROOT` / `MIA_CODE_HOST_WORKSPACE_ROOT` | Container and host paths for managed code workspaces. |
+| `MIA_CODE_ALLOWED_COMMAND_PREFIXES` | Bash prefixes OpenCode may run (python/cat/tail/sed/awk are excluded by default). |
 
 ---
 

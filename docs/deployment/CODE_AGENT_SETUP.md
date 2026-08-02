@@ -40,12 +40,24 @@ Mia vẫn đọc các biến cũ nếu anh chưa đổi hết ngay.
 - Project local sẵn có: Mia phải `import` vào sandbox trước, rồi chỉ `apply` ngược khi anh xác nhận.
 - Push branch hoặc tạo PR: luôn cần xác nhận rõ ràng.
 
+## Dev Tools
+
+Ngoài create/import/work/status/diff/apply/publish, agent code có thêm:
+
+- `code_review_project` — review diff + lint local + OpenCode review (bugs/security/perf).
+- `code_optimize_project` — phân tích và đề xuất refactor/perf.
+- `code_run_test` — chạy pytest / npm test trong workspace, trả kết quả.
+- `code_run_lint` — chạy ruff / mypy / npm run lint.
+- `code_fix_from_issue` — nhận GitHub issue, tạo branch, sửa, chạy test, tùy chọn tạo PR.
+
 ## Safety
 
-- OpenCode bị chặn đọc `.env` thực.
+- OpenCode bị chặn đọc `.env` thực (cả qua bash — prefix `python`/`cat`/`tail`/`sed`/`awk` bị loại khỏi allowlist).
 - Web fetch và web search bị tắt trong code runtime.
 - Bash chỉ được mở cho danh sách prefix đã khai báo.
 - Registry cài package được giới hạn bằng danh sách allowlist ở trên.
+- `code_apply_to_existing_project`, `code_publish_project`, và `code_fix_from_issue` (khi tạo PR) **bắt buộc xác nhận của bạn** qua pending action — model không tự approve được.
+- OpenCode gateway fails closed khi thiếu `MIA_CODE_GATEWAY_TOKEN` và so bearer token constant-time.
 
 ## Start
 
@@ -60,6 +72,9 @@ Ví dụ các yêu cầu Mia nên xử lý được:
 ```text
 tạo project mới trong Projects tên landing-demo rồi làm portfolio html css
 import repo /host-projects/mia-agent rồi sửa bug phần router
+review code project hiện tại
+chạy test cho project demo-coffee
+tối ưu code trong repo mia-agent
 xem diff project code hiện tại
 apply thay đổi project code này về repo gốc
 push branch cho project code này

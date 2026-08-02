@@ -8,6 +8,9 @@
    route the action in `execution/gateway/workflow_mia_tool_gateway.json`.
 3. If it changes external state, add the gateway action to
    `DANGEROUS_GATEWAY_NAMES`; approval and idempotency then apply automatically.
+   Code-gateway tools (opencode) instead call `_run_code_guarded` in
+   `agent/skills/code_runner/tools.py`, which creates a pending action for
+   apply/publish/fix-issue-with-PR — the model cannot self-approve.
 4. If it depends on a provider key or quota-bound API, document the required env
    vars and cost guardrails in `.env.example` plus deployment docs.
 5. Regenerate the catalog:
