@@ -47,6 +47,31 @@ def _normalize_instruction(domain: str, action_label: str, instruction: str) -> 
     return text or f"{domain} {action_label}"
 
 
+def _has_structured_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, set, dict)):
+        return bool(value)
+    return True
+
+
+def _with_instruction_fallback(
+    domain: str,
+    action_label: str,
+    payload: dict[str, Any],
+    instruction: str = "",
+    *structured_values: Any,
+) -> dict[str, Any]:
+    result = dict(payload)
+    if any(_has_structured_value(value) for value in structured_values):
+        return result
+    cleaned_instruction = " ".join(str(instruction or "").strip().split())
+    result["instruction"] = _normalize_instruction(domain, action_label, cleaned_instruction)
+    return result
+
+
 def _run_gateway_tool(
     tool_gateway: N8nToolGatewayClient,
     gateway_name: str,

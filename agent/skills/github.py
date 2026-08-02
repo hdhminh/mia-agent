@@ -6,21 +6,7 @@ from langchain.tools import ToolRuntime, tool
 
 from agent.models import MiaContext
 from agent.execution_client import N8nToolGatewayClient
-from agent.skills.common import _run_gateway_tool, _normalize_instruction
-
-
-def _with_instruction_fallback(
-    domain: str,
-    action_label: str,
-    payload: dict[str, Any],
-    instruction: str,
-    *meaningful_values: Any,
-) -> dict[str, Any]:
-    result = dict(payload)
-    if any(str(value).strip() if isinstance(value, str) else bool(value) for value in meaningful_values if value is not None):
-        return result
-    result["instruction"] = _normalize_instruction(domain, action_label, instruction)
-    return result
+from agent.skills.common import _normalize_instruction, _run_gateway_tool, _with_instruction_fallback
 
 
 def get_github_tools(tool_gateway: N8nToolGatewayClient) -> list:

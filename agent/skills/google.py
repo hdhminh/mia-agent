@@ -5,35 +5,7 @@ from langchain.tools import ToolRuntime, tool
 
 from agent.models import MiaContext
 from agent.execution_client import N8nToolGatewayClient
-from agent.skills.common import _run_gateway_tool, _normalize_instruction
-
-
-def _has_structured_value(value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, str):
-        return bool(value.strip())
-    if isinstance(value, (list, tuple, set, dict)):
-        return bool(value)
-    return True
-
-
-def _with_instruction_fallback(
-    domain: str,
-    action_label: str,
-    payload: dict[str, Any],
-    instruction: str = "",
-    *structured_values: Any,
-) -> dict[str, Any]:
-    result = dict(payload)
-    cleaned_instruction = " ".join(str(instruction or "").strip().split())
-    if cleaned_instruction:
-        result["instruction"] = _normalize_instruction(domain, action_label, cleaned_instruction)
-        return result
-    if any(_has_structured_value(value) for value in structured_values):
-        return result
-    result["instruction"] = _normalize_instruction(domain, action_label, "")
-    return result
+from agent.skills.common import _run_gateway_tool, _with_instruction_fallback
 
 
 def get_google_tools(tool_gateway: N8nToolGatewayClient) -> list:

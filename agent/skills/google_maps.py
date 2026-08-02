@@ -4,24 +4,7 @@ from langchain.tools import ToolRuntime, tool
 
 from agent.execution_client import N8nToolGatewayClient
 from agent.models import MiaContext
-from agent.skills.common import _normalize_instruction, _run_gateway_tool
-
-
-def _with_instruction_fallback(
-    action_label: str,
-    payload: dict,
-    instruction: str = "",
-    *structured_values: object,
-) -> dict:
-    result = dict(payload)
-    cleaned_instruction = " ".join(str(instruction or "").strip().split())
-    if cleaned_instruction:
-        result["instruction"] = _normalize_instruction("maps", action_label, cleaned_instruction)
-        return result
-    if any(str(value or "").strip() for value in structured_values):
-        return result
-    result["instruction"] = _normalize_instruction("maps", action_label, "")
-    return result
+from agent.skills.common import _run_gateway_tool, _with_instruction_fallback
 
 
 def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
@@ -45,6 +28,7 @@ def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "maps.geocode",
             _with_instruction_fallback(
+                "maps",
                 "tim toa do dia diem",
                 {
                     "address": address.strip(),
@@ -73,6 +57,7 @@ def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "maps.reverse_geocode",
             _with_instruction_fallback(
+                "maps",
                 "tim dia chi theo toa do",
                 {
                     "latLng": lat_lng.strip(),
@@ -105,6 +90,7 @@ def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "maps.search_place",
             _with_instruction_fallback(
+                "maps",
                 "tim dia diem",
                 {
                     "query": query.strip(),
@@ -135,6 +121,7 @@ def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "maps.place_details",
             _with_instruction_fallback(
+                "maps",
                 "xem chi tiet dia diem",
                 {
                     "placeId": place_id.strip(),
@@ -163,6 +150,7 @@ def get_google_maps_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "maps.compute_route",
             _with_instruction_fallback(
+                "maps",
                 "chi duong",
                 {
                     "origin": origin.strip(),

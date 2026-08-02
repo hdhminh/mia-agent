@@ -4,24 +4,7 @@ from langchain.tools import ToolRuntime, tool
 
 from agent.execution_client import N8nToolGatewayClient
 from agent.models import MiaContext
-from agent.skills.common import _normalize_instruction, _run_gateway_tool
-
-
-def _with_instruction_fallback(
-    action_label: str,
-    payload: dict,
-    instruction: str = "",
-    *structured_values: object,
-) -> dict:
-    result = dict(payload)
-    cleaned_instruction = " ".join(str(instruction or "").strip().split())
-    if cleaned_instruction:
-        result["instruction"] = _normalize_instruction("smarthome", action_label, cleaned_instruction)
-        return result
-    if any(str(value or "").strip() for value in structured_values):
-        return result
-    result["instruction"] = _normalize_instruction("smarthome", action_label, "")
-    return result
+from agent.skills.common import _run_gateway_tool, _with_instruction_fallback
 
 
 def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
@@ -41,7 +24,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
         return _run_gateway_tool(
             tool_gateway,
             "smarthome.list_areas",
-            _with_instruction_fallback("liet ke khu vuc nha thong minh", {}, instruction),
+            _with_instruction_fallback("smarthome", "liet ke khu vuc nha thong minh", {}, instruction),
             runtime,
         )
 
@@ -58,6 +41,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.list_devices",
             _with_instruction_fallback(
+                "smarthome",
                 "liet ke thiet bi nha thong minh",
                 {
                     "area": area.strip(),
@@ -82,6 +66,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.room_status",
             _with_instruction_fallback(
+                "smarthome",
                 "xem trang thai phong",
                 {"area": area.strip()},
                 instruction,
@@ -102,6 +87,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.turn_on",
             _with_instruction_fallback(
+                "smarthome",
                 "bat thiet bi",
                 {"target": target.strip(), "area": area.strip()},
                 instruction,
@@ -123,6 +109,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.turn_off",
             _with_instruction_fallback(
+                "smarthome",
                 "tat thiet bi",
                 {"target": target.strip(), "area": area.strip()},
                 instruction,
@@ -144,6 +131,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.toggle",
             _with_instruction_fallback(
+                "smarthome",
                 "dao trang thai thiet bi",
                 {"target": target.strip(), "area": area.strip()},
                 instruction,
@@ -169,6 +157,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.set_light",
             _with_instruction_fallback(
+                "smarthome",
                 "chinh den",
                 {
                     "target": target.strip(),
@@ -204,6 +193,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.set_climate",
             _with_instruction_fallback(
+                "smarthome",
                 "chinh dieu hoa",
                 {
                     "target": target.strip(),
@@ -239,6 +229,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.set_fan",
             _with_instruction_fallback(
+                "smarthome",
                 "chinh quat",
                 {
                     "target": target.strip(),
@@ -273,6 +264,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.set_media",
             _with_instruction_fallback(
+                "smarthome",
                 "chinh loa",
                 {
                     "target": target.strip(),
@@ -306,6 +298,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.announce",
             _with_instruction_fallback(
+                "smarthome",
                 "phat thong bao loa",
                 {
                     "message": message.strip(),
@@ -332,6 +325,7 @@ def get_smarthome_tools(tool_gateway: N8nToolGatewayClient) -> list:
             tool_gateway,
             "smarthome.run_scene",
             _with_instruction_fallback(
+                "smarthome",
                 "chay scene",
                 {"scene": scene.strip(), "area": area.strip()},
                 instruction,
