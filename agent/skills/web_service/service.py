@@ -470,6 +470,7 @@ class WebService:
         headers = {
             "User-Agent": f"Mozilla/5.0 (compatible; MiaWeb/1.0; +https://{domain})",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "identity",
         }
         with httpx.Client(
             follow_redirects=False,
