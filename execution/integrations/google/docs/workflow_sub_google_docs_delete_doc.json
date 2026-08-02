@@ -23,7 +23,8 @@
       "position": [
         -704,
         144
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -112,7 +113,8 @@
       "position": [
         240,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -156,7 +158,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { trashed: true } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "625d0228-716a-4eb7-a17e-3806c6b207ce",
       "name": "Drive Trash Doc",
@@ -171,7 +175,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -184,7 +189,8 @@
       "position": [
         960,
         144
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -197,7 +203,8 @@
       "position": [
         1200,
         304
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

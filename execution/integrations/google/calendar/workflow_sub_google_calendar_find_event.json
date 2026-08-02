@@ -23,7 +23,8 @@
       "position": [
         240,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -59,7 +60,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "2c39f18d-bb70-4a6c-85e9-58aba35a58f5",
       "name": "Google Calendar Find",
@@ -75,7 +78,8 @@
           "id": "1Lgsbjfibo4xVURe",
           "name": "Google Calendar account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -88,7 +92,8 @@
       "position": [
         768,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

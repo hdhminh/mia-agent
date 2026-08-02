@@ -22,7 +22,8 @@
       "position": [
         -208,
         -160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -111,7 +112,8 @@
       "position": [
         736,
         -304
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -151,7 +153,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { values: [ [ $json.value ] ] } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "95851828-199f-4145-845c-ac0790f7b679",
       "name": "Sheets Update Cell",
@@ -166,7 +170,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -179,7 +184,8 @@
       "position": [
         1472,
         -160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -192,7 +198,8 @@
       "position": [
         1712,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

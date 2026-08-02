@@ -2,12 +2,24 @@
   "name": "Sub-workflow: Google Tasks Master",
   "nodes": [
     {
-      "parameters": {"conditions": {"boolean": [{"value1": "={{ $json.ok }}", "value2": true}]}},
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
       "id": "tasks-if",
       "name": "Can Continue?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {},
@@ -15,7 +27,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -25,7 +40,11 @@
       "name": "Normalize Tasks Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -36,13 +55,20 @@
         "sendBody": "={{ ['POST','PATCH'].includes($json.method) }}",
         "specifyBody": "json",
         "jsonBody": "={{ $json.body }}",
-        "options": {"ignoreResponseCode": true}
+        "options": {
+          "ignoreResponseCode": true,
+          "timeout": 60000
+        }
       },
       "id": "tasks-call",
       "name": "Call Google Tasks API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, -80]
+      "position": [
+        720,
+        -80
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -52,23 +78,82 @@
       "name": "Normalize Tasks Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
+      "position": [
+        960,
+        -80
+      ],
+      "onError": "continueRegularOutput"
     },
     {
-      "parameters": {"jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Tasks request rejected.'),result:{},links:[],meta:{}}}];"},
+      "parameters": {
+        "jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Tasks request rejected.'),result:{},links:[],meta:{}}}];"
+      },
       "id": "tasks-error",
       "name": "Return Tasks Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 120]
+      "position": [
+        720,
+        120
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
-    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Tasks Request", "type": "main", "index": 0}]]},
-    "Normalize Tasks Request": {"main": [[{"node": "Can Continue?", "type": "main", "index": 0}]]},
-    "Can Continue?": {"main": [[{"node": "Call Google Tasks API", "type": "main", "index": 0}], [{"node": "Return Tasks Error", "type": "main", "index": 0}]]},
-    "Call Google Tasks API": {"main": [[{"node": "Normalize Tasks Result", "type": "main", "index": 0}]]}
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Tasks Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Tasks Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Call Google Tasks API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Tasks Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Google Tasks API": {
+      "main": [
+        [
+          {
+            "node": "Normalize Tasks Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "active": false
 }

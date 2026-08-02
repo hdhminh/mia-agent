@@ -23,7 +23,8 @@
       "position": [
         -832,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -58,7 +59,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "media-get-file",
       "name": "Telegram Get File",
@@ -67,7 +70,8 @@
       "position": [
         -336,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -80,14 +84,17 @@
       "position": [
         -112,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "method": "GET",
         "url": "={{ $json.downloadUrl }}",
         "responseFormat": "file",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "media-download-file",
       "name": "Download Telegram File",
@@ -96,7 +103,8 @@
       "position": [
         112,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -109,7 +117,8 @@
       "position": [
         368,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -127,7 +136,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.corePayload }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "media-call-core",
       "name": "Call Mia Media Core",
@@ -136,7 +147,8 @@
       "position": [
         592,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -149,7 +161,8 @@
       "position": [
         832,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -167,7 +180,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { tool: 'tts_speak', request_id: $json.requestId, chat_id: $json.originChatId, text: $json.text, prompt: $json.prompt, voice: $json.voice, model: $json.model, response_mode: $json.responseMode } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "media-call-tts-core",
       "name": "Call TTS Core",
@@ -176,7 +191,8 @@
       "position": [
         -112,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -189,7 +205,8 @@
       "position": [
         112,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -222,7 +239,8 @@
       "position": [
         560,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -243,7 +261,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "media-send-voice",
       "name": "Send Telegram Voice",
@@ -252,7 +272,8 @@
       "position": [
         784,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -265,7 +286,8 @@
       "position": [
         1008,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

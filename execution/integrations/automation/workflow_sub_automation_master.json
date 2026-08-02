@@ -7,7 +7,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,24 +20,46 @@
       "name": "Normalize Automation Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
         "sendHeaders": true,
-        "headerParameters": {"parameters": [{"name": "Authorization", "value": "={{ 'Bearer ' + $json.coreToken }}"}, {"name": "x-mia-user-id", "value": "={{ $json.payload.user_id }}"}]},
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.coreToken }}"
+            },
+            {
+              "name": "x-mia-user-id",
+              "value": "={{ $json.payload.user_id }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.payload }}",
-        "options": {"ignoreResponseCode": true}
+        "options": {
+          "ignoreResponseCode": true,
+          "timeout": 60000
+        }
       },
       "id": "automation-call",
       "name": "Call Mia Automation Core",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 0]
+      "position": [
+        500,
+        0
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -44,14 +69,50 @@
       "name": "Normalize Automation Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [760, 0]
+      "position": [
+        760,
+        0
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
-    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Automation Request", "type": "main", "index": 0}]]},
-    "Normalize Automation Request": {"main": [[{"node": "Call Mia Automation Core", "type": "main", "index": 0}]]},
-    "Call Mia Automation Core": {"main": [[{"node": "Normalize Automation Result", "type": "main", "index": 0}]]}
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Automation Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Automation Request": {
+      "main": [
+        [
+          {
+            "node": "Call Mia Automation Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Mia Automation Core": {
+      "main": [
+        [
+          {
+            "node": "Normalize Automation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "active": false
 }

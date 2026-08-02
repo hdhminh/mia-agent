@@ -22,7 +22,8 @@
       "position": [
         -864,
         -16
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -53,7 +54,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { properties: { title: $json.title } } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "e42b0d57-e8b8-4753-96a0-991ca09b0b48",
       "name": "Sheets Create Spreadsheet",
@@ -68,7 +71,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -81,7 +85,8 @@
       "position": [
         -128,
         -96
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -94,7 +99,8 @@
       "position": [
         112,
         144
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

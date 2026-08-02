@@ -29,7 +29,8 @@
       "position": [
         -1280,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -62,7 +63,8 @@
       "position": [
         -704,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -75,7 +77,8 @@
       "position": [
         -32,
         352
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -88,7 +91,8 @@
       "position": [
         -704,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -140,7 +144,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "mia-tool-lookup-workflow",
       "name": "Lookup Workflow ID",
@@ -149,7 +155,8 @@
       "position": [
         -480,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -162,7 +169,8 @@
       "position": [
         -256,
         512
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

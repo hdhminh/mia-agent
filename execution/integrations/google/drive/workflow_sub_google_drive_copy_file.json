@@ -23,7 +23,8 @@
       "position": [
         -688,
         128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -117,7 +118,8 @@
       "position": [
         224,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -169,7 +171,8 @@
       "position": [
         448,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -182,7 +185,8 @@
       "position": [
         688,
         400
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

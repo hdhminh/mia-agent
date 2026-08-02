@@ -22,7 +22,8 @@
       "position": [
         -4112,
         640
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -35,7 +36,8 @@
       "position": [
         -3856,
         640
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -49,7 +51,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "4374eaf8-a6f9-4ec2-951a-b5bf12ed0eb3",
       "name": "Lookup Calendar Workflow ID",
@@ -58,7 +62,8 @@
       "position": [
         -3568,
         640
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -71,7 +76,8 @@
       "position": [
         -3328,
         640
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -122,7 +128,8 @@
       "position": [
         256,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -145,7 +152,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "5ab4d95b-4d23-4f90-9690-354864360797",
       "name": "Gửi Telegram Trực Tiếp",
@@ -154,7 +163,8 @@
       "position": [
         512,
         128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -167,7 +177,8 @@
       "position": [
         768,
         128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -200,7 +211,8 @@
       "position": [
         512,
         352
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -213,7 +225,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

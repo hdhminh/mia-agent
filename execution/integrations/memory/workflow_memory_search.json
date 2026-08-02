@@ -22,7 +22,8 @@
       "position": [
         -1040,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -52,7 +53,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { texts: [ $('Prepare Memory Search').item.json.query ], input_type: 'query' } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "memory-search-embed",
       "name": "Embed Search Query",
@@ -61,7 +64,8 @@
       "position": [
         -560,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -74,7 +78,8 @@
       "position": [
         -320,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -108,7 +113,8 @@
       "position": [
         160,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

@@ -12,7 +12,8 @@
       "position": [
         256,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {},

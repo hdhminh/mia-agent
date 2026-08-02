@@ -23,7 +23,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst messageId = String(source.messageId || source.id || args.messageId || args.id || payload.messageId || payload.id || '').trim();\nconst query = String(source.query || args.query || payload.query || rawText).trim();\nconst sender = String(source.sender || args.sender || payload.sender || '').trim();\nconst subject = String(source.subject || args.subject || payload.subject || '').trim();\nconst hasTarget = Boolean(messageId || query || sender || subject);\nreturn [{ json: { ...source, payload, message, chatId, rawText, messageId, query, sender, subject, hasTarget, response: hasTarget ? '' : 'Mia cần ít nhất messageId, query, sender hoặc subject để lưu trữ mail.' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "1c24a87a-3fdc-46a3-bf52-e30d2b11c0a1",
@@ -80,7 +81,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.messageId || item.threadId);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: 'Mia chưa tìm thấy email phù hợp để lưu trữ.' } }];\n}\nconst item = rows[0];\nreturn [{ json: { ...source, ok: true, messageId: item.id || item.messageId || '', emailSubject: item.subject || source.subject || '', emailFrom: item.from || '', emailSnippet: item.snippet || '' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "1a91a44c-b89b-4458-93ac-284a3a5ac558",
@@ -119,14 +121,17 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { removeLabelIds: ['INBOX'] } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "credentials": {
         "gmailOAuth2": {
           "id": "5bVi6VSAG8L6X4DP",
           "name": "Gmail account 2"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "fe89ad5f-ad5c-4df0-906f-065c7190e352",
@@ -139,7 +144,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst title = source.subject || result.emailSubject || source.query || source.sender || source.messageId || 'email';\nlet text = `Đã lưu trữ email: ${title}`;\nif (source.messageId || result.messageId || result.id) text += `\\nMessage ID: ${source.messageId || result.messageId || result.id}`;\nif (source.sender || result.emailFrom) text += `\\nNgười gửi: ${source.sender || result.emailFrom}`;\nreturn [{ json: { chatId: source.chatId || '', text: text.trim(), messageId: source.messageId || result.messageId || result.id || '' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "0dd11764-86ea-463a-9c1b-2a01c8de2d22",
@@ -152,7 +158,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
-      }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

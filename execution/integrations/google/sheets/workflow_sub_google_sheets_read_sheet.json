@@ -23,7 +23,8 @@
       "position": [
         -752,
         -128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -112,7 +113,8 @@
       "position": [
         192,
         -272
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -139,7 +141,9 @@
         "url": "={{ \"https://sheets.googleapis.com/v4/spreadsheets/\" + encodeURIComponent($json.spreadsheetId || $json.sheetId) + \"/values/\" + encodeURIComponent(($json.sheetTab ? (\"'\" + String($json.sheetTab).replace(/'/g, \"''\") + \"'!\") : \"\") + ($json.range || \"A1:Z30\")) }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleDriveOAuth2Api",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "c6bc26ec-9a02-44de-94a9-9d55e66796de",
       "name": "Sheets Get Values",
@@ -154,7 +158,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -167,7 +172,8 @@
       "position": [
         928,
         -128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -180,7 +186,8 @@
       "position": [
         688,
         80
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

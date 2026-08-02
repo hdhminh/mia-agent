@@ -43,7 +43,8 @@
       "position": [
         450,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -54,7 +55,8 @@
               "responseFormat": "text",
               "responsePropertyName": "data"
             }
-          }
+          },
+          "timeout": 60000
         }
       },
       "id": "fetch-news-rss",
@@ -64,7 +66,8 @@
       "position": [
         650,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -90,7 +93,8 @@
       "position": [
         1050,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -113,7 +117,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "e6cd3b7d-dc35-4b20-ad0c-0d85f05211e3",
       "name": "Gửi Telegram Trực Tiếp",
@@ -122,7 +128,8 @@
       "position": [
         640,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -135,7 +142,8 @@
       "position": [
         880,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -168,7 +176,8 @@
       "position": [
         640,
         224
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -181,7 +190,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

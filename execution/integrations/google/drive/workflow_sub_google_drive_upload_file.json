@@ -23,7 +23,8 @@
       "position": [
         -480,
         128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -56,7 +57,8 @@
       "position": [
         240,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -66,7 +68,8 @@
             "response": {
               "responseFormat": "file"
             }
-          }
+          },
+          "timeout": 60000
         }
       },
       "id": "d6b78742-e8c7-4cce-84a1-3ecea46330aa",
@@ -76,7 +79,8 @@
       "position": [
         480,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -121,13 +125,16 @@
       "position": [
         960,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "method": "GET",
         "url": "={{ `https://api.telegram.org/bot${$env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent($json.telegramFileId)}` }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "ac83c4fa-9e81-4f92-9c74-telegram-get-file",
       "name": "Resolve Telegram File",
@@ -137,7 +144,8 @@
         0,
         0
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {

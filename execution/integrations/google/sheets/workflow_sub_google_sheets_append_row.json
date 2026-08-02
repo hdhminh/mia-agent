@@ -22,7 +22,8 @@
       "position": [
         -896,
         -240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -111,7 +112,8 @@
       "position": [
         48,
         -384
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -155,7 +157,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { values: [ $json.values ] } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "8a92df42-9c9f-4f15-8b7a-30e5fc6dc3f4",
       "name": "Sheets Append Row",
@@ -170,7 +174,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -183,7 +188,8 @@
       "position": [
         784,
         -240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -196,7 +202,8 @@
       "position": [
         1024,
         -80
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

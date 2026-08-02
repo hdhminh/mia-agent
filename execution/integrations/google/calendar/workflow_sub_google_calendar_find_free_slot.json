@@ -23,7 +23,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst startAt = String(source.startAt || source.start || args.startAt || args.start || payload.startAt || payload.start || new Date().toISOString()).trim();\nconst endAt = String(source.endAt || source.end || args.endAt || args.end || payload.endAt || payload.end || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()).trim();\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || args.durationMinutes || payload.durationMinutes || 60) || 60, 1440));\nconst calendarId = String(source.calendarId || args.calendarId || payload.calendarId || 'primary').trim();\nreturn [{ json: { ...source, payload, message, chatId, rawText, startAt, endAt, durationMinutes, calendarId, hasTarget: true } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "ccc55bb2-7d9a-48ef-8992-6cf003c70fa0",
@@ -63,7 +64,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -71,7 +74,8 @@
           "name": "Google Calendar account"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
     },
     {
       "id": "25f1770e-fd9c-4ec0-b8f5-39a5c1774cd1",
@@ -84,7 +88,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rawData = $input.first().json || {};\nconst events = (rawData.items || []).filter((item) => item && (item.id || item.start || item.end));\nconst windowStart = new Date(source.startAt || Date.now());\nconst windowEnd = new Date(source.endAt || Date.now() + 24 * 60 * 60 * 1000);\nconst durationMinutes = Math.max(15, Math.min(Number(source.durationMinutes || 60) || 60, 1440));\nconst durationMs = durationMinutes * 60 * 1000;\nconst stepMs = 15 * 60 * 1000;\n\nconst busy = events\n  .map((ev) => {\n    const startRaw = ev.start?.dateTime || ev.start?.date || ev.start || ev.startAt || '';\n    const endRaw = ev.end?.dateTime || ev.end?.date || ev.end || ev.endAt || '';\n    return { start: new Date(startRaw), end: new Date(endRaw) };\n  })\n  .filter((ev) => Number.isFinite(ev.start.getTime()) && Number.isFinite(ev.end.getTime()))\n  .sort((a, b) => a.start - b.start);\n\nfunction overlaps(candidateStart, candidateEnd, interval) {\n  return candidateStart < interval.end && candidateEnd > interval.start;\n}\n\nconst slots = [];\nfor (let cursor = new Date(windowStart); cursor.getTime() + durationMs <= windowEnd.getTime(); cursor = new Date(cursor.getTime() + stepMs)) {\n  const candidateEnd = new Date(cursor.getTime() + durationMs);\n  const conflict = busy.some((interval) => overlaps(cursor, candidateEnd, interval));\n  if (!conflict) {\n    slots.push({ start: cursor.toISOString(), end: candidateEnd.toISOString() });\n  }\n  if (slots.length >= 8) break;\n}\n\nreturn [{ json: { ...source, ok: true, slots } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "679244eb-1a31-4811-8ea8-42f9238cb302",
@@ -97,7 +102,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst slots = ($json.slots || []).slice(0, 3);\nconst tz = 'Asia/Ho_Chi_Minh';\nconst formatter = new Intl.DateTimeFormat('vi-VN', {\n  timeZone: tz,\n  hour: '2-digit',\n  minute: '2-digit',\n  day: '2-digit',\n  month: '2-digit',\n  year: 'numeric',\n});\n\nconst lines = [];\nif (!slots.length) {\n  lines.push('Mia chưa tìm thấy khung giờ rảnh phù hợp trong khoảng bạn yêu cầu.');\n} else {\n  lines.push('Các khung giờ rảnh gợi ý:');\n  slots.forEach((slot, index) => {\n    lines.push(`${index + 1}. ${formatter.format(new Date(slot.start))} → ${formatter.format(new Date(slot.end))}`);\n  });\n}\nif (source.calendarId) lines.push(`Calendar: ${source.calendarId}`);\nif (source.startAt && source.endAt) lines.push(`Khoảng kiểm tra: ${source.startAt} - ${source.endAt}`);\nreturn [{ json: { chatId: source.chatId || '', text: lines.join('\\n').trim(), slots } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

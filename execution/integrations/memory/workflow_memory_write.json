@@ -22,7 +22,8 @@
       "position": [
         -1040,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -52,7 +53,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { texts: $('Prepare Memory Write').item.json.chunks, input_type: 'passage' } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "memory-write-embed",
       "name": "Embed Memory Chunks",
@@ -61,7 +64,8 @@
       "position": [
         -560,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -95,7 +99,8 @@
       "position": [
         -80,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -129,7 +134,8 @@
       "position": [
         400,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

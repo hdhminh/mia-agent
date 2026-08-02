@@ -23,7 +23,8 @@
       "position": [
         260,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -76,7 +77,8 @@
       "position": [
         980,
         -120
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -100,7 +102,8 @@
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify($json.body || {}) }}",
         "options": {
-          "ignoreResponseCode": true
+          "ignoreResponseCode": true,
+          "timeout": 60000
         }
       },
       "id": "maps-call-api",
@@ -110,7 +113,8 @@
       "position": [
         980,
         120
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -123,7 +127,8 @@
       "position": [
         1220,
         120
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -136,7 +141,8 @@
       "position": [
         980,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

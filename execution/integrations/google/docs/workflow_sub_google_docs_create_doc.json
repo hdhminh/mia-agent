@@ -23,7 +23,8 @@
       "position": [
         -976,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -63,7 +64,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { name: $json.title, mimeType: 'application/vnd.google-apps.document' } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "8deb3235-cdd9-49eb-878d-1e7308a47e92",
       "name": "Docs Create File",
@@ -78,7 +81,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -109,7 +113,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { requests: [ { insertText: { location: { index: 1 }, text: $('Prepare Action').item.json.content } } ] } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "9fb041ff-5a11-42bb-9026-34e44ee85602",
       "name": "Docs Append Initial Content",
@@ -124,7 +130,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -137,7 +144,8 @@
       "position": [
         240,
         80
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -150,7 +158,8 @@
       "position": [
         480,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

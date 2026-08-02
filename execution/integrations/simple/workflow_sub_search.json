@@ -23,7 +23,8 @@
       "position": [
         420,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -43,7 +44,8 @@
               "responseFormat": "text",
               "responsePropertyName": "data"
             }
-          }
+          },
+          "timeout": 60000
         }
       },
       "id": "duckduckgo-html",
@@ -67,7 +69,8 @@
       "position": [
         940,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -90,7 +93,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "520e23f5-e197-46f1-99e5-7564a9f1836f",
       "name": "Gửi Telegram Trực Tiếp",
@@ -99,7 +104,8 @@
       "position": [
         560,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -112,7 +118,8 @@
       "position": [
         800,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -145,7 +152,8 @@
       "position": [
         560,
         224
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -158,7 +166,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

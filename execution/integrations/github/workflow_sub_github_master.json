@@ -23,7 +23,8 @@
       "position": [
         -848,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -91,7 +92,8 @@
           ]
         },
         "options": {
-          "ignoreResponseCode": true
+          "ignoreResponseCode": true,
+          "timeout": 60000
         },
         "sendBody": "={{ ['POST','PATCH','PUT'].includes($json.method) }}",
         "contentType": "raw",
@@ -105,7 +107,8 @@
       "position": [
         -304,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -129,7 +132,8 @@
           ]
         },
         "options": {
-          "ignoreResponseCode": true
+          "ignoreResponseCode": true,
+          "timeout": 60000
         },
         "sendBody": "={{ ['POST','PATCH','PUT'].includes($json.method) }}",
         "contentType": "raw",
@@ -143,7 +147,8 @@
       "position": [
         -304,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -156,7 +161,8 @@
       "position": [
         -32,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -169,7 +175,8 @@
       "position": [
         -304,
         480
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

@@ -23,7 +23,8 @@
       "position": [
         512,
         384
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -55,7 +56,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "769ba034-e6a7-4418-986d-96cb0db4add7",
       "name": "Google Calendar List",
@@ -70,7 +73,8 @@
           "id": "1Lgsbjfibo4xVURe",
           "name": "Google Calendar account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -83,7 +87,8 @@
       "position": [
         1040,
         384
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

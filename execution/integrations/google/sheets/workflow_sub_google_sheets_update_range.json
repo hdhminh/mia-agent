@@ -23,7 +23,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nlet spreadsheetId = String(source.spreadsheetId || source.sheetId || source.targetId || args.spreadsheetId || args.sheetId || args.targetId || payload.spreadsheetId || payload.sheetId || payload.targetId || '').trim();\nlet sheetName = String(source.sheetName || source.targetName || source.fileName || source.title || args.sheetName || args.targetName || args.fileName || args.title || payload.sheetName || payload.targetName || payload.fileName || payload.title || '').trim();\nlet sheetTab = String(source.sheetTab || args.sheetTab || payload.sheetTab || '').trim();\nlet range = String(source.range || source.rangeName || source.cell || args.range || args.rangeName || args.cell || payload.range || payload.rangeName || payload.cell || '').trim();\nlet content = source.content ?? args.content ?? payload.content ?? '';\nlet values = Array.isArray(source.values) ? source.values : Array.isArray(args.values) ? args.values : Array.isArray(payload.values) ? payload.values : [];\n\nif (typeof content === 'string') {\n  content = content.trim();\n}\nif (!content && rawText) {\n  content = rawText;\n}\nconst hasTarget = Boolean(spreadsheetId || sheetName);\nreturn [{ json: { ...source, payload, message, chatId, rawText, spreadsheetId, targetId: spreadsheetId, sheetName, targetName: sheetName, sheetTab, range, rangeName: range, content, values, hasTarget, response: hasTarget && range ? '' : 'Mia cần tên/id sheet, phạm vi và dữ liệu mới để cập nhật.' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "22a13275-2659-4964-9181-5f142b4a7c5b",
@@ -92,7 +93,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rows = $input.all().map((item) => item.json || {}).filter((item) => item.id || item.name);\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: `Mia chưa tìm thấy Google Sheet phù hợp: ${source.sheetName || source.query || ''}` } }];\n}\nconst sheet = rows[0];\nreturn [{ json: { ...source, ok: true, spreadsheetId: sheet.id || source.spreadsheetId || '', sheetId: sheet.id || source.sheetId || '', targetId: sheet.id || source.targetId || source.spreadsheetId || source.sheetId || '', sheetName: sheet.name || source.sheetName || source.targetName || source.query || '', targetName: sheet.name || source.targetName || source.sheetName || source.query || '', query: source.query || source.sheetName || '', webViewLink: sheet.webViewLink || source.webViewLink || '', mimeType: sheet.mimeType || source.mimeType || '', sheetTab: source.sheetTab || '' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "d49bc061-0ca9-4c78-b73b-808794f4643d",
@@ -105,7 +107,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nfunction parseValues(input) {\n  if (Array.isArray(input) && input.length) {\n    return input;\n  }\n  const text = String(input || '').trim();\n  if (!text) return [];\n  if ((text.startsWith('[') && text.endsWith(']')) || (text.startsWith('{') && text.endsWith('}'))) {\n    try {\n      const parsed = JSON.parse(text);\n      if (Array.isArray(parsed)) return parsed;\n    } catch (err) {}\n  }\n  return text\n    .split(/\\r?\\n+/)\n    .map((line) => line.trim())\n    .filter(Boolean)\n    .map((line) => line.split(/\\t|,/).map((cell) => String(cell).trim()));\n}\n\nconst spreadsheetId = String(source.spreadsheetId || source.sheetId || '').trim();\nconst sheetTab = String(source.sheetTab || '').trim();\nconst range = String(source.range || source.rangeName || source.cell || 'A1').trim().toUpperCase();\nconst values = parseValues(source.values && source.values.length ? source.values : source.content);\nif (!values.length) {\n  throw new Error('Missing values. Cannot update Google Sheets range with empty content.');\n}\nconst targetRange = sheetTab ? `'${sheetTab.replace(/'/g, \"''\")}'!${range}` : range;\nreturn [{ json: { ...source, spreadsheetId, targetId: source.targetId || source.spreadsheetId || source.sheetId || '', sheetId: source.sheetId || source.spreadsheetId || source.targetId || '', sheetName: source.sheetName || source.targetName || '', targetName: source.targetName || source.sheetName || '', range: targetRange, rangeName: source.rangeName || source.range || source.cell || '', values } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "5ef9d690-0e81-41fe-80b2-7c8d0a80784e",
@@ -133,14 +136,17 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { values: $json.values } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "48198c43-17f7-43e8-a7b5-d0ae1dfd4882",
@@ -153,7 +159,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst sheetId = source.spreadsheetId || source.sheetId || source.targetId || '';\nconst link = source.webViewLink || (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : '');\nconst updatedRange = result.updatedRange || result.updatedData?.range || source.range || source.rangeName || '';\nconst shownTarget = source.targetName || source.sheetName || 'Không rõ tên';\nlet text = `Đã cập nhật Google Sheet: ${shownTarget}`;\nif (sheetId) text += `\\nID: ${sheetId}`;\ntext += `\\nPhạm vi cập nhật: ${updatedRange}`;\nif (link) text += `\\nMở bảng tính: ${link}`;\nreturn [{ json: { chatId: source.chatId || result.chatId || '', text: text.trim(), spreadsheetId: sheetId, webViewLink: link } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -206,7 +213,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
-      }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

@@ -2,12 +2,24 @@
   "name": "Sub-workflow: Google Contacts Master",
   "nodes": [
     {
-      "parameters": {"conditions": {"boolean": [{"value1": "={{ $json.ok }}", "value2": true}]}},
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
       "id": "contacts-if",
       "name": "Can Continue?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {},
@@ -15,7 +27,10 @@
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -25,20 +40,31 @@
       "name": "Normalize Contacts Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleContactsOAuth2Api",
         "url": "={{ $json.url }}",
-        "options": {"ignoreResponseCode": true}
+        "options": {
+          "ignoreResponseCode": true,
+          "timeout": 60000
+        }
       },
       "id": "contacts-call",
       "name": "Call Google People API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, -80]
+      "position": [
+        720,
+        -80
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -48,23 +74,82 @@
       "name": "Normalize Contacts Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -80]
+      "position": [
+        960,
+        -80
+      ],
+      "onError": "continueRegularOutput"
     },
     {
-      "parameters": {"jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Contacts request rejected.'),result:{},links:[],meta:{}}}];"},
+      "parameters": {
+        "jsCode": "return [{json:{ok:false,tool:$json.tool||'',text:String($json.error||'Google Contacts request rejected.'),result:{},links:[],meta:{}}}];"
+      },
       "id": "contacts-error",
       "name": "Return Contacts Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 120]
+      "position": [
+        720,
+        120
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
-    "Execute Workflow Trigger": {"main": [[{"node": "Normalize Contacts Request", "type": "main", "index": 0}]]},
-    "Normalize Contacts Request": {"main": [[{"node": "Can Continue?", "type": "main", "index": 0}]]},
-    "Can Continue?": {"main": [[{"node": "Call Google People API", "type": "main", "index": 0}], [{"node": "Return Contacts Error", "type": "main", "index": 0}]]},
-    "Call Google People API": {"main": [[{"node": "Normalize Contacts Result", "type": "main", "index": 0}]]}
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Contacts Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Contacts Request": {
+      "main": [
+        [
+          {
+            "node": "Can Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Continue?": {
+      "main": [
+        [
+          {
+            "node": "Call Google People API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Contacts Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Google People API": {
+      "main": [
+        [
+          {
+            "node": "Normalize Contacts Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "active": false
 }

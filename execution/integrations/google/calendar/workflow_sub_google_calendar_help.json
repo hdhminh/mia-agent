@@ -23,7 +23,8 @@
       "position": [
         -80,
         -144
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

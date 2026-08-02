@@ -23,7 +23,8 @@
       "position": [
         -1968,
         48
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -75,7 +76,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "fba15e2a-caa8-467f-8d58-1de47b7d4ce0",
       "name": "Google Calendar Busy Check",
@@ -91,7 +94,8 @@
           "id": "1Lgsbjfibo4xVURe",
           "name": "Google Calendar account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -104,7 +108,8 @@
       "position": [
         -1184,
         -64
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -117,7 +122,8 @@
       "position": [
         -944,
         208
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

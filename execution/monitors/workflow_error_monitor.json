@@ -23,7 +23,8 @@
       "position": [
         -544,
         128
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -66,7 +67,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "7975e52a-27c9-4f08-9dc2-74a734a75c7c",
       "name": "Gui Loi Telegram",
@@ -75,7 +78,8 @@
       "position": [
         0,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -88,7 +92,8 @@
       "position": [
         0,
         240
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {

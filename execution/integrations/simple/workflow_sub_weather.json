@@ -23,7 +23,8 @@
       "position": [
         430,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -37,7 +38,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "fetch-weather",
       "name": "Lấy Dữ Liệu Thời Tiết",
@@ -60,7 +63,8 @@
       "position": [
         930,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -83,7 +87,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "2d8fde8d-ca35-4923-a03f-ed0c70882d2b",
       "name": "Gửi Telegram Trực Tiếp",
@@ -92,7 +98,8 @@
       "position": [
         560,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -105,7 +112,8 @@
       "position": [
         800,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -138,7 +146,8 @@
       "position": [
         560,
         224
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -151,7 +160,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

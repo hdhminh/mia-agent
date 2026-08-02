@@ -23,7 +23,8 @@
       "position": [
         -700,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -65,7 +66,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "web-call-core",
       "name": "Call Mia Web Core",
@@ -74,7 +77,8 @@
       "position": [
         -160,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -87,7 +91,8 @@
       "position": [
         80,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -100,7 +105,8 @@
       "position": [
         -160,
         480
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

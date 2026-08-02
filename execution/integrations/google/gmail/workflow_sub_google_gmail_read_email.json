@@ -23,7 +23,8 @@
       "position": [
         240,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -95,7 +96,9 @@
         "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{$json.messageId}}?format=full",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "gmailOAuth2",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "gmail-read-get-by-id",
       "name": "Gmail Get Message By ID",
@@ -110,7 +113,8 @@
           "id": "5bVi6VSAG8L6X4DP",
           "name": "Gmail account 2"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -123,7 +127,8 @@
       "position": [
         960,
         -80
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -136,7 +141,8 @@
       "position": [
         1200,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

@@ -42,12 +42,15 @@
       "position": [
         464,
         304
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "url": "https://giavang.now/api/prices?type=SJL1L10",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "fetch-gold",
       "name": "Lấy Giá Vàng SJC",
@@ -56,7 +59,8 @@
       "position": [
         656,
         304
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -69,7 +73,8 @@
       "position": [
         912,
         304
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -92,7 +97,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "34f49a2d-293e-4436-803a-34f1a8e7aa57",
       "name": "Gửi Telegram Trực Tiếp",
@@ -101,7 +108,8 @@
       "position": [
         560,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -114,7 +122,8 @@
       "position": [
         800,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -147,7 +156,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -160,7 +170,8 @@
       "position": [
         560,
         160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

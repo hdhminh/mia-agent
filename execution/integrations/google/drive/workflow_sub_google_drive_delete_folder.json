@@ -23,7 +23,8 @@
       "position": [
         -624,
         96
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -112,7 +113,8 @@
       "position": [
         304,
         -32
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -156,7 +158,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"trashed\": true\n}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "09220704-11c4-41b9-bc2d-7926ce645740",
       "name": "Drive Trash File Folder",
@@ -171,7 +175,8 @@
           "id": "xa6nA0L0pPqTF0jz",
           "name": "Google Drive account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -184,7 +189,8 @@
       "position": [
         80,
         400
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -197,7 +203,8 @@
       "position": [
         304,
         208
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -210,7 +217,8 @@
       "position": [
         768,
         560
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

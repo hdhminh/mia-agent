@@ -35,7 +35,8 @@
       "position": [
         -832,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -53,7 +54,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { chat_id: $json.chatId, text: $json.rawText, thread_id: 'telegram:' + $json.chatId, user_id: String($json.chatId || ''), metadata: { source: 'telegram', attachmentKind: $json.attachmentKind || 'none', hasAttachment: Boolean($json.hasAttachment), fileName: $json.fileName || '', fileId: $json.fileId || '' } } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "mia-call-core",
       "name": "Call Mia Core",
@@ -62,7 +65,8 @@
       "position": [
         -528,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -75,7 +79,8 @@
       "position": [
         -224,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -102,7 +107,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "mia-send-telegram",
       "name": "Gửi Telegram",
@@ -111,7 +118,8 @@
       "position": [
         80,
         320
-      ]
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

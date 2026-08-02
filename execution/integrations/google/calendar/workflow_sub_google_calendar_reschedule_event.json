@@ -23,7 +23,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Execute Workflow Trigger').item.json || {};\nconst args = source.args || source.payload?.args || {};\nconst payload = source.payload || {};\nconst message = source.message || payload.message || payload.body?.message || {};\nconst chatId = source.chatId || message.chat?.id || payload.chatId || '';\nconst rawText = String(source.rawText || source.text || message.text || message.caption || payload.text || args.instruction || '').trim();\nconst eventId = String(source.eventId || source.id || args.eventId || args.id || payload.eventId || payload.id || '').trim();\nconst query = String(source.query || args.query || payload.query || rawText).trim();\nconst startAt = String(source.startAt || source.start || args.startAt || args.start || payload.startAt || payload.start || new Date().toISOString()).trim();\nconst endAt = String(source.endAt || source.end || args.endAt || args.end || payload.endAt || payload.end || new Date(Date.now() + 60 * 60 * 1000).toISOString()).trim();\nconst timezone = String(source.timezone || args.timezone || payload.timezone || 'Asia/Ho_Chi_Minh').trim();\nconst calendarId = String(source.calendarId || args.calendarId || payload.calendarId || 'primary').trim();\nconst hasTarget = Boolean(eventId || query);\nreturn [{ json: { ...source, payload, message, chatId, rawText, eventId, query, startAt, endAt, timezone, calendarId, hasTarget, response: hasTarget ? '' : 'Mia cần eventId hoặc query để đổi lịch.' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "f40a3443-6872-49f3-ab70-73f074c689ed",
@@ -87,7 +88,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -95,7 +98,8 @@
           "name": "Google Calendar account"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
     },
     {
       "id": "ceb04ae3-35b7-49e1-bb1b-25748102f3ea",
@@ -108,7 +112,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst rawData = $input.first().json || {};\nconst rows = (rawData.items || []).filter((item) => item && (item.id || item.eventId || item.summary));\nif (!rows.length) {\n  return [{ json: { ...source, ok: false, response: 'Mia chưa tìm thấy sự kiện phù hợp để đổi lịch.' } }];\n}\nconst item = rows[0];\nreturn [{ json: { ...source, ok: true, eventId: item.id || item.eventId || '', eventSummary: item.summary || source.query || '', eventLink: item.htmlLink || item.webViewLink || '' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "a8206fa1-bd0b-4ed8-8bc2-57e039895d30",
@@ -147,14 +152,17 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { start: { dateTime: $json.startAt, timeZone: $json.timezone || \"Asia/Ho_Chi_Minh\" }, end: { dateTime: $json.endAt, timeZone: $json.timezone || \"Asia/Ho_Chi_Minh\" } } }}",
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "credentials": {
         "googleCalendarOAuth2Api": {
           "id": "1Lgsbjfibo4xVURe",
           "name": "Google Calendar account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "288d88a4-fbcb-4c52-a5bc-a6b701931bae",
@@ -167,7 +175,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $('Prepare Action').item.json || {};\nconst result = $json || {};\nconst title = source.query || result.eventSummary || source.eventId || 'sự kiện';\nlet text = `Đã đổi lịch sự kiện: ${title}`;\nif (source.eventId || result.eventId) text += `\\nEvent ID: ${source.eventId || result.eventId}`;\ntext += `\\nThời gian mới: ${source.startAt} → ${source.endAt}`;\nif (result.eventLink) text += `\\nMở sự kiện: ${result.eventLink}`;\nreturn [{ json: { chatId: source.chatId || '', text: text.trim(), eventId: source.eventId || result.eventId || '', eventLink: result.eventLink || '' } }];"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "a18d79f6-9b2e-4956-a371-5c312a445033",
@@ -180,7 +189,8 @@
       ],
       "parameters": {
         "jsCode": "const source = $json || {};\n\nfunction decodeEntities(value = '') {\n  return String(value)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/gi, \"'\");\n}\n\nfunction htmlToPlainText(value = '') {\n  return decodeEntities(String(value || ''))\n    .replace(/<br\\s*\\/?/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/div>/gi, '\\n')\n    .replace(/<\\/li>/gi, '\\n')\n    .replace(/<li>/gi, '- ')\n    .replace(/<\\/h\\d>/gi, '\\n')\n    .replace(/<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)<\\/a>/gi, '$2: $1')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s+([,.;:!?])/g, '$1')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst target = source.subject || source.sender || source.query || source.messageId || source.id || '';\nlet text = htmlToPlainText(source.response || source.text || source.error || '');\nif (!text) {\n  text = target\n    ? `Mia chưa xử lý được yêu cầu với \"${target}\". Bạn kiểm tra lại thông tin đầu vào giúp Mia nhé.`\n    : 'Mia chưa đủ thông tin để xử lý yêu cầu này.';\n}\n\nreturn [{\n  json: {\n    ok: false,\n    tool: source.tool || source.workflowKey || '',\n    chatId: source.chatId || '',\n    text,\n    links: [],\n    result: {},\n    meta: {\n      target: String(target || '').trim(),\n      reason: source.hasTarget === false || source.isReady === false ? 'missing_required_input' : 'not_found_or_not_applicable'\n    }\n  }\n}];"
-      }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
