@@ -153,9 +153,28 @@ class MemoryRepository:
 
     def setup(self) -> None:
         schema_sql = self.schema_path.read_text(encoding="utf-8")
+        schema_checksum = hashlib.sha256(schema_sql.encode("utf-8")).hexdigest()
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mia_schema_migrations (
+                      version TEXT PRIMARY KEY,
+                      checksum TEXT NOT NULL DEFAULT '',
+                      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                )
                 cur.execute(schema_sql)
+                cur.execute(
+                    """
+                    INSERT INTO mia_schema_migrations (version, checksum)
+                    VALUES (%s, %s)
+                    ON CONFLICT (version)
+                    DO UPDATE SET checksum = EXCLUDED.checksum, applied_at = now();
+                    """,
+                    ("memory_schema", schema_checksum),
+                )
             conn.commit()
 
     def _embed(self, texts: list[str], input_type: str) -> list[list[float]]:
@@ -454,6 +473,8 @@ class MemoryRepository:
         normalized_content = _normalize_text(content)
         if not normalized_content:
             raise ValueError("Memory content is empty.")
+        if any(pattern.search(normalized_content) for pattern in SECRET_PATTERNS):
+            raise ValueError("Memory content appears to contain a secret and was not saved.")
 
         clean_tags = [tag.strip() for tag in (tags or []) if str(tag).strip()]
         clean_kind = _normalize_memory_kind(memory_kind)
@@ -662,6 +683,59 @@ class MemoryRepository:
                 row = cur.fetchone()
             conn.commit()
         return dict(row or {})
+
+    def consolidate(self, *, owner_id: str = "", limit: int = 500) -> dict[str, Any]:
+        """Mark older memory items as superseded when a newer item has the same normalized content."""
+        owner_filter = _normalize_text(owner_id)
+        with self.pool.connection() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT id, content, created_at
+                    FROM mia_memory_items
+                    WHERE is_active = TRUE AND status = 'active' AND superseded_by IS NULL
+                      AND (%s = '' OR owner_id = %s)
+                      AND (expires_at IS NULL OR expires_at > now())
+                    ORDER BY created_at ASC, id ASC
+                    LIMIT %s;
+                    """,
+                    (owner_filter, owner_filter, max(1, min(limit, 2000))),
+                )
+                rows = list(cur.fetchall())
+
+        by_content: dict[str, list[int]] = {}
+        for row in rows:
+            key = _normalize_text(row.get("content") or "").lower()
+            if not key:
+                continue
+            by_content.setdefault(key, []).append(int(row["id"]))
+
+        supersede: dict[int, int] = {}
+        for ids in by_content.values():
+            ids = sorted(set(ids))
+            if len(ids) > 1:
+                newest = ids[-1]
+                for old in ids[:-1]:
+                    supersede[old] = newest
+
+        if not supersede:
+            return {"checked": len(rows), "superseded": 0, "pairs": []}
+
+        pairs: list[dict[str, Any]] = []
+        with self.pool.connection() as conn:
+            with conn.cursor() as cur:
+                for old_id, new_id in supersede.items():
+                    cur.execute(
+                        """
+                        UPDATE mia_memory_items
+                        SET is_active = FALSE, superseded_by = %s, updated_at = now()
+                        WHERE id = %s AND is_active = TRUE AND superseded_by IS NULL;
+                        """,
+                        (new_id, old_id),
+                    )
+                    pairs.append({"old_id": old_id, "new_id": new_id})
+                conn.commit()
+        return {"checked": len(rows), "superseded": len(pairs), "pairs": pairs}
 
     def list_pending_proposals(
         self,

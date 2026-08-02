@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from typing import Any
 
 from langchain.agents import AgentState, create_agent
@@ -121,8 +122,9 @@ class MiaAgentService:
         self.model = self.agent_models["general"]
         self.tool_registry = self._build_tool_registry()
         self.capability_broker = CapabilityBroker.default()
-        self._dynamic_agents: dict[tuple[str, tuple[str, ...]], Any] = {}
-        self._dynamic_fallback_agents: dict[tuple[str, tuple[str, ...]], Any] = {}
+        self._dynamic_agents: OrderedDict[tuple[str, tuple[str, ...]], Any] = OrderedDict()
+        self._dynamic_fallback_agents: OrderedDict[tuple[str, tuple[str, ...]], Any] = OrderedDict()
+        self._max_dynamic_agents = 64
         self.direct_executor = DirectExecutor(
             memory_repo=self.memory_repo,
             tool_gateway=self.tool_gateway,
@@ -132,6 +134,7 @@ class MiaAgentService:
             token=self.settings.code_gateway_token,
             timeout_seconds=self.settings.code_timeout_seconds,
         )
+        self.tool_gateway.code_runner_client = self.code_runner_client
         self.github_handler = GitHubHandler(self)
         self.followup_handler = FollowupHandler(self)
         self.agents = self._build_agents()
@@ -487,6 +490,17 @@ class MiaAgentService:
             fallback_agents[name] = self._build_agent(tool_names=tool_names, model=fallback_model)
         return fallback_agents
 
+    def _lru_get_or_build(self, cache: OrderedDict, key: tuple, builder) -> Any:
+        if key in cache:
+            cache.move_to_end(key)
+            return cache[key]
+        agent = builder()
+        cache[key] = agent
+        cache.move_to_end(key)
+        while len(cache) > self._max_dynamic_agents:
+            cache.popitem(last=False)
+        return agent
+
     def _invoke_agent_with_fallback(
         self,
         *,
@@ -513,14 +527,15 @@ class MiaAgentService:
             if isinstance(active_project, dict):
                 code_default_project_id = str(active_project.get("project_id") or "").strip()
         cache_key = (agent_key, tuple(selected), code_default_project_id)
-        agent = self._dynamic_agents.get(cache_key)
-        if agent is None:
-            agent = self._build_agent(
+        agent = self._lru_get_or_build(
+            self._dynamic_agents,
+            cache_key,
+            lambda: self._build_agent(
                 tool_names=selected,
                 model=self.agent_models[agent_key],
                 code_default_project_id=code_default_project_id,
-            )
-            self._dynamic_agents[cache_key] = agent
+            ),
+        )
         try:
             return agent.invoke(
                 {"messages": messages_payload},
@@ -531,15 +546,18 @@ class MiaAgentService:
                 context=context,
             ), "primary"
         except Exception as primary_exc:
-            fallback_agent = self._dynamic_fallback_agents.get(cache_key)
             fallback_model = self.agent_fallback_models.get(agent_key)
-            if fallback_agent is None and fallback_model is not None:
-                fallback_agent = self._build_agent(
+            fallback_agent = self._lru_get_or_build(
+                self._dynamic_fallback_agents,
+                cache_key,
+                lambda: self._build_agent(
                     tool_names=selected,
                     model=fallback_model,
                     code_default_project_id=code_default_project_id,
                 )
-                self._dynamic_fallback_agents[cache_key] = fallback_agent
+                if fallback_model is not None
+                else None,
+            )
             if fallback_agent is None:
                 raise
             try:

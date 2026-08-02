@@ -39,6 +39,7 @@ class Settings:
     api_rate_limit_per_minute: int
     mcp_servers_json: str
     automation_poll_seconds: int
+    reminder_quiet_hours: str
     prompt_cache_enabled: bool
     prompt_cache_namespace: str
     prompt_cache_version: str
@@ -109,6 +110,7 @@ class Settings:
             api_rate_limit_per_minute=int(os.getenv("MIA_API_RATE_LIMIT_PER_MINUTE", "120")),
             mcp_servers_json=os.getenv("MIA_MCP_SERVERS_JSON", "").strip(),
             automation_poll_seconds=int(os.getenv("MIA_AUTOMATION_POLL_SECONDS", "30")),
+            reminder_quiet_hours=os.getenv("MIA_REMINDER_QUIET_HOURS", "23-7").strip(),
             prompt_cache_enabled=_env_bool("MIA_PROMPT_CACHE_ENABLED", True),
             prompt_cache_namespace=os.getenv("MIA_PROMPT_CACHE_NAMESPACE", "mia").strip(),
             prompt_cache_version=os.getenv("MIA_PROMPT_CACHE_VERSION", "v1").strip(),
@@ -151,6 +153,8 @@ class Settings:
                 raise RuntimeError("DEEPSEEK_API_KEY is required for mia-core when PRIMARY_LLM_PROVIDER=deepseek_direct.")
             if not self.openrouter_api_key:
                 raise RuntimeError("OPENROUTER_API_KEY is required as fallback when PRIMARY_LLM_PROVIDER=deepseek_direct.")
+        if "n8n_password" in self.postgres_uri:
+            raise RuntimeError("MIA_POSTGRES_URI still uses the default 'n8n_password'. Set a strong password.")
         if not self.tool_gateway_token:
             raise RuntimeError("MIA_TOOL_GATEWAY_TOKEN is required for mia-core.")
         if not self.core_api_token:

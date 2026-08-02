@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -119,6 +119,7 @@ DANGEROUS_GATEWAY_NAMES = {
     "code.create_pull_request",
     "code.apply_to_existing_project",
     "code.publish_project",
+    "code.fix_from_issue",
 }
 
 

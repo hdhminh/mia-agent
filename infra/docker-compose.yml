@@ -33,6 +33,8 @@ services:
       - MIA_HOME_ENTITY_ALIASES_JSON=${MIA_HOME_ENTITY_ALIASES_JSON:-}
       - MIA_HOME_TTS_ENTITY_ID=${MIA_HOME_TTS_ENTITY_ID:-}
       - MIA_CORE_URL=${MIA_CORE_URL:-http://mia-core:8000/mia/chat}
+      - MIA_CORE_API_TOKEN=${MIA_CORE_API_TOKEN}
+      - MIA_TOOL_GATEWAY_TOKEN=${MIA_TOOL_GATEWAY_TOKEN}
       - OWNER_DISPLAY_NAME=${OWNER_DISPLAY_NAME:-User}
     ports:
       - "127.0.0.1:5678:5678"
@@ -190,7 +192,7 @@ services:
       - MIA_EVALUATOR_MAX_RETRIES=${MIA_EVALUATOR_MAX_RETRIES:-2}
       - OWNER_DISPLAY_NAME=${OWNER_DISPLAY_NAME:-User}
     ports:
-      - "0.0.0.0:8000:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - n8n-net
 

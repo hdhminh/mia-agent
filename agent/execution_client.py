@@ -40,6 +40,7 @@ class N8nToolGatewayClient:
         learning_repo: LearningRepository | None = None,
         approval_repo: ApprovalRepository | None = None,
         execution_journal: ExecutionJournalRepository | None = None,
+        code_runner_client: Any | None = None,
     ) -> None:
         self.url = url
         self.token = token
@@ -47,6 +48,7 @@ class N8nToolGatewayClient:
         self.learning_repo = learning_repo
         self.approval_repo = approval_repo
         self.execution_journal = execution_journal
+        self.code_runner_client = code_runner_client
 
     @staticmethod
     def _scope_from_gateway_name(gateway_name: str) -> str:
@@ -479,13 +481,23 @@ class N8nToolGatewayClient:
         gateway_name = str(pending_action.get("gateway_name") or pending_action.get("tool_name") or "").strip()
         args = pending_action.get("args") if isinstance(pending_action.get("args"), dict) else {}
         try:
-            result = self.run_tool(
-                gateway_name,
-                dict(args),
-                context,
-                request_text=request_text,
-                force_execute=True,
-            )
+            if gateway_name.startswith("code."):
+                endpoint = str(args.get("endpoint") or "").strip()
+                payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
+                if self.code_runner_client is None:
+                    raise RuntimeError("Code runner client is not configured.")
+                data = self.code_runner_client.request(endpoint, payload)
+                ok = bool(data.get("ok", True))
+                text = str(data.get("text") or "").strip()
+                result = ToolGatewayResult(ok=ok, tool=gateway_name, text=text, payload=data)
+            else:
+                result = self.run_tool(
+                    gateway_name,
+                    dict(args),
+                    context,
+                    request_text=request_text,
+                    force_execute=True,
+                )
         except Exception as exc:
             if self.approval_repo and action_id:
                 try:

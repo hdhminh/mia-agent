@@ -58,7 +58,7 @@
       - MIA_EVALUATOR_MAX_RETRIES=${MIA_EVALUATOR_MAX_RETRIES:-2}
       - OWNER_DISPLAY_NAME=${OWNER_DISPLAY_NAME:-User}
     ports:
-      - "0.0.0.0:8000:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - mia-core-net
 
