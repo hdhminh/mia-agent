@@ -29,7 +29,7 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
             return "maps"
         if profile.domain == "smarthome":
             return "smarthome"
-        if profile.domain == "code":
+        if profile.domain in {"code", "dev"}:
             return "code"
         return "general"
 
@@ -43,7 +43,7 @@ def choose_agent_key(profile: RequestProfile, request_text: str) -> str:
         return "maps"
     if profile.domain == "smarthome":
         return "smarthome"
-    if profile.domain == "code":
+    if profile.domain in {"code", "dev"}:
         return "code"
     if profile.domain == "google_full":
         return "google_full"

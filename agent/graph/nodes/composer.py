@@ -29,7 +29,10 @@ def response_composer_node(state: MiaGraphState, service: Any) -> dict[str, Any]
     request_id = state["request_id"]
 
     final_message = messages[-1] if messages else AIMessage(content="")
-    final_text = normalized_sanitize_final_text(normalized_coerce_message_text(final_message.content))
+    final_text = normalized_sanitize_final_text(
+        normalized_coerce_message_text(final_message.content),
+        preserve_code_format=(agent_key in {"dev", "code"}),
+    )
     tools_called = normalized_extract_tools_called(messages)
 
     if not tools_called and hint_tool == "memory_recent":

@@ -132,6 +132,17 @@ CASES: list[RouteCase] = [
     RouteCase("tóm tắt file này", "direct_deterministic", "media", "document_summarize", "media", "document summarize", {"hasAttachment": True, "attachmentKind": "document", "fileId": "doc-1"}),
     RouteCase("chép lời audio này", "direct_deterministic", "media", "audio_transcribe", "media", "audio transcribe", {"hasAttachment": True, "attachmentKind": "audio", "fileId": "audio-1"}),
     RouteCase("đọc thành giọng nói câu này", "direct_deterministic", "media", "tts_speak", "media", "tts speak", {}),
+    RouteCase("sửa bug trong repo mia-agent rồi chạy test", "agentic_multistep", "code", "code_work_on_project", "dev", "dev bug fix plus test"),
+    RouteCase("review code giúp em", "agentic_domain", "code", "code_work_on_project", "dev", "dev code review"),
+    RouteCase("viết test cho hàm calculate_total trong file utils.py", "agentic_domain", "code", "code_work_on_project", "dev", "dev write test for named file"),
+    RouteCase("sửa lỗi ở dòng 42 file service.py", "agentic_domain", "code", "code_work_on_project", "dev", "dev fix error at line in file"),
+    RouteCase("tối ưu code trong repo mia-agent", "agentic_domain", "code", "code_work_on_project", "dev", "dev optimize code"),
+    RouteCase("chạy test cho project này", "agentic_domain", "code", "code_work_on_project", "dev", "dev run test for project"),
+    RouteCase("tạo PR cho repo hello-world", "agentic_domain", "code", "code_publish_project", "dev", "dev create PR"),
+    RouteCase("tạo issue test trong repo octocat/Hello-World tiêu đề Smoke", "agentic_domain", "github", "github_create_issue", "dev", "github issue creation stays github"),
+    RouteCase("xem PR #42 https://github.com/octocat/Hello-World/pull/42", "direct_deterministic", "github", "github_get_pull_request", "dev", "github PR read stays github"),
+    RouteCase("mật danh dự án trong bài test smoke là gì?", "agentic_domain", "general", "", "dev", "project question does not route to code"),
+    RouteCase("demo-coffee là project gì vậy?", "agentic_domain", "general", "", "dev", "generic project question does not route to code"),
 ]
 
 

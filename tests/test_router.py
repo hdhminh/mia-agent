@@ -69,5 +69,47 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(decision.agent_key, "code")
         self.assertEqual(decision.hint_tool, "code_project_status")
 
+    def test_review_code_routes_to_code(self):
+        decision = route_request("review code giúp em")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+        self.assertEqual(decision.hint_tool, "code_work_on_project")
+
+    def test_write_test_for_file_routes_to_code(self):
+        decision = route_request("viết test cho hàm calculate_total trong file utils.py")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+
+    def test_fix_error_at_line_file_routes_to_code(self):
+        decision = route_request("sửa lỗi ở dòng 42 file service.py")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+
+    def test_optimize_code_routes_to_code(self):
+        decision = route_request("tối ưu code trong repo mia-agent")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+
+    def test_run_test_for_project_routes_to_code(self):
+        decision = route_request("chạy test cho project này")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.agent_key, "code")
+
+    def test_github_create_issue_still_routes_to_github(self):
+        decision = route_request("tạo issue test trong repo octocat/hello-world tiêu đề Smoke")
+        self.assertEqual(decision.domain, "github")
+        self.assertEqual(decision.hint_tool, "github_create_issue")
+
+    def test_github_pull_request_read_still_routes_to_github(self):
+        decision = route_request("xem PR #42 https://github.com/octocat/hello-world/pull/42")
+        self.assertEqual(decision.domain, "github")
+        self.assertEqual(decision.hint_tool, "github_get_pull_request")
+        self.assertTrue(decision.use_direct)
+
+    def test_create_pr_routes_to_code_publish(self):
+        decision = route_request("tạo PR cho repo hello-world")
+        self.assertEqual(decision.domain, "code")
+        self.assertEqual(decision.hint_tool, "code_publish_project")
+
 if __name__ == "__main__":
     unittest.main()

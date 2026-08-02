@@ -27,11 +27,12 @@ def coerce_message_text(content: Any) -> str:
     return str(content or "")
 
 
-def sanitize_final_text(text: str) -> str:
+def sanitize_final_text(text: str, *, preserve_code_format: bool = False) -> str:
     cleaned = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
     cleaned = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1: \2", cleaned)
-    cleaned = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", cleaned)
-    cleaned = cleaned.replace("**", "").replace("__", "").replace("`", "")
+    if not preserve_code_format:
+        cleaned = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", cleaned)
+        cleaned = cleaned.replace("**", "").replace("__", "").replace("`", "")
     cleaned = re.sub(r"(?m)^\s*[-*]\s+", "- ", cleaned)
     cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
     cleaned = "\n".join(line.rstrip() for line in cleaned.splitlines())

@@ -96,7 +96,14 @@ def is_current_time_request(normalized: str) -> bool:
     return any(re.search(pattern, normalized) for pattern in patterns)
 
 
-def _infer_code_profile(normalized: str) -> RequestProfile | None:
+CODE_FILE_EXT_RE = re.compile(
+    r"[\w./\\-]+\.(py|pyw|ts|tsx|js|jsx|mjs|cjs|go|rs|java|kt|kts|c|cpp|cc|h|hpp|rb|php|swift"
+    r"|sql|json|yaml|yml|toml|ini|cfg|sh|bash|zsh|fish|ps1|css|scss|sass|less|html|htm|vue|svelte|md|dockerfile|tf|sol)"
+)
+
+
+def _infer_code_profile(normalized: str, text: str) -> RequestProfile | None:
+    has_github = "github" in normalized
     code_specific_context_cues = (
         "code",
         "coding",
@@ -122,6 +129,24 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         "sandbox",
         "workspace code",
         "opencode",
+        "function",
+        "ham",
+        "hàm",
+        "class",
+        "import",
+        "exception",
+        "stack trace",
+        "traceback",
+        "crash",
+        "bị lỗi",
+        "bi loi",
+        "bug",
+        "test",
+        "review",
+        "refactor",
+        "optimize",
+        "toi uu",
+        "tối ưu",
     )
     code_workspace_creation_cues = (
         "tao folder",
@@ -140,11 +165,15 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
     )
     if any_keyword_matches(normalized, code_workspace_creation_cues) and any_keyword_matches(normalized, code_specific_context_cues):
         return RequestProfile(domain="code", hint_tool="code_create_project", direct_confident=False, reason="code workspace creation request")
-    if any_keyword_matches(normalized, ("diff", "patch")):
+    github_repo_ref = re.search(r"\b[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\b", text)
+    if any_keyword_matches(normalized, ("diff", "patch")) and not github_repo_ref:
         return RequestProfile(domain="code", hint_tool="code_project_diff", direct_confident=False, reason="code diff request")
     if any_keyword_matches(normalized, ("import repo", "import project", "repo local", "project local", "folder co san", "folder có sẵn")):
         return RequestProfile(domain="code", hint_tool="code_import_existing_project", direct_confident=False, reason="code import request")
-    if any_keyword_matches(normalized, ("pr", "pull request", "branch", "commit", "push", "publish")):
+    if any_keyword_matches(normalized, ("pr", "pull request", "branch", "commit", "push", "publish")) and any_keyword_matches(
+        normalized,
+        ("tao", "tạo", "push", "publish", "xuat ban", "xuất bản", "dang", "đăng", "merge", "cap nhat", "cập nhật", "dong", "đóng"),
+    ):
         return RequestProfile(domain="code", hint_tool="code_publish_project", direct_confident=False, reason="code publish request")
     if any_keyword_matches(normalized, ("code status", "workspace code", "kiem tra code", "kiểm tra code", "kiem tra workspace code", "kiểm tra workspace code")):
         return RequestProfile(domain="code", hint_tool="code_project_status", direct_confident=False, reason="code project status request")
@@ -160,17 +189,90 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         "chay test",
         "chạy test",
         "run test",
+        "viet test",
+        "viết test",
+        "test cho ham",
+        "test cho hàm",
         "review code",
         "review repo",
+        "review project",
+        "code review",
+        "toi uu code",
+        "tối ưu code",
+        "optimize code",
+        "refactor",
+        "tai cau truc",
+        "tái cấu trúc",
+        "debug",
+        "phan tich code",
+        "phân tích code",
         "tao pr",
         "tạo pr",
         "tao pull request",
         "tạo pull request",
         "implement",
         "implementation",
+        "sua loi",
+        "sửa lỗi",
+        "code chay khong",
+        "code chạy không",
+        "sua ham",
+        "sửa hàm",
+        "viet ham",
+        "viết hàm",
+        "them tinh nang",
+        "thêm tính năng",
     )
     if any_keyword_matches(normalized, explicit_code_phrases):
         return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="coding request")
+
+    # Requests about GitHub entities (issue, PR) are github domain unless an explicit code-editing phrase matched above.
+    if any_keyword_matches(normalized, ("issue", "issues", "pull request", "github issue")):
+        return None
+
+    # A message that names a code file plus an action is a dev request.
+    if CODE_FILE_EXT_RE.search(text) and not has_github:
+        code_action_cues = (
+            "them",
+            "thêm",
+            "sua",
+            "sửa",
+            "chinh",
+            "chỉnh",
+            "doi",
+            "đổi",
+            "xoa",
+            "xóa",
+            "cap nhat",
+            "cập nhật",
+            "tao",
+            "tạo",
+            "viet",
+            "viết",
+            "lam",
+            "làm",
+            "fix",
+            "run",
+            "chay",
+            "chạy",
+            "kiem tra",
+            "kiểm tra",
+            "check",
+            "status",
+            "build",
+            "lint",
+            "review",
+            "toi uu",
+            "tối ưu",
+            "explain",
+            "giai thich",
+            "giải thích",
+            "xem",
+            "đọc",
+            "doc",
+        )
+        if any_keyword_matches(normalized, code_action_cues):
+            return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="coding request on named file")
 
     code_action_cues = (
         "them",
@@ -201,8 +303,12 @@ def _infer_code_profile(normalized: str) -> RequestProfile | None:
         "status",
         "build",
         "lint",
+        "review",
+        "optimize",
+        "toi uu",
+        "tối ưu",
     )
-    if any_keyword_matches(normalized, code_specific_context_cues) and any_keyword_matches(normalized, code_action_cues):
+    if not has_github and any_keyword_matches(normalized, code_specific_context_cues) and any_keyword_matches(normalized, code_action_cues):
         return RequestProfile(domain="code", hint_tool="code_work_on_project", direct_confident=False, reason="coding request")
     return None
 
@@ -253,7 +359,7 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if any_keyword_matches(normalized, ("contact", "contacts", "danh bạ", "danh ba", "người liên hệ", "nguoi lien he")):
         return RequestProfile(domain="workspace", hint_tool="contacts_search", direct_confident=True, reason="contacts request")
 
-    if any_keyword_matches(normalized, ("automation", "tự động hóa", "tu dong hoa", "nhắc định kỳ", "nhac dinh ky")):
+    if any_keyword_matches(normalized, ("automation", "tự động hóa", "tu dong hoa", "nhắc định kỳ", "nhac dinh ky", "nhắc tôi", "nhac toi", "nhắc mình", "nhac minh", "nhắc lúc", "nhac luc")):
         if any_keyword_matches(normalized, ("danh sách", "danh sach", "list", "đang có", "dang co")):
             return RequestProfile(domain="general", hint_tool="automation_list", direct_confident=True, reason="automation list request")
         return RequestProfile(domain="general", hint_tool="automation_create", direct_confident=False, reason="automation request")
@@ -321,6 +427,10 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     from agent.brain.parsers.common import HELP_REQUEST_CUES
     help_request = any(keyword_matches(normalized, cue) for cue in HELP_REQUEST_CUES)
 
+    code_profile = _infer_code_profile(normalized, text)
+    if code_profile is not None:
+        return code_profile
+
     if any_keyword_matches(normalized, ("github help", "help github", "github huong dan", "github hướng dẫn", "help repo github")):
         return RequestProfile(domain="github", hint_tool="github_help", direct_confident=True, reason="github help request")
 
@@ -376,10 +486,6 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if github_context:
         hint_tool, direct_confident = _infer_github_hint(normalized, github_context, help_request)
         return RequestProfile(domain="github", hint_tool=hint_tool, direct_confident=direct_confident, reason="github repo request")
-
-    code_profile = _infer_code_profile(normalized)
-    if code_profile is not None:
-        return code_profile
 
     explicit_url = ""
     if metadata:
