@@ -25,6 +25,7 @@ class MiaChatRequest(BaseModel):
         description="Conversation thread id for LangGraph checkpoints.",
     )
     user_id: str | None = Field(default=None, description="Stable user id.")
+    locale: str | None = Field(default=None, description="Optional per-request locale override.")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def resolved_thread_id(self) -> str:

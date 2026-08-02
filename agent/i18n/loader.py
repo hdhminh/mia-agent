@@ -1,14 +1,25 @@
 from __future__ import annotations
 
+import contextvars
 import json
 import os
 from typing import Any
 
 _locales_cache: dict[str, dict[str, Any]] = {}
+_request_locale: contextvars.ContextVar[str] = contextvars.ContextVar("mia_request_locale", default="")
 
 
 def get_locale() -> str:
+    override = _request_locale.get().strip().lower()
+    if override:
+        return override
     return os.getenv("MIA_LOCALE", "vi").strip().lower()
+
+
+def set_request_locale(locale: str) -> None:
+    clean = str(locale or "").strip().lower()
+    if clean in {"vi", "en"}:
+        _request_locale.set(clean)
 
 
 def load_locale_data(locale: str) -> dict[str, Any]:

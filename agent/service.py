@@ -642,7 +642,11 @@ class MiaAgentService:
     def _try_github_search_followup(self, request: MiaChatRequest) -> MiaChatResponse | None:
         return self.github_handler._try_github_search_followup(request)
 
-    def chat(self, request: MiaChatRequest) -> MiaChatResponse:
+    def _build_chat_state(self, request: MiaChatRequest) -> tuple[dict[str, Any], MiaContext, dict[str, Any]]:
+        if request.locale:
+            from agent.i18n import set_request_locale
+
+            set_request_locale(request.locale)
         request = self._enrich_request_metadata(request)
         thread_id = request.resolved_thread_id()
         request_id = request.resolved_request_id()
@@ -672,6 +676,10 @@ class MiaAgentService:
             "configurable": {"thread_id": thread_id},
             "recursion_limit": self.settings.recursion_limit * 2,
         }
+        return initial_state, context, config
+
+    def chat(self, request: MiaChatRequest) -> MiaChatResponse:
+        initial_state, context, config = self._build_chat_state(request)
         try:
             final_state = self.graph.invoke(initial_state, config=config)
             return final_state["response"]
@@ -686,3 +694,52 @@ class MiaAgentService:
             if fallback_response is not None:
                 return fallback_response
             raise
+
+    def chat_stream(self, request: MiaChatRequest):
+        """Run the graph and yield SSE-style progress events before the final answer."""
+        initial_state, context, config = self._build_chat_state(request)
+        yield {"event": "started", "request_id": request.resolved_request_id()}
+        response_payload = None
+        try:
+            for update in self.graph.stream(initial_state, config=config, stream_mode="updates"):
+                for node_name, payload in update.items():
+                    progress = self._progress_for_node(node_name, payload)
+                    if progress:
+                        yield {"event": "progress", "node": node_name, "text": progress}
+                    if isinstance(payload.get("response"), MiaChatResponse):
+                        response_payload = payload["response"]
+            if response_payload is None:
+                raise RuntimeError("Graph stream did not produce a response.")
+            yield {"event": "done", "response": response_payload.model_dump(mode="json")}
+        except GraphRecursionError:
+            fallback_response = self._try_direct_route(request, context, None, allow_multistep=True)
+            if fallback_response is not None:
+                yield {"event": "done", "response": fallback_response.model_dump(mode="json")}
+                return
+            raise
+
+    @staticmethod
+    def _progress_for_node(node_name: str, payload: dict[str, Any]) -> str:
+        domain = str(payload.get("agent_key") or payload.get("domain") or "").strip()
+        progress_map = {
+            "memory_retriever": "Đang tra cứu ký ức liên quan...",
+            "supervisor": "Đang phân tích yêu cầu...",
+            "specialist_general": "Đang xử lý yêu cầu...",
+            "specialist_code": "Đang xử lý code...",
+            "specialist_dev": "Đang xử lý code...",
+            "specialist_github": "Đang truy xuất GitHub...",
+            "specialist_calendar": "Đang xem lịch...",
+            "specialist_gmail": "Đang đọc mail...",
+            "specialist_workspace": "Đang xử lý Drive/Docs/Sheets...",
+            "specialist_media": "Đang xử lý nội dung...",
+            "specialist_smarthome": "Đang điều khiển nhà thông minh...",
+            "specialist_maps": "Đang tra cứu bản đồ...",
+            "specialist_google_full": "Đang xử lý Google Workspace...",
+            "evaluator": "Đang kiểm tra chất lượng câu trả lời...",
+            "response_composer": "Đang soạn câu trả lời...",
+        }
+        if node_name in progress_map:
+            return progress_map[node_name]
+        if node_name.startswith("specialist_") and domain:
+            return f"Đang xử lý {domain}..."
+        return ""

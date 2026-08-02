@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import asyncio
 import hmac
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -22,6 +23,7 @@ from agent.models import (
     MiaAutomationRequest,
     MiaChatRequest,
     MiaChatResponse,
+    MiaContext,
     MiaFeedbackRequest,
     MiaFeedbackResponse,
     MiaMCPCallRequest,
@@ -184,6 +186,20 @@ def mia_chat(request: MiaChatRequest) -> MiaChatResponse:
     return service.chat(request)
 
 
+@app.post("/mia/chat/stream")
+def mia_chat_stream(request: MiaChatRequest):
+    from fastapi.responses import StreamingResponse
+
+    service: MiaAgentService = app.state.agent_service
+
+    def event_source():
+        for event in service.chat_stream(request):
+            payload = json.dumps(event, ensure_ascii=False, default=str)
+            yield f"data: {payload}\n\n"
+
+    return StreamingResponse(event_source(), media_type="text/event-stream")
+
+
 @app.post("/mia/feedback", response_model=MiaFeedbackResponse)
 def mia_feedback(request: MiaFeedbackRequest) -> MiaFeedbackResponse:
     learning_repo: LearningRepository = app.state.learning_repo
@@ -311,6 +327,23 @@ def automation_run_now(request: MiaAutomationActionRequest) -> dict[str, object]
             metadata={"automation_id": row["id"], "skill_name": row["skill_name"]},
         )
     )
+    if response.ok and str(row.get("skill_name") or "").strip() == "remind_me" and response.final_text:
+        try:
+            tool_gateway = getattr(service, "tool_gateway", None)
+            if tool_gateway is not None:
+                context = MiaContext(
+                    chat_id=request.chat_id,
+                    user_id=request.user_id,
+                    timezone=getattr(service.settings, "timezone", "UTC"),
+                    request_id=f"reminder:{request.automation_id}",
+                )
+                tool_gateway.run_tool(
+                    "notify.telegram",
+                    {"text": response.final_text[:4000], "chatId": request.chat_id},
+                    context,
+                )
+        except Exception:
+            pass
     app.state.automation_repo.touch_run(automation_id=request.automation_id)
     return {"ok": response.ok, "text": response.final_text, "result": response.model_dump(mode="json")}
 
