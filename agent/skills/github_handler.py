@@ -249,11 +249,11 @@ class GitHubHandler:
     @staticmethod
     def _github_followup_state(normalized: str, default: str = "open") -> str:
         text = " ".join(str(normalized or "").split()).lower()
-        if any(cue in text for cue in ("all", "tat ca", "tất cả", "moi", "mọi")):
+        if ("all" in text) or ("tat ca" in text) or ("tất cả" in text) or ("moi" in text and "nhat" not in text):
             return "all"
         if any(cue in text for cue in ("closed", "đóng", "dong", "merged", "merge")):
             return "closed"
-        if any(cue in text for cue in ("open", "mở", "mo")):
+        if "open" in text or "mo" in text:
             return "open"
         return default
 
