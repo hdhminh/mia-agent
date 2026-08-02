@@ -2271,6 +2271,92 @@
       ]
     },
     {
+      "name": "code_review_project",
+      "action": "code.review_project",
+      "domain": "code",
+      "description": "Review current project changes for bugs, security, and performance",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 180,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.review_project",
+      "tags": [
+        "code",
+        "review",
+        "project"
+      ]
+    },
+    {
+      "name": "code_optimize_project",
+      "action": "code.optimize_project",
+      "domain": "code",
+      "description": "Propose performance and quality optimizations for a project",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 180,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.optimize_project",
+      "tags": [
+        "code",
+        "optimize",
+        "project"
+      ]
+    },
+    {
+      "name": "code_run_test",
+      "action": "code.run_test",
+      "domain": "code",
+      "description": "Run the test suite inside a managed code project",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 300,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.run_test",
+      "tags": [
+        "code",
+        "run",
+        "test"
+      ]
+    },
+    {
+      "name": "code_run_lint",
+      "action": "code.run_lint",
+      "domain": "code",
+      "description": "Run a linter inside a managed code project",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 180,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.run_lint",
+      "tags": [
+        "code",
+        "run",
+        "lint"
+      ]
+    },
+    {
+      "name": "code_fix_from_issue",
+      "action": "code.fix_from_issue",
+      "domain": "code",
+      "description": "Fix a GitHub issue in a managed project: branch, edit, test, optional PR",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 300,
+      "executor": "opencode-gateway",
+      "workflow_key": "code.fix_from_issue",
+      "tags": [
+        "code",
+        "fix",
+        "issue",
+        "github"
+      ]
+    },
+    {
       "name": "code_apply_to_existing_project",
       "action": "code.apply_to_existing_project",
       "domain": "code",
@@ -2304,6 +2390,40 @@
         "code",
         "publish",
         "project"
+      ]
+    },
+    {
+      "name": "notify_telegram",
+      "action": "notify.telegram",
+      "domain": "general",
+      "description": "Send a Telegram message to the current chat (reminders/proactive notifications)",
+      "risk": "read",
+      "approval": "never",
+      "idempotent": false,
+      "timeout_seconds": 60,
+      "executor": "n8n",
+      "workflow_key": "notify.telegram",
+      "tags": [
+        "notify",
+        "telegram",
+        "reminder"
+      ]
+    },
+    {
+      "name": "calendar_reschedule_event",
+      "action": "calendar.reschedule_event",
+      "domain": "calendar",
+      "description": "calendar reschedule event",
+      "risk": "external_write",
+      "approval": "always",
+      "idempotent": true,
+      "timeout_seconds": 30,
+      "executor": "n8n",
+      "workflow_key": "calendar.reschedule_event",
+      "tags": [
+        "calendar",
+        "reschedule",
+        "event"
       ]
     }
   ]

@@ -5,9 +5,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
 
 from agent.config import Settings
+from agent.i18n import t
+from agent.models import MiaContext
 from agent.skills.code_runner.client import CodeRunnerClient, CodeRunnerError
 
 
@@ -48,11 +50,45 @@ def _translate_host_source_path(source_path: str) -> str:
     return str(container_root / relative)
 
 
-def get_code_tools(default_project_id: str = "") -> list:
+def get_code_tools(default_project_id: str = "", tool_gateway: Any | None = None) -> list:
     default_project_id = str(default_project_id or "").strip()
 
     def resolve_project_id(project_id: str = "") -> str:
         return str(project_id or "").strip() or default_project_id
+
+    def _run_code_guarded(
+        *,
+        gateway_tool_name: str,
+        endpoint: str,
+        payload: dict[str, Any],
+        runtime: ToolRuntime[MiaContext] | None,
+    ) -> str:
+        approval_repo = getattr(tool_gateway, "approval_repo", None) if tool_gateway is not None else None
+        if approval_repo is None:
+            return _run(endpoint, payload)
+        context = getattr(runtime, "context", None)
+        if context is None:
+            return t(
+                "error.approval_required",
+                summary=gateway_tool_name,
+                confirm_keyword=t("error.approval_confirm_keyword"),
+            )
+        pending = approval_repo.create_pending_action(
+            chat_id=context.chat_id,
+            user_id=context.user_id,
+            request_id=context.request_id,
+            tool_name=gateway_tool_name,
+            gateway_name=gateway_tool_name,
+            args={"endpoint": endpoint, "payload": payload},
+            reason="dangerous code action requires explicit confirmation",
+            summary=gateway_tool_name,
+        )
+        summary = str(pending.get("summary") or gateway_tool_name).strip()
+        return t(
+            "error.approval_required",
+            summary=summary,
+            confirm_keyword=t("error.approval_confirm_keyword"),
+        )
 
     @tool("code_create_project")
     def create_project(project_name: str, instruction: str = "", title: str = "") -> str:
@@ -94,10 +130,81 @@ def get_code_tools(default_project_id: str = "") -> list:
         """Show the current git diff for one managed code project."""
         return _run("projects/diff", {"project_id": resolve_project_id(project_id), "max_chars": max_chars})
 
+    @tool("code_review_project")
+    def review_project(project_id: str = "", focus: str = "") -> str:
+        """Review the current changes of a managed code project for bugs, security, and performance."""
+        return _run(
+            "projects/review",
+            {"project_id": resolve_project_id(project_id), "scope": "diff", "focus": focus},
+        )
+
+    @tool("code_optimize_project")
+    def optimize_project(project_id: str = "", focus: str = "") -> str:
+        """Analyze a managed code project and propose performance and quality optimizations."""
+        return _run(
+            "projects/optimize",
+            {"project_id": resolve_project_id(project_id), "focus": focus},
+        )
+
+    @tool("code_run_test")
+    def run_test(project_id: str = "", test_args: str = "") -> str:
+        """Run the test suite (pytest/npm test) inside a managed code project and return the result."""
+        return _run(
+            "projects/test",
+            {"project_id": resolve_project_id(project_id), "test_args": test_args},
+        )
+
+    @tool("code_run_lint")
+    def run_lint(project_id: str = "", tool: str = "auto", target: str = "") -> str:
+        """Run a linter (ruff/mypy/npm run lint) inside a managed code project and return the result."""
+        return _run(
+            "projects/lint",
+            {"project_id": resolve_project_id(project_id), "tool": tool, "target": target},
+        )
+
+    @tool("code_fix_from_issue")
+    def fix_from_issue(
+        project_id: str = "",
+        repo: str = "",
+        issue_number: str = "",
+        issue_title: str = "",
+        issue_body: str = "",
+        base: str = "main",
+        create_pr: bool = False,
+        runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
+    ) -> str:
+        """Fix a GitHub issue in a managed code project: create a branch, edit, run tests. Opening a PR requires user confirmation."""
+        payload = {
+            "project_id": resolve_project_id(project_id),
+            "repo": repo,
+            "issue_number": issue_number,
+            "issue_title": issue_title,
+            "issue_body": issue_body,
+            "base": base,
+            "create_pr": create_pr,
+        }
+        if create_pr:
+            return _run_code_guarded(
+                gateway_tool_name="code.fix_from_issue",
+                endpoint="projects/fix-issue",
+                payload=payload,
+                runtime=runtime,
+            )
+        return _run("projects/fix-issue", payload)
+
     @tool("code_apply_to_existing_project")
-    def apply_to_existing_project(project_id: str = "", confirmed: bool = False) -> str:
-        """Apply sandbox changes back to the original imported local project after explicit approval."""
-        return _run("projects/apply", {"project_id": resolve_project_id(project_id), "confirmed": confirmed})
+    def apply_to_existing_project(
+        project_id: str = "",
+        confirmed: bool = False,
+        runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
+    ) -> str:
+        """Apply sandbox changes back to the original imported local project. Requires user confirmation."""
+        return _run_code_guarded(
+            gateway_tool_name="code.apply_to_existing_project",
+            endpoint="projects/apply",
+            payload={"project_id": resolve_project_id(project_id), "confirmed": True},
+            runtime=runtime,
+        )
 
     @tool("code_publish_project")
     def publish_project(
@@ -108,19 +215,22 @@ def get_code_tools(default_project_id: str = "") -> list:
         base: str = "main",
         mode: str = "push",
         confirmed: bool = False,
+        runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
     ) -> str:
-        """Push a managed project branch, or create a GitHub pull request, after explicit approval."""
-        return _run(
-            "projects/publish",
-            {
+        """Push a managed project branch, or create a GitHub pull request. Requires user confirmation."""
+        return _run_code_guarded(
+            gateway_tool_name="code.publish_project",
+            endpoint="projects/publish",
+            payload={
                 "project_id": resolve_project_id(project_id),
                 "title": title,
                 "body": body,
                 "branch": branch,
                 "base": base,
                 "mode": mode,
-                "confirmed": confirmed,
+                "confirmed": True,
             },
+            runtime=runtime,
         )
 
     return [
@@ -129,6 +239,11 @@ def get_code_tools(default_project_id: str = "") -> list:
         work_on_project,
         project_status,
         project_diff,
+        review_project,
+        optimize_project,
+        run_test,
+        run_lint,
+        fix_from_issue,
         apply_to_existing_project,
         publish_project,
     ]

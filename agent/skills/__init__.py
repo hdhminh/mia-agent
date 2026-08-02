@@ -33,5 +33,5 @@ def build_tools(
     tools.extend(get_google_maps_tools(tool_gateway))
     tools.extend(get_productivity_tools(tool_gateway))
     tools.extend(get_smarthome_tools(tool_gateway))
-    tools.extend(get_code_tools(default_project_id=code_default_project_id))
+    tools.extend(get_code_tools(default_project_id=code_default_project_id, tool_gateway=tool_gateway))
     return tools

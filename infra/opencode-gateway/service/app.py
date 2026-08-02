@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import re
@@ -150,6 +151,38 @@ class PublishProjectRequest(BaseModel):
     body: str = ""
 
 
+class TestProjectRequest(BaseModel):
+    project_id: str = ""
+    test_args: str = ""
+
+
+class LintProjectRequest(BaseModel):
+    project_id: str = ""
+    tool: str = "auto"
+    target: str = ""
+
+
+class ReviewProjectRequest(BaseModel):
+    project_id: str = ""
+    scope: str = "diff"
+    focus: str = ""
+
+
+class OptimizeProjectRequest(BaseModel):
+    project_id: str = ""
+    focus: str = ""
+
+
+class FixIssueRequest(BaseModel):
+    project_id: str = ""
+    repo: str = ""
+    issue_number: str = ""
+    issue_title: str = ""
+    issue_body: str = ""
+    base: str = "main"
+    create_pr: bool = False
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -157,11 +190,11 @@ def _now_iso() -> str:
 def _require_auth(auth_header: str | None) -> None:
     token = os.getenv("MIA_CODE_GATEWAY_TOKEN", os.getenv("MIA_CODE_RUNNER_TOKEN", "")).strip()
     if not token:
-        return
+        raise HTTPException(status_code=503, detail="Mia code gateway auth is not configured.")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token.")
     provided = auth_header.split(" ", 1)[1].strip()
-    if provided != token:
+    if not provided or not hmac.compare_digest(provided, token):
         raise HTTPException(status_code=401, detail="Invalid bearer token.")
 
 
@@ -285,7 +318,11 @@ def _write_opencode_files() -> None:
         },
         "share": "disabled",
     }
+    # Block bash prefixes that make trivial secret exfiltration easy (python -c "open('.env').read()").
+    bash_excluded = {"python", "python3", "cat", "less", "more", "head", "tail", "sed", "awk"}
     for command in _allowed_command_prefixes():
+        if command.strip() in bash_excluded:
+            continue
         config["permission"]["bash"][f"{command}*"] = "allow"
         config["agent"]["build"]["permission"]["bash"][f"{command}*"] = "allow"
     if deepseek_base_url:
@@ -349,6 +386,8 @@ def _run(cmd: list[str], *, cwd: Path | None = None, timeout: int | None = None)
         )
     except subprocess.TimeoutExpired as exc:
         raise CodeGatewayError(f"Command timed out: {' '.join(cmd)}") from exc
+    except FileNotFoundError as exc:
+        raise CodeGatewayError(f"Command not found on PATH: {cmd[0] if cmd else '?'}") from exc
 
 
 def _run_checked(cmd: list[str], *, cwd: Path | None = None, timeout: int | None = None) -> subprocess.CompletedProcess[str]:
@@ -357,6 +396,97 @@ def _run_checked(cmd: list[str], *, cwd: Path | None = None, timeout: int | None
         message = (result.stderr or result.stdout or "").strip()
         raise CodeGatewayError(message or f"Command failed: {' '.join(cmd)}")
     return result
+
+
+def _detect_runner(project_dir: Path) -> tuple[str, list[str]]:
+    if (project_dir / "pyproject.toml").exists() or (project_dir / "pytest.ini").exists() or (project_dir / "requirements.txt").exists():
+        return "pytest", ["pytest", "-q"]
+    if (project_dir / "package.json").exists():
+        return "npm", ["npm", "test"]
+    return "python", ["python", "-m", "pytest", "-q"]
+
+
+def _run_tests(project_dir: Path, test_args: str = "") -> dict[str, Any]:
+    runner, base_cmd = _detect_runner(project_dir)
+    command = list(base_cmd)
+    extra = [part for part in str(test_args or "").split() if part]
+    if extra:
+        command.extend(extra)
+    result = _run(command, cwd=project_dir, timeout=min(_timeout_seconds(), 300))
+    return {
+        "ok": result.returncode == 0,
+        "exit_code": result.returncode,
+        "runner": runner,
+        "command": " ".join(command),
+        "output": (result.stdout or "").strip()[-8000:],
+        "stderr": (result.stderr or "").strip()[-2000:],
+    }
+
+
+def _run_lint(project_dir: Path, tool: str = "auto", target: str = "") -> dict[str, Any]:
+    clean_tool = str(tool or "auto").strip().lower()
+    targets = [str(target or "").strip()] if str(target or "").strip() else ["."]
+    has_ruff = shutil.which("ruff") is not None
+    has_mypy = shutil.which("mypy") is not None
+    has_npm = shutil.which("npm") is not None and (project_dir / "package.json").exists()
+    command: list[str] = []
+    if clean_tool in {"auto", "ruff"} and has_ruff:
+        command = ["ruff", "check"] + targets
+    elif clean_tool in {"auto", "mypy"} and has_mypy:
+        command = ["mypy"] + targets
+    elif clean_tool in {"auto", "npm"} and has_npm:
+        command = ["npm", "run", "lint"]
+    else:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "runner": clean_tool,
+            "command": "",
+            "output": f"Không tìm thấy linter phù hợp cho tool '{clean_tool}' trong workspace.",
+            "stderr": "",
+        }
+    result = _run(command, cwd=project_dir, timeout=min(_timeout_seconds(), 300))
+    return {
+        "ok": result.returncode == 0,
+        "exit_code": result.returncode,
+        "runner": clean_tool,
+        "command": " ".join(command),
+        "output": (result.stdout or "").strip()[-8000:],
+        "stderr": (result.stderr or "").strip()[-2000:],
+    }
+
+
+def _build_review_prompt(focus: str, diff: str) -> str:
+    lines = [
+        "You are a senior software engineer reviewing code in this workspace.",
+        "Rules:",
+        "- Focus on real bugs, security issues, performance problems, and correctness.",
+        "- Do NOT edit any files. Report findings only.",
+        "- For each finding give: file, line if possible, severity, explanation, and a concrete suggestion.",
+        "- Keep the report structured and concise.",
+        "",
+        "Task:",
+        str(focus or "").strip() or "Review the current uncommitted changes for bugs, security, and performance.",
+        "",
+        "Current diff:",
+        diff[:20000] or "(no diff)",
+    ]
+    return "\n".join(line for line in lines if line).strip()
+
+
+def _build_fix_issue_prompt(issue_title: str, issue_body: str, issue_number: str) -> str:
+    lines = [
+        "You are a software engineer fixing a GitHub issue in this workspace.",
+        "Rules:",
+        "- Make the smallest effective change to fix the issue.",
+        "- Run available tests or lint to verify your change if possible.",
+        "- Do NOT read secrets or .env files.",
+        "",
+        "Issue to fix:",
+        f"#{issue_number or '?'} {issue_title or ''}".strip(),
+        (issue_body or "").strip(),
+    ]
+    return "\n".join(line for line in lines if line).strip()
 
 
 def _ensure_git_repo(project_dir: Path) -> None:
@@ -522,6 +652,8 @@ def _latest_session_id(project_dir: Path) -> str:
 def _run_opencode(record: ProjectRecord, instruction: str) -> tuple[str, str]:
     project_dir = Path(record.workspace_path)
     prompt = _build_prompt(record, instruction)
+    session_id = record.session_id
+    title = record.title or f"Mia: {record.project_name}"
     cmd = [
         _opencode_bin(),
         "run",
@@ -533,14 +665,34 @@ def _run_opencode(record: ProjectRecord, instruction: str) -> tuple[str, str]:
         "--dir",
         str(project_dir),
     ]
-    if record.session_id:
-        cmd.extend(["--session", record.session_id])
+    if session_id:
+        cmd.extend(["--session", session_id])
     else:
-        title = record.title or f"Mia: {record.project_name}"
         cmd.extend(["--title", title])
     cmd.append(prompt)
     result = _run(cmd, cwd=project_dir, timeout=_timeout_seconds())
-    session_id = _latest_session_id(project_dir)
+    if result.returncode != 0 and session_id:
+        # The saved session may have been lost (e.g. opencode home reset after restart).
+        # Retry once with a fresh session instead of failing the whole request.
+        retry_cmd = [
+            _opencode_bin(),
+            "run",
+            "--auto",
+            "--agent",
+            "build",
+            "--model",
+            _code_model_cli(),
+            "--dir",
+            str(project_dir),
+            "--title",
+            title,
+            prompt,
+        ]
+        retry = _run(retry_cmd, cwd=project_dir, timeout=_timeout_seconds())
+        if retry.returncode == 0:
+            result = retry
+            session_id = ""
+    session_id = _latest_session_id(project_dir) or session_id
     if result.returncode != 0:
         message = (result.stderr or result.stdout or "").strip()
         raise CodeGatewayError(message or "OpenCode không hoàn thành được tác vụ này.")
@@ -942,3 +1094,167 @@ def publish_project(
     if pr_url:
         lines.append(f"- Pull request: {pr_url}")
     return {"ok": True, "text": "\n".join(lines), "branch": branch, "remote": remote, "pull_request_url": pr_url}
+
+
+@app.post("/projects/test")
+def test_project(
+    body: TestProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        result = _run_tests(Path(record.workspace_path), body.test_args)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    summary = (
+        f"Mia đã chạy {result['command']} cho project {record.project_name}."
+        f"\nKết quả: {'PASS' if result['ok'] else 'FAIL'} (exit {result['exit_code']})"
+        f"\n{result['output']}"
+    )
+    if result.get("stderr"):
+        summary += f"\nstderr:\n{result['stderr']}"
+    return {"ok": True, "project_id": record.project_id, "text": summary, **result}
+
+
+@app.post("/projects/lint")
+def lint_project(
+    body: LintProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        result = _run_lint(Path(record.workspace_path), body.tool, body.target)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    summary = (
+        f"Mia đã chạy lint ({result['runner']}) cho project {record.project_name}: {result['command'] or 'n/a'}"
+        f"\nKết quả: {'sạch' if result['ok'] else 'có vấn đề'} (exit {result['exit_code']})"
+        f"\n{result['output']}"
+    )
+    return {"ok": True, "project_id": record.project_id, "text": summary, **result}
+
+
+@app.post("/projects/review")
+def review_project(
+    body: ReviewProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        project_dir = Path(record.workspace_path)
+        diff = _diff_text(project_dir, max_chars=20000)
+        local_lint = _run_lint(project_dir, target="")
+        prompt = _build_review_prompt(body.focus, diff)
+        output, _session_id = _run_opencode(record, prompt)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    sections = []
+    if diff:
+        sections.append("Diff hiện tại:\n" + diff)
+    lint_text = str(local_lint.get("output") or "(không có vấn đề)").strip()
+    sections.append(f"Lint ({local_lint.get('command') or 'n/a'}):\n{lint_text}")
+    sections.append("AI Review:\n" + (output or "").strip())
+    return {
+        "ok": True,
+        "project_id": record.project_id,
+        "text": "\n\n".join(sections),
+        "review": output,
+        "lint": local_lint,
+        "diff": diff,
+    }
+
+
+@app.post("/projects/optimize")
+def optimize_project(
+    body: OptimizeProjectRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    try:
+        record = _load_project(body.project_id)
+        project_dir = Path(record.workspace_path)
+        diff = _diff_text(project_dir, max_chars=15000)
+        prompt_lines = [
+            "You are a performance-focused software engineer optimizing this workspace.",
+            "Rules:",
+            "- Identify concrete performance and quality improvements.",
+            "- Prefer proposing minimal, safe changes; do not rewrite working code.",
+            "- Report findings with file, line if possible, expected impact, and a concrete suggestion.",
+            "",
+            "Focus:",
+            str(body.focus or "").strip() or "Find performance and maintainability improvements in the current changes.",
+            "",
+            "Current diff:",
+            diff[:15000] or "(no diff)",
+        ]
+        prompt = "\n".join(prompt_lines)
+        output, _session_id = _run_opencode(record, prompt)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "project_id": record.project_id,
+        "text": f"Mia đã phân tích tối ưu cho project {record.project_name}.\n\n{output}".strip(),
+        "optimization": output,
+    }
+
+
+@app.post("/projects/fix-issue")
+def fix_issue(
+    body: FixIssueRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_auth(authorization)
+    branch = ""
+    try:
+        record = _load_project(body.project_id)
+        project_dir = Path(record.workspace_path)
+        branch = f"mia/fix-{body.issue_number or 'issue'}-{record.project_id}"[:64].rstrip("-")
+        _run_checked(["git", "checkout", "-B", branch], cwd=project_dir)
+        prompt = _build_fix_issue_prompt(body.issue_title, body.issue_body, body.issue_number)
+        output, session_id = _run_opencode(record, prompt)
+        record = ProjectRecord.from_dict({**record.to_dict(), "session_id": session_id, "updated_at": _now_iso()})
+        _save_project(record)
+        _commit_workspace_snapshot(project_dir, f"Mia fix for #{body.issue_number or ''} {body.issue_title or ''}".strip())
+        test_result = _run_tests(project_dir)
+    except CodeGatewayError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    pr_url = ""
+    if body.create_pr and test_result.get("ok"):
+        remote = _run(["git", "remote", "get-url", "origin"], cwd=project_dir).stdout.strip()
+        parsed = _extract_github_remote(body.repo) if "/" in str(body.repo or "") else _extract_github_remote(remote)
+        if not parsed and "/" in str(body.repo or ""):
+            parsed = _extract_github_remote(remote)
+        if parsed:
+            owner, repo_name = parsed
+            title = f"[mia] {body.issue_title or f'Fix issue #{body.issue_number}'}".strip()
+            pr_body = f"Fix for #{body.issue_number}\n\n{body.issue_body or ''}".strip()
+            try:
+                pr_url = _create_github_pr(owner, repo_name, branch, body.base or "main", title, pr_body)
+            except CodeGatewayError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    lines = [
+        f"Mia đã xử lý issue trên project {record.project_name}.",
+        f"- Branch: {branch}",
+        f"- Kết quả test: {'PASS' if test_result.get('ok') else 'FAIL'} (exit {test_result.get('exit_code')})",
+        "",
+        str(test_result.get("output") or "").strip(),
+        "",
+        str(output or "").strip(),
+    ]
+    if pr_url:
+        lines.append(f"- Pull request: {pr_url}")
+    return {
+        "ok": True,
+        "project_id": record.project_id,
+        "branch": branch,
+        "text": "\n".join(line for line in lines if line).strip(),
+        "output": output,
+        "test_result": test_result,
+        "pull_request_url": pr_url,
+    }

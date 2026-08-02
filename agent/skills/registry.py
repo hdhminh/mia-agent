@@ -18,7 +18,7 @@ MEMORY_TOOL_NAMES = [
     "memory_reject_proposal",
 ]
 WEB_TOOL_NAMES = ["read_url", "summarize_url", "ask_url"]
-SIMPLE_TOOL_NAMES = ["weather_get", "gold_get_price", "news_get", "search_web", "shortlink_create", "time_now"] + WEB_TOOL_NAMES
+SIMPLE_TOOL_NAMES = ["weather_get", "gold_get_price", "news_get", "search_web", "shortlink_create", "time_now", "notify_telegram"] + WEB_TOOL_NAMES
 MEDIA_TOOL_NAMES = [
     "image_ocr",
     "image_describe",
@@ -113,6 +113,11 @@ CODE_TOOL_NAMES = [
     "code_work_on_project",
     "code_project_status",
     "code_project_diff",
+    "code_review_project",
+    "code_optimize_project",
+    "code_run_test",
+    "code_run_lint",
+    "code_fix_from_issue",
     "code_apply_to_existing_project",
     "code_publish_project",
 ]
@@ -168,7 +173,7 @@ AGENT_TOOLSETS: dict[str, list[str]] = {
     "github": MEMORY_TOOL_NAMES + GITHUB_TOOL_NAMES,
     "maps": MEMORY_TOOL_NAMES + MAPS_TOOL_NAMES,
     "smarthome": MEMORY_TOOL_NAMES + SMARTHOME_TOOL_NAMES,
-    "code": MEMORY_TOOL_NAMES + CODE_TOOL_NAMES,
+    "code": MEMORY_TOOL_NAMES + CODE_TOOL_NAMES + GITHUB_TOOL_NAMES,
     "workspace": MEMORY_TOOL_NAMES + WORKSPACE_TOOL_NAMES + TASK_TOOL_NAMES + CONTACT_TOOL_NAMES,
     "google_full": MEMORY_TOOL_NAMES + GOOGLE_FULL_TOOL_NAMES,
 }
@@ -182,6 +187,7 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "summarize_url": "web.summarize_url",
     "ask_url": "web.ask_url",
     "shortlink_create": "shortlink.create",
+    "notify_telegram": "notify.telegram",
     "image_ocr": "media.image_ocr",
     "image_describe": "media.image_describe",
     "image_extract_fields": "media.image_extract_fields",
@@ -202,6 +208,7 @@ DIRECT_GATEWAY_TOOLS: dict[str, str] = {
     "calendar_delete_event": "calendar.delete_event",
     "calendar_check_availability": "calendar.check_availability",
     "calendar_find_free_slot": "calendar.find_free_slot",
+    "calendar_reschedule_event": "calendar.reschedule_event",
     "gmail_help": "gmail.help",
     "gmail_list_inbox": "gmail.list_inbox",
     "gmail_read_email": "gmail.read_email",
