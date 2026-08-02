@@ -1069,6 +1069,11 @@ def publish_project(
         branch = body.branch.strip() or f"mia/{record.project_id}"
         _run_checked(["git", "checkout", "-B", branch], cwd=project_dir)
         remote = _run_checked(["git", "remote", "get-url", "origin"], cwd=project_dir).stdout.strip()
+        if not remote:
+            raise CodeGatewayError(
+                "Project này chưa có Git remote 'origin' nên Mia chưa thể publish. "
+                "Hãy thêm remote trước, ví dụ: git remote add origin https://github.com/you/repo.git"
+            )
         _run_checked(["git", "push", "-u", "origin", branch], cwd=project_dir, timeout=max(60, _timeout_seconds()))
         pr_url = ""
         if body.mode.strip().lower() == "pr":
