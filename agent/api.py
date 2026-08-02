@@ -114,6 +114,7 @@ async def lifespan(app: FastAPI):
         repository=automation_repo,
         service=agent_service,
         poll_seconds=settings.automation_poll_seconds,
+        quiet_hours=settings.reminder_quiet_hours,
     )
     automation_task = asyncio.create_task(automation_runner.run(), name="mia-automation-runner")
     app.state.automation_runner = automation_runner

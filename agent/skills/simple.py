@@ -52,4 +52,18 @@ def get_simple_tools(tool_gateway: N8nToolGatewayClient) -> list:
             runtime,
         )
 
-    return [weather_get, gold_get_price, shortlink_create, time_now]
+    @tool
+    def notify_telegram(
+        text: str,
+        runtime: ToolRuntime[MiaContext] = None,  # type: ignore[assignment]
+    ) -> str:
+        """Send a Telegram message to the current chat. Used for reminders and proactive notifications."""
+        chat_id = str(getattr(getattr(runtime, "context", None), "chat_id", "") or "").strip()
+        return _run_gateway_tool(
+            tool_gateway,
+            "notify.telegram",
+            {"text": text, "chatId": chat_id},
+            runtime,
+        )
+
+    return [weather_get, gold_get_price, shortlink_create, time_now, notify_telegram]

@@ -163,5 +163,39 @@ class PlatformWorkflowContractTests(unittest.TestCase):
             self.assertTrue(payload.get("nodes"), path.name)
 
 
+class ReminderQuietHoursTest(unittest.TestCase):
+    def _runner(self, quiet_hours: str):
+        from agent.automation_runner import AutomationRunner
+
+        return AutomationRunner(repository=None, service=None, poll_seconds=30, quiet_hours=quiet_hours)
+
+    def test_empty_config_never_quiet(self) -> None:
+        runner = self._runner("")
+        self.assertFalse(runner._in_quiet_hours(0))
+        self.assertFalse(runner._in_quiet_hours(12))
+        self.assertFalse(runner._in_quiet_hours(23))
+
+    def test_same_day_range(self) -> None:
+        runner = self._runner("2-6")
+        self.assertTrue(runner._in_quiet_hours(2))
+        self.assertTrue(runner._in_quiet_hours(4))
+        self.assertTrue(runner._in_quiet_hours(5))
+        self.assertFalse(runner._in_quiet_hours(6))
+        self.assertFalse(runner._in_quiet_hours(7))
+        self.assertFalse(runner._in_quiet_hours(12))
+
+    def test_overnight_range(self) -> None:
+        runner = self._runner("23-7")
+        self.assertTrue(runner._in_quiet_hours(23))
+        self.assertTrue(runner._in_quiet_hours(0))
+        self.assertTrue(runner._in_quiet_hours(6))
+        self.assertFalse(runner._in_quiet_hours(7))
+        self.assertFalse(runner._in_quiet_hours(12))
+
+    def test_invalid_config_never_quiet(self) -> None:
+        runner = self._runner("garbage")
+        self.assertFalse(runner._in_quiet_hours(23))
+
+
 if __name__ == "__main__":
     unittest.main()

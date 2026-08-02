@@ -214,6 +214,38 @@
         "only allowed devices are touched",
         "the user receives the resulting state or action outcome"
       ]
+    },
+    {
+      "name": "remind_me",
+      "description": "Set a scheduled reminder that Mia will deliver at the requested time.",
+      "triggers": [
+        "nhắc tôi",
+        "nhắc mình",
+        "nhắc anh",
+        "remind me",
+        "set a reminder",
+        "đặt nhắc",
+        "nhắc lúc",
+        "nhắc vào"
+      ],
+      "required_capabilities": [
+        "automation_create",
+        "memory_write"
+      ],
+      "steps": [
+        "parse the reminder time into a five-field cron expression in the configured timezone",
+        "create an automation named after the reminder with skill 'remind_me' and the reminder text as input",
+        "record the reminder in memory",
+        "confirm the scheduled time and the exact message to the user"
+      ],
+      "approval_points": [
+        "create automation"
+      ],
+      "success_criteria": [
+        "cron schedule is explicit and in the future",
+        "automation id exists",
+        "reminder text is preserved"
+      ]
     }
   ]
 }
