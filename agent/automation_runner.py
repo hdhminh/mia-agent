@@ -82,8 +82,8 @@ class AutomationRunner:
             response = await asyncio.to_thread(self.service.chat, request)
             if not response.ok:
                 error_text = response.final_text
-            elif skill_name == "remind_me":
-                await self._deliver_reminder(automation, response.final_text)
+            else:
+                await self._deliver_result(automation, response.final_text)
         except Exception as exc:
             logger.exception("Automation %s failed", automation.get("id"))
             error_text = str(exc)
@@ -95,7 +95,7 @@ class AutomationRunner:
                 error_text=error_text,
             )
 
-    async def _deliver_reminder(self, automation: dict[str, Any], text: str) -> None:
+    async def _deliver_result(self, automation: dict[str, Any], text: str) -> None:
         tool_gateway = getattr(self.service, "tool_gateway", None)
         if tool_gateway is None or not str(text or "").strip():
             return
@@ -114,9 +114,9 @@ class AutomationRunner:
                 context,
             )
             if not result.ok:
-                logger.warning("Reminder delivery failed for automation %s", automation.get("id"))
+                logger.warning("Result delivery failed for automation %s", automation.get("id"))
         except Exception:
-            logger.exception("Reminder delivery error for automation %s", automation.get("id"))
+            logger.exception("Result delivery error for automation %s", automation.get("id"))
 
     def stop(self) -> None:
         self._stop.set()
