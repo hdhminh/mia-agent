@@ -100,7 +100,7 @@ class Settings:
             core_api_token=os.getenv("MIA_CORE_API_TOKEN", "").strip(),
             timezone=os.getenv("MIA_TIMEZONE", "UTC").strip(),
             temperature=float(os.getenv("MIA_MODEL_TEMPERATURE", "0")),
-            max_tokens=int(os.getenv("MIA_MODEL_MAX_TOKENS", "900")),
+            max_tokens=int(os.getenv("MIA_MODEL_MAX_TOKENS", "1600")),
             recursion_limit=int(os.getenv("MIA_RECURSION_LIMIT", "12")),
             history_max_tokens=int(os.getenv("MIA_HISTORY_MAX_TOKENS", "1400")),
             request_timeout_seconds=float(os.getenv("MIA_REQUEST_TIMEOUT_SECONDS", "60")),
