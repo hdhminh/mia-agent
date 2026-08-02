@@ -347,7 +347,27 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
     if any_keyword_matches(normalized, ("shortlink", "short link", "rut gon link", "rút gọn link", "tao link ngan", "tạo link ngắn")):
         return RequestProfile(domain="general", hint_tool="shortlink_create", direct_confident=True, reason="shortlink request")
 
-    if any_keyword_matches(normalized, ("task", "tasks", "việc cần làm", "viec can lam", "to-do", "todo", "nhiem vu", "nhiệm vụ", "nhac nho", "nhắc nhở", "cong viec", "công việc", "remind", "reminder")):
+    tasks_explicit_cues = (
+        "task",
+        "tasks",
+        "việc cần làm",
+        "viec can lam",
+        "việc phải làm",
+        "viec phai lam",
+        "to-do",
+        "todo",
+        "nhiem vu",
+        "nhiệm vụ",
+        "nhac nho",
+        "nhắc nhở",
+        "remind",
+        "reminder",
+        "danh sách công việc",
+        "danh sach cong viec",
+        "list công việc",
+        "list cong viec",
+    )
+    if any_keyword_matches(normalized, tasks_explicit_cues):
         if any_keyword_matches(normalized, ("quá hạn", "qua han", "overdue")):
             return RequestProfile(domain="workspace", hint_tool="tasks_list_overdue", direct_confident=True, reason="overdue tasks request")
         if any_keyword_matches(normalized, ("đến hạn", "den han", "due", "hôm nay", "hom nay")):
@@ -356,10 +376,46 @@ def infer_request_profile(text: str, metadata: dict[str, Any] | None = None) -> 
             return RequestProfile(domain="workspace", hint_tool="tasks_create", direct_confident=False, reason="task create request")
         return RequestProfile(domain="workspace", hint_tool="tasks_list", direct_confident=True, reason="tasks request")
 
+    # "công việc" alone is too generic ("tự động hóa công việc", "công việc của tôi") —
+    # only treat it as tasks when combined with a concrete task action.
+    if any_keyword_matches(normalized, ("cong viec", "công việc")):
+        task_action_cues = (
+            "quá hạn",
+            "qua han",
+            "overdue",
+            "đến hạn",
+            "den han",
+            "due",
+            "hôm nay",
+            "hom nay",
+            "tạo",
+            "tao",
+            "thêm",
+            "them",
+            "create",
+            "add",
+            "xóa",
+            "xoa",
+            "sửa",
+            "sua",
+            "hoàn thành",
+            "hoan thanh",
+            "còn nợ",
+            "con no",
+            "còn lại",
+            "con lai",
+        )
+        if any_keyword_matches(normalized, task_action_cues):
+            if any_keyword_matches(normalized, ("quá hạn", "qua han", "overdue")):
+                return RequestProfile(domain="workspace", hint_tool="tasks_list_overdue", direct_confident=True, reason="overdue tasks request")
+            if any_keyword_matches(normalized, ("tạo", "tao", "thêm", "them", "create", "add")):
+                return RequestProfile(domain="workspace", hint_tool="tasks_create", direct_confident=False, reason="task create request")
+            return RequestProfile(domain="workspace", hint_tool="tasks_list", direct_confident=True, reason="tasks request")
+
     if any_keyword_matches(normalized, ("contact", "contacts", "danh bạ", "danh ba", "người liên hệ", "nguoi lien he")):
         return RequestProfile(domain="workspace", hint_tool="contacts_search", direct_confident=True, reason="contacts request")
 
-    if any_keyword_matches(normalized, ("automation", "tự động hóa", "tu dong hoa", "nhắc định kỳ", "nhac dinh ky", "nhắc tôi", "nhac toi", "nhắc mình", "nhac minh", "nhắc lúc", "nhac luc")):
+    if any_keyword_matches(normalized, ("automation", "nhắc định kỳ", "nhac dinh ky", "nhắc tôi", "nhac toi", "nhắc mình", "nhac minh", "nhắc lúc", "nhac luc", "tạo tự động", "tao tu dong", "cài tự động", "cai tu dong", "chạy tự động", "chay tu dong")):
         if any_keyword_matches(normalized, ("danh sách", "danh sach", "list", "đang có", "dang co")):
             return RequestProfile(domain="general", hint_tool="automation_list", direct_confident=True, reason="automation list request")
         return RequestProfile(domain="general", hint_tool="automation_create", direct_confident=False, reason="automation request")

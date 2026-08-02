@@ -29,6 +29,20 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(decision.route_type, "agentic_multistep")
         self.assertEqual(decision.agent_key, "google_full")
 
+    def test_concept_question_about_cong_viec_does_not_route_to_tasks(self):
+        decision = route_request("hãy giải thích chi tiết 5 lợi ích của việc tự động hóa công việc hàng ngày")
+        self.assertEqual(decision.domain, "general")
+        self.assertEqual(decision.hint_tool, "")
+
+    def test_cong_viec_with_task_action_routes_to_tasks(self):
+        decision = route_request("công việc của tôi hôm nay")
+        self.assertEqual(decision.domain, "workspace")
+        self.assertEqual(decision.hint_tool, "tasks_list")
+
+    def test_concept_question_about_automation_does_not_route_to_automation(self):
+        decision = route_request("tự động hóa công việc hàng ngày có lợi ích gì")
+        self.assertEqual(decision.domain, "general")
+
     def test_route_request_code_agent(self):
         decision = route_request("sửa bug trong repo mia-agent rồi chạy test")
         self.assertEqual(decision.domain, "code")
