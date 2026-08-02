@@ -5,6 +5,7 @@
 # Logs and databases
 logs/
 backups/*.dump
+backups/*.json
 *.log
 infra/homeassistant/config/.HA_VERSION
 infra/homeassistant/config/.cloud/

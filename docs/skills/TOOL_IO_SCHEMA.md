@@ -353,7 +353,7 @@ These still rely mainly on free-text `instruction` and should be migrated next.
   - direct structured replies no longer collapse back to a text-only gateway payload
   - when only a name/query is supplied, these workflows return `ok:false` with plain guidance instead of searching and mutating an arbitrary first result
 
-- Stage 12:
+- Stage 12b:
   - `web.read_url`, `web.summarize_url`, and `web.ask_url` now carry `fetchStrategy` end-to-end through planner, gateway, and sub-workflow normalization
   - GitHub follow-ups now cover releases, pull requests, and issues in both direct routing and selected-repo follow-up flows
   - evaluator now fails GitHub/Web specialist responses that do not bring back tool evidence
